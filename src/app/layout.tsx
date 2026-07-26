@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
+import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 
 // Selbst gehostete Fonts (Fontsource, OFL) — keine externen CDN-Aufrufe.
 import "@fontsource-variable/fraunces";
@@ -12,10 +13,18 @@ export const metadata: Metadata = {
   title: "Familienplaner",
   description: "Unser gemeinsamer Plan — für Dirk und Constanze.",
   applicationName: "Familienplaner",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Plan",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/icon-180.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -36,7 +45,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de" className={GeistSans.variable} suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

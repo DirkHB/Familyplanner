@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Beige-Grundfläche (Maskable-Safe-Zone: Motiv innerhalb der mittleren ~80%) -->
+  <rect width="512" height="512" fill="#F5EFE6"/>
+  <!-- Die zwei: Constanze (Rosé) hinten, Dirk (Dunkelblau) vorn, leicht überlappend -->
+  <circle cx="300" cy="256" r="118" fill="#C08A86"/>
+  <circle cx="212" cy="256" r="118" fill="#111E33"/>
+  <!-- Winziger Türkis-Akzent im Überlapp: der gemeinsame Nenner -->
+  <path d="M256 152 a118 118 0 0 1 0 208 a118 118 0 0 1 0 -208 Z" fill="#12A594" opacity="0.0"/>
+  <circle cx="256" cy="256" r="26" fill="#12A594"/>

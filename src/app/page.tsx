@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { InstallHint } from "@/components/pwa/InstallHint";
 
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6">
+      <InstallHint />
       <p className="eyebrow text-ink-muted">Familienplaner</p>
       <h1 className="mt-2 font-display text-5xl leading-tight">
         Unser Plan.
