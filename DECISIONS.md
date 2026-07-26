@@ -23,6 +23,20 @@ verknüpft, nicht über DB-ID oder href, weil iCloud href/etag bei Änderungen w
 Kollisionen gilt: iCloud ist Wahrheit für Kalenderfelder, die App für Zusatzdaten. Echte Konflikte
 lösen wir mit last-write-wins plus Protokolleintrag und sichtbarer UI-Info — nie stiller Datenverlust.
 
+## D-007 — Fonts über npm/Fontsource selbst gehostet; Satoshi als Drop-in
+Der Egress-Proxy blockt beliebige Hosts (GitHub-Raw, Fontshare), erlaubt aber die npm-Registry, deshalb
+beziehen wir Fraunces, Instrument Serif und Geist als OFL-Pakete über Fontsource und hosten die woff2
+selbst (kein Google-CDN, DSGVO-konform). Satoshi/Boska/Switzer sind Fontshare und hier nicht ladbar;
+bis die Dateien in `public/fonts/…` liegen, greift Hanken Grotesk (OFL) als warmer Platzhalter, per
+`@font-face` mit `local()`-Vorrang, sodass das echte Satoshi ohne Codeänderung übernimmt.
+
+## D-006 — Ein Docker-Image für App und Worker, standalone plus gezielte Worker-Pakete
+Wir bauen ein einziges Multi-Stage-Image mit Next.js `output: "standalone"` und starten daraus beide
+Sliplane-Services über unterschiedliche Commands (`node server.js` bzw. `node worker/index.mjs`). Weil
+das schlanke standalone-`node_modules` die Worker-Laufzeit und die Migrations-CLI nicht mitträgt, kopieren
+wir gezielt `@prisma`, `.prisma`, `prisma`, `node-cron` und `uuid` nach. Migrationen laufen idempotent per
+`prisma migrate deploy` im App-Start-Command, nicht als separater, vergessbarer Schritt.
+
 ## D-005 — Screenshots sind die kanonische Design-Referenz; Nutzer sind Dirk und Constanze
 Die vier gelieferten Mockups (`design/reference/`) legen die Zielästhetik verbindlich fest und sind
 in `design/DESIGN.md` als Design-System destilliert (Farbeinsatz, Typo-Rollen, Komponenten, Motion).

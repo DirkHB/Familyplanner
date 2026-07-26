@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Familienplaner — Design-Tokens.
+  Farben exakt aus den Hex-Startwerten des Briefings nach OKLCH konvertiert
+  (scripts/hex-to-oklch.mjs). Neutrale sind warm getönt, kein reines Schwarz/Weiß.
+*/
+
+:root {
+  /* Flächen */
+  --color-bg: oklch(95.43% 0.0136 78.26);
+  --color-surface: oklch(97.76% 0.009 78.28);
+  --color-surface-muted: oklch(90.86% 0.0223 74.08);
+  /* Tinte */
+  --color-ink: oklch(23.49% 0.0447 259.61);
+  --color-ink-muted: oklch(46.5% 0.045 260.52);
+  /* Akzent Türkis (sparsam!) */
+  --color-accent: oklch(64.91% 0.1136 181.96);
+  --color-accent-light: oklch(83.29% 0.0917 185.08);
+  /* Warmer Kontrapunkt (Feierliches, Herzchen, "Betreuung offen") */
+  --color-counter: oklch(68.52% 0.0668 23.73);
+  --color-counter-light: oklch(87.41% 0.0287 28.54);
+  /* Signal (nur wirklich Überfälliges) */
+  --color-signal: oklch(54.78% 0.1426 30.75);
+
+  /* Schriftrollen — vom Font-Switcher überschreibbar (Default: Fraunces + Satoshi) */
+  --font-fraunces: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-instrument: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-hanken: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-geist: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Satoshi ist Fontshare — Dateien nach public/fonts/satoshi/ legen (siehe README).
+     Bis dahin greift Hanken Grotesk als warmer OFL-Platzhalter. */
+  --font-satoshi: "Satoshi Variable", var(--font-hanken);
+
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-satoshi);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  /* Tiefes Mitternachtsblau + sandfarbene Schrift, kein graues Standard-Dark */
+  --color-bg: oklch(19% 0.03 262);
+  --color-surface: oklch(24% 0.035 262);
+  --color-surface-muted: oklch(30% 0.032 262);
+  --color-ink: oklch(92% 0.018 78);
+  --color-ink-muted: oklch(72% 0.02 76);
+  --color-accent: oklch(70% 0.115 183);
+  --color-accent-light: oklch(45% 0.07 185);
+  --color-counter: oklch(70% 0.06 24);
+  --color-counter-light: oklch(40% 0.045 28);
+  --color-signal: oklch(62% 0.14 31);
+
+  color-scheme: dark;
+}
+
+/* Satoshi-Drop-in: sobald die Dateien da sind, wird diese Regel aktiv.
+   local() zuerst, dann die selbst-gehostete Datei. */
+@font-face {
+  font-family: "Satoshi Variable";
+  src:
+    local("Satoshi Variable"),
+    url("/fonts/satoshi/Satoshi-Variable.woff2") format("woff2-variations");
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    /* Kaum wahrnehmbare Papier-/Grain-Textur auf dem Untergrund */
+    background-image: var(--grain);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Zahlen/Uhrzeiten: Tabellenziffern */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Getrackte Uppercase-Labels (MONTAG, 27. JULI / BRAUCHT DEINE ANTWORT) */
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+}
+
+:root {
+  /* Grain als Inline-SVG-Rauschen, sehr niedrige Deckkraft. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* Bewegung nur mit Grund — und nie gegen die Systemeinstellung. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

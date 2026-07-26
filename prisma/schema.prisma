@@ -1,0 +1,239 @@
+// Familienplaner — Datenmodell.
+// UTC überall gespeichert, Europe/Berlin angezeigt.
+// Unsere Zusatzdaten hängen an der stabilen iCalendar-UID, nicht an DB-ID/href.
+
+generator client {
+  provider      = "prisma-client-js"
+  // native = lokale Entwicklung; debian = Docker-Runtime (node:22-bookworm-slim).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* ------------------------------- Nutzer ------------------------------- */
+
+model User {
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  notificationPrefs Json               @default("{}")
+  createdAt         DateTime           @default(now())
+
+  pushSubscriptions PushSubscription[]
+  calendarAccounts  CalendarAccount[]
+  careAssignments   CareAssignment[]
+  requestsFrom      Request[]          @relation("RequestFrom")
+  requestsTo        Request[]          @relation("RequestTo")
+  aiFeedback        AiFeedback[]
+
+  @@map("users")
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  keys      Json
+  createdAt DateTime @default(now())
+
+  @@map("push_subscriptions")
+}
+
+/* --------------------------- Kalender / CalDAV --------------------------- */
+
+model CalendarAccount {
+  id                   String     @id @default(cuid())
+  userId               String
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider             String     @default("icloud")
+  // Envelope-verschlüsselt at rest (App-spezifisches Passwort). Nie im Klartext.
+  credentialsEncrypted String
+  principalUrl         String?
+  createdAt            DateTime   @default(now())
+
+  calendars            Calendar[]
+
+  @@map("calendar_accounts")
+}
+
+model Calendar {
+  id        String          @id @default(cuid())
+  accountId String
+  account   CalendarAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  ctag      String?
+  syncToken String?
+  isSynced  Boolean         @default(true)
+  color     String?
+
+  events    Event[]
+
+  @@unique([accountId, url])
+  @@map("calendars")
+}
+
+model Event {
+  id           String    @id @default(cuid())
+  calendarId   String
+  calendar     Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  uid          String // stabile iCalendar-UID
+  href         String
+  etag         String?
+  title        String
+  start        DateTime // UTC
+  end          DateTime // UTC
+  allDay       Boolean   @default(false)
+  location     String?
+  rrule        String?
+  recurrenceId String? // RECURRENCE-ID für Einzelausnahmen einer Serie
+  rawIcs       String    @db.Text
+  status       String    @default("confirmed")
+  lastSyncedAt DateTime  @default(now())
+
+  // Eine Reihe (uid) kann mehrere Overrides (recurrenceId) haben.
+  @@unique([calendarId, uid, recurrenceId])
+  @@index([uid])
+  @@map("events")
+}
+
+/* --------------------- App-eigene Zusatzdaten (an UID) --------------------- */
+
+model EventDetail {
+  eventUid      String   @id @map("event_uid") // = iCalendar-UID
+  category      String   @default("sonstiges")
+  notes         String?  @db.Text
+  prepChecklist Json     @default("[]")
+  createdBy     String?
+  updatedAt     DateTime @updatedAt @default(now())
+
+  @@map("event_details")
+}
+
+model CareAssignment {
+  id                String   @id @default(cuid())
+  eventUid          String
+  occurrenceDate    DateTime // welcher Serientermin (Datum)
+  responsibleUserId String?
+  responsible       User?    @relation(fields: [responsibleUserId], references: [id])
+  fromTs            DateTime?
+  toTs              DateTime?
+  status            String   @default("offen") // offen | zugesagt | geklaert
+  note              String?
+
+  @@unique([eventUid, occurrenceDate])
+  @@map("care_assignments")
+}
+
+/* ------------------------------ Einkaufslisten ------------------------------ */
+
+model ShoppingList {
+  id       String         @id @default(cuid())
+  kind     String         @default("haupt") // haupt | termin
+  eventUid String?
+  name     String
+  items    ShoppingItem[]
+
+  @@map("shopping_lists")
+}
+
+model ShoppingItem {
+  id        String       @id @default(cuid())
+  listId    String
+  list      ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  eventUid  String?
+  text      String
+  quantity  String?
+  category  String? // Sortierung nach Ladenlayout
+  addedBy   String?
+  checkedBy String?
+  checkedAt DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([listId])
+  @@map("shopping_items")
+}
+
+/* ------------------------------ Anfragen ------------------------------ */
+
+model Request {
+  id         String    @id @default(cuid())
+  fromUserId String
+  fromUser   User      @relation("RequestFrom", fields: [fromUserId], references: [id])
+  toUserId   String
+  toUser     User      @relation("RequestTo", fields: [toUserId], references: [id])
+  eventUid   String?
+  question   String
+  type       String    @default("yes_no") // yes_no | choice | free_text | date
+  options    Json      @default("[]")
+  answer     String?
+  status     String    @default("open") // open | answered | declined
+  dueDate    DateTime?
+  lastNudgeAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([status])
+  @@map("requests")
+}
+
+/* ------------------------------ Ideen-Board ------------------------------ */
+
+model Idea {
+  id           String  @id @default(cuid())
+  type         String // urlaub | ausflug | restaurant | geschenk
+  title        String
+  description  String?
+  link         String?
+  images       Json    @default("[]")
+  votes        Json    @default("{}")
+  targetPeriod String?
+  status       String  @default("offen")
+  createdAt    DateTime @default(now())
+
+  @@map("ideas")
+}
+
+/* ------------------------------ KI ------------------------------ */
+
+model LearnedPattern {
+  id        String   @id @default(cuid())
+  label     String // im UI lesbar & editierbar
+  pattern   Json
+  source    String   @default("gelernt")
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt @default(now())
+
+  @@map("learned_patterns")
+}
+
+model AiFeedback {
+  id                String   @id @default(cuid())
+  suggestionId      String
+  suggestionPayload Json
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id])
+  action            String // accepted | rejected | edited
+  editedResult      Json?
+  createdAt         DateTime @default(now())
+
+  @@map("ai_feedback")
+}
+
+/* ------------------------------ Protokoll ------------------------------ */
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actor      String? // "sync" | userId
+  detail     Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("activity_log")
+}
