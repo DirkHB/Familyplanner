@@ -44,9 +44,11 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Ruhezeiten (Nachtfenster 21–7) + Tests (7)
 
 ### Phase 3 — Listen, Checklisten, Offline
-- [ ] Einkaufslisten (Haupt + terminbezogen), Kategorien, Live-Sync
-- [ ] Vorbereitungs-Checklisten (+ KI-Vorschläge je Kategorie)
-- [ ] Offline-Fähigkeit (Abhaken offline, später sync)
+- [x] Einkaufsliste (gemeinsame Hauptliste), Kategorien, Abhaken (optimistisch) + Belohnung — nach Mockup 3
+- [x] Kategorie-Heuristik + Tests (6)
+- [ ] Terminbezogene Listen (Items aus Hauptliste in Einkaufstermin ziehen)
+- [ ] Vorbereitungs-Checklisten editierbar am Termin (+ KI-Vorschläge je Kategorie in Phase 4)
+- [ ] Offline-Queue (Abhaken offline persistent + später sync) — aktuell optimistisch/best-effort
 
 ### Phase 4 — KI
 - [ ] Prompt-Verzeichnis `/prompts` (versioniert)
@@ -71,3 +73,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 5: Phase 2 Anfragen — Nudge-/Eskalationslogik (+7 Tests), Requests-Backend (Partner-Aufloesung, erstellen/beantworten), Braucht-deine-Antwort-Hero (Screenshot geprueft), Anfragen-Seite, Tab-Platzhalter. 37 Tests gruen.
 - Iteration 6: Web Push (VAPID-Versand, Subscribe-Route, SW-Push/Click, Aktivieren-Button), Ruhezeiten (+7 Tests), taeglicher Nudge-Runner (Push+E-Mail-Eskalation) + interner Endpunkt + Worker-Job. 44 Tests gruen.
 - Iteration 7: Baby-Betreuung (care_assignments) am Termin — Ich-mache-es / Auto-Anfrage bei offen, Wer-ist-beim-Baby-Karte (Screenshot geprueft). Phase 2 abgeschlossen. 44 Tests gruen.
+- Iteration 8: Phase 3 Einkaufsliste (gemeinsame Hauptliste, Kategorien, optimistisches Abhaken + Belohnung, Hinzufuegen) nach Mockup 3 (Screenshot geprueft), Kategorie-Heuristik (+6 Tests). 50 Tests gruen.
