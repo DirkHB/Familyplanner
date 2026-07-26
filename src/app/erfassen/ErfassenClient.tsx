@@ -97,6 +97,7 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
 function SuggestionCard({ ev }: { ev: CaptureEvent }) {
   const [pending, start] = useTransition();
   const [state, setState] = useState<"open" | "accepted" | "rejected">("open");
+  const [note, setNote] = useState("");
 
   if (state === "rejected") return null;
 
@@ -129,13 +130,23 @@ function SuggestionCard({ ev }: { ev: CaptureEvent }) {
 
       {state === "accepted" ? (
         <p className="mt-3 rounded-card bg-accent-light px-4 py-2 text-center text-sm font-medium text-ink">
-          Übernommen ✓ — wird im Kalender angelegt, sobald der Schreibzugriff aktiv ist.
+          {note}
         </p>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             disabled={pending}
-            onClick={() => start(async () => { await acceptSuggestionAction(ev); setState("accepted"); })}
+            onClick={() =>
+              start(async () => {
+                const r = await acceptSuggestionAction(ev);
+                setNote(
+                  r.created
+                    ? "Im Kalender angelegt ✓"
+                    : `Übernommen — ${r.reason ?? "Kalender noch nicht verbunden."}`,
+                );
+                setState("accepted");
+              })
+            }
             className="rounded-pill bg-accent px-4 py-3 font-medium text-surface disabled:opacity-60"
           >
             Übernehmen

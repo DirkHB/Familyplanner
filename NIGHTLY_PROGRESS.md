@@ -31,7 +31,7 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Tab-Bar (Woche/Termine/Einkauf/Ideen)
 - [x] Settings: iCloud verbinden, Kalender-Toggles, Sync-Status, „Jetzt synchronisieren"
 - [x] Worker: echter Sync-Job (Trigger via internem Endpunkt + WORKER_SECRET)
-- [ ] Push-Weg App→iCloud (Termin bearbeiten) — folgt mit Termin-Editor
+- [x] Push-Weg App→iCloud: ICS-Builder (Round-Trip-Tests) + createEvent (PUT) — „Übernehmen" legt real an
 - [ ] Rate-Limiting auf API-Routen
 
 ### Phase 2 — Betreuung, Anfragen, Push  ✓ abgeschlossen
@@ -55,7 +55,7 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Schnellerfassung (NL → Terminvorschlag, Vorschau, Übernehmen/Verwerfen) + Normalisierung + Tests (4)
 - [x] Anthropic-Client (serverseitig, Modell per Env, strukturierte Ausgabe, kein Thinking/low effort)
 - [x] ai_feedback bei jeder Aktion
-- [ ] Übernehmen legt Termin real in iCloud an (braucht CalDAV-Schreibweg / ICS-Builder)
+- [x] Übernehmen legt Termin real in iCloud an (ICS-Builder + createEvent)
 - [ ] Kontextaufbau (Woche + learned_patterns + offene Anfragen + Kategorien)
 - [ ] Wochenplanung (Sonntag), Fairness-Blick (deskriptiv)
 - [ ] learned_patterns (lesbar/editierbar im UI)
@@ -77,3 +77,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 7: Baby-Betreuung (care_assignments) am Termin — Ich-mache-es / Auto-Anfrage bei offen, Wer-ist-beim-Baby-Karte (Screenshot geprueft). Phase 2 abgeschlossen. 44 Tests gruen.
 - Iteration 8: Phase 3 Einkaufsliste (gemeinsame Hauptliste, Kategorien, optimistisches Abhaken + Belohnung, Hinzufuegen) nach Mockup 3 (Screenshot geprueft), Kategorie-Heuristik (+6 Tests). 50 Tests gruen.
 - Iteration 9: Phase 4 KI-Schnellerfassung — versioniertes Prompt, Anthropic-Client (opus-5 default, konfigurierbar), strukturierte Ausgabe + Normalisierung (+4 Tests), Vorschau-UI (Uebernehmen/Verwerfen), ai_feedback, Erfassen-Zugang in der Woche. 54 Tests gruen.
+- Iteration 10: App->iCloud-Schreibweg — ICS-Builder (+4 Round-Trip-Tests gegen den Parser), createEvent (PUT + lokale Spiegelung + event_details + Auto-Betreuungsanfrage), Schnellerfassung-Uebernehmen legt real an. Abnahmekriterium 2 abgedeckt. 58 Tests gruen.

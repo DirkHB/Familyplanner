@@ -1,9 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { aiConfigured } from "@/lib/ai/client";
 import { quickCapture } from "@/lib/ai/quick-capture";
 import { logAiFeedback } from "@/lib/ai/feedback";
+import { createEvent } from "@/lib/calendar/create";
+import { displayNameForEmail } from "@/lib/auth/allowlist";
 import type { CaptureEvent, CaptureResult } from "@/lib/ai/schemas";
 
 export async function captureAction(
@@ -21,18 +24,37 @@ export async function captureAction(
   }
 }
 
-export async function acceptSuggestionAction(suggestion: CaptureEvent) {
+export async function acceptSuggestionAction(
+  suggestion: CaptureEvent,
+): Promise<{ ok: boolean; created: boolean; reason?: string }> {
   const session = await auth();
-  if (!session?.user?.id) return { ok: false };
-  // KI-Vorschläge sind nie Auto-Schreibvorgänge: Feedback protokollieren.
-  // Das tatsächliche Anlegen in iCloud folgt über den CalDAV-Schreibweg.
+  if (!session?.user?.id) return { ok: false, created: false };
+
+  // KI-Vorschläge sind nie Auto-Schreibvorgänge: erst auf Nutzeraktion anlegen.
   await logAiFeedback({
     suggestionId: suggestion.start + ":" + suggestion.title,
     suggestionPayload: suggestion,
     userId: session.user.id,
     action: "accepted",
   });
-  return { ok: true };
+
+  try {
+    const res = await createEvent(session.user.id, {
+      title: suggestion.title,
+      start: new Date(suggestion.start),
+      end: new Date(suggestion.end),
+      allDay: suggestion.allDay,
+      category: suggestion.category,
+      checklist: suggestion.checklist,
+      careNeeded: suggestion.careNeeded,
+      description: suggestion.notes,
+      createdBy: displayNameForEmail(session.user.email),
+    });
+    revalidatePath("/woche");
+    return { ok: true, created: res.created, reason: res.reason };
+  } catch {
+    return { ok: true, created: false, reason: "Anlegen in iCloud fehlgeschlagen." };
+  }
 }
 
 export async function rejectSuggestionAction(suggestion: CaptureEvent) {
