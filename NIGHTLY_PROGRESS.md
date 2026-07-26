@@ -61,8 +61,9 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [ ] learned_patterns (lesbar/editierbar im UI)
 
 ### Phase 5 — Ideen & Urlaub
-- [ ] Ideen-Board (Foto-Cards nach Mockup), Bewertung
-- [ ] KI-Konkretisierung (Zeitfenster, „Passt gut"), Idee → Termin
+- [x] Ideen-Board (Foto-/Gradient-Cards nach Mockup 4), Bewertung pro Person (Constanze/Dirk) + Vorschau (/vorschau/ideen)
+- [x] „Passt gut"-Zeitfenster (Chip), Idee → Termin (legt ganztägigen Termin via createEvent an, markiert Idee als geplant)
+- [ ] KI-Konkretisierung des Zeitfensters (kommt mit Phase-4-Kontextaufbau)
 
 ---
 
@@ -78,3 +79,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 8: Phase 3 Einkaufsliste (gemeinsame Hauptliste, Kategorien, optimistisches Abhaken + Belohnung, Hinzufuegen) nach Mockup 3 (Screenshot geprueft), Kategorie-Heuristik (+6 Tests). 50 Tests gruen.
 - Iteration 9: Phase 4 KI-Schnellerfassung — versioniertes Prompt, Anthropic-Client (opus-5 default, konfigurierbar), strukturierte Ausgabe + Normalisierung (+4 Tests), Vorschau-UI (Uebernehmen/Verwerfen), ai_feedback, Erfassen-Zugang in der Woche. 54 Tests gruen.
 - Iteration 10: App->iCloud-Schreibweg — ICS-Builder (+4 Round-Trip-Tests gegen den Parser), createEvent (PUT + lokale Spiegelung + event_details + Auto-Betreuungsanfrage), Schnellerfassung-Uebernehmen legt real an. Abnahmekriterium 2 abgedeckt. 58 Tests gruen.
+- Iteration 11: Phase 5 Ideen- & Urlaubsboard (Mockup 4) — Repository (listIdeas/createIdea/toggleVote/deleteIdea/markIdeaPlanned), Server-Actions, IdeenClient (Foto-/Gradient-Cards, Herz-Bewertung je Person, „Passt gut"-Chip, „In Termin verwandeln" legt ganztaegigen Termin an), oeffentliche Vorschau /vorschau/ideen (Screenshot geprueft). 58 Tests gruen, Build gruen.

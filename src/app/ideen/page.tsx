@@ -1,10 +1,9 @@
-import { ComingSoon } from "@/components/app/ComingSoon";
+import { listIdeas } from "@/lib/ideas/repository";
+import { IdeenClient } from "./IdeenClient";
+
 export const dynamic = "force-dynamic";
-export default function IdeenPage() {
-  return (
-    <ComingSoon
-      title="Ideen & Urlaub"
-      text="Was ihr euch gemeinsam wünscht — Ideen sammeln und in Termine verwandeln. Kommt in Phase 5."
-    />
-  );
+
+export default async function IdeenPage() {
+  const ideas = await listIdeas();
+  return <IdeenClient ideas={ideas} />;
 }
