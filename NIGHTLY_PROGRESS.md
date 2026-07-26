@@ -36,10 +36,11 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 
 ### Phase 2 — Betreuung, Anfragen, Push
 - [ ] Baby-Betreuung (care_assignments), Auto-Anfrage bei „offen"
-- [ ] Anfragen (yes_no/choice/free_text/date), oben angepinnt
-- [ ] Täglicher Nudge (09:00) + Eskalation (E-Mail nach 3 Tagen, rot nach 7) + Tests
+- [x] Anfragen (yes_no/choice/free_text/date), „Braucht deine Antwort"-Hero oben angepinnt
+- [x] Nudge-/Eskalationslogik (Push täglich, E-Mail ab 3 T., rot ab 7 T.) + Tests (7)
+- [x] Antwort in <5 s (ein Tap aus dem Hero) + Anfragen-Seite (erstellen/Verlauf)
+- [ ] Täglicher Nudge-Job (09:00) sendet Push/E-Mail (braucht Web Push)
 - [ ] Web Push (VAPID) + Ruhezeiten (Nachtfenster) + Tests
-- [ ] Antwort in <5 s (aus Push / ein Tap)
 
 ### Phase 3 — Listen, Checklisten, Offline
 - [ ] Einkaufslisten (Haupt + terminbezogen), Kategorien, Live-Sync
@@ -66,3 +67,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 2: CalDAV-Interface + tsdav-Client, iCal-Parsing/Expansion (RRULE/EXDATE/RECURRENCE-ID, +8 Tests), Sync-Diff (+7 Tests). 25 Tests gruen, tsc sauber.
 - Iteration 3: Wochenansicht + Termin-Detail (Mockup-treu, Screenshots geprueft), Repository, Format/Kategorien/View-Model (+5 Tests), Tab-Bar, oeffentliche Vorschau-Routen. 30 Tests gruen.
 - Iteration 4: Sync-Engine an DB (Pull/upsert/delete, Konfliktprotokoll, Sync-Status), Account-Verbindung (Discovery, verschluesselt), interner Sync-Endpunkt + Worker-Trigger, Einstellungen-Screen (verbinden/toggles/sync). 30 Tests gruen, Build gruen.
+- Iteration 5: Phase 2 Anfragen — Nudge-/Eskalationslogik (+7 Tests), Requests-Backend (Partner-Aufloesung, erstellen/beantworten), Braucht-deine-Antwort-Hero (Screenshot geprueft), Anfragen-Seite, Tab-Platzhalter. 37 Tests gruen.

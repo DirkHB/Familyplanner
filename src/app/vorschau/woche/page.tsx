@@ -10,7 +10,24 @@ export default function VorschauWoche() {
   const now = new Date();
   const { occurrences, metaByUid } = buildSampleWeek(now);
   const days = buildWeek(occurrences, metaByUid, now);
+  const requests = [
+    {
+      id: "s-req",
+      question: "Schaffst du Donnerstag den Einkauf?",
+      type: "yes_no" as const,
+      options: [],
+      fromName: "Constanze",
+      fromPerson: "constanze" as const,
+      ageLabel: "vor 20 Min.",
+      overdue: false,
+    },
+  ];
   return (
-    <WeekView greetingName="Constanze" dateLabel={`Vorschau · ${formatDateHeader(now)}`} days={days} />
+    <WeekView
+      greetingName="Dirk"
+      dateLabel={`Vorschau · ${formatDateHeader(now)}`}
+      days={days}
+      requests={requests}
+    />
   );
 }

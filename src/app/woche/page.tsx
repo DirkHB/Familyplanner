@@ -4,6 +4,8 @@ import { buildWeek } from "@/lib/calendar/view-model";
 import { getOccurrencesForRange, getMetaByUid } from "@/lib/calendar/repository";
 import { startOfDayBerlin, formatDateHeader } from "@/lib/calendar/format";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { getOpenRequestsForUser } from "@/lib/requests/repository";
+import { buildRequestVM } from "@/lib/requests/view-model";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +23,11 @@ export default async function WochePage() {
   const meta = await getMetaByUid(uids);
   const days = buildWeek(occurrences, meta, now);
 
-  return <WeekView greetingName={name} dateLabel={formatDateHeader(now)} days={days} />;
+  const requests = session?.user?.id
+    ? (await getOpenRequestsForUser(session.user.id)).map((r) => buildRequestVM(r, now))
+    : [];
+
+  return (
+    <WeekView greetingName={name} dateLabel={formatDateHeader(now)} days={days} requests={requests} />
+  );
 }

@@ -26,3 +26,12 @@ export function displayNameForEmail(email: string | null | undefined): string {
   if (e === "dirkbrederecke@gmail.com") return "Dirk";
   return e.split("@")[0] || "Du";
 }
+
+export type Person = "dirk" | "constanze";
+
+/** Avatar-/Personen-Zuordnung. Constanze = rosé, Dirk = navy. */
+export function personForEmail(email: string | null | undefined): Person {
+  const e = (email ?? "").trim().toLowerCase();
+  if (e === "dirkbrederecke@gmail.com") return "dirk";
+  return "constanze";
+}

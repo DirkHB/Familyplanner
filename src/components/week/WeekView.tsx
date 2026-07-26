@@ -5,16 +5,20 @@ import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { TabBar } from "@/components/app/TabBar";
+import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
+import type { RequestVM } from "@/lib/requests/view-model";
 
 export function WeekView({
   greetingName,
   dateLabel,
   days,
+  requests = [],
 }: {
   greetingName: string;
   dateLabel: string;
   days: DayVM[];
+  requests?: RequestVM[];
 }) {
   const empty = days.length === 0;
   return (
@@ -38,6 +42,8 @@ export function WeekView({
             </svg>
           </Link>
         </div>
+
+        <RequestHero requests={requests} />
 
         {empty ? (
           <EmptyState />
