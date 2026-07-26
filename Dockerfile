@@ -24,8 +24,10 @@ RUN npx prisma generate
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Kein DB-Zugriff nötig beim Build; Dummy reicht, damit env-Reads nicht failen.
+# Kein DB-/Secret-Zugriff nötig beim Build; Dummies reichen, damit env-Reads nicht failen.
+# Echte Werte kommen zur Laufzeit aus den Sliplane-Env-Variablen.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+ENV AUTH_SECRET="build-only-not-a-real-secret"
 RUN npm run build
 
 # ---------- Runner ----------
