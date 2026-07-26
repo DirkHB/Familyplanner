@@ -34,8 +34,8 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [ ] Push-Weg App→iCloud (Termin bearbeiten) — folgt mit Termin-Editor
 - [ ] Rate-Limiting auf API-Routen
 
-### Phase 2 — Betreuung, Anfragen, Push
-- [ ] Baby-Betreuung (care_assignments), Auto-Anfrage bei „offen"
+### Phase 2 — Betreuung, Anfragen, Push  ✓ abgeschlossen
+- [x] Baby-Betreuung (care_assignments) am Termin, „Ich mache es" / Auto-Anfrage bei „offen"
 - [x] Anfragen (yes_no/choice/free_text/date), „Braucht deine Antwort"-Hero oben angepinnt
 - [x] Nudge-/Eskalationslogik (Push täglich, E-Mail ab 3 T., rot ab 7 T.) + Tests (7)
 - [x] Antwort in <5 s (ein Tap aus dem Hero) + Anfragen-Seite (erstellen/Verlauf)
@@ -70,3 +70,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 4: Sync-Engine an DB (Pull/upsert/delete, Konfliktprotokoll, Sync-Status), Account-Verbindung (Discovery, verschluesselt), interner Sync-Endpunkt + Worker-Trigger, Einstellungen-Screen (verbinden/toggles/sync). 30 Tests gruen, Build gruen.
 - Iteration 5: Phase 2 Anfragen — Nudge-/Eskalationslogik (+7 Tests), Requests-Backend (Partner-Aufloesung, erstellen/beantworten), Braucht-deine-Antwort-Hero (Screenshot geprueft), Anfragen-Seite, Tab-Platzhalter. 37 Tests gruen.
 - Iteration 6: Web Push (VAPID-Versand, Subscribe-Route, SW-Push/Click, Aktivieren-Button), Ruhezeiten (+7 Tests), taeglicher Nudge-Runner (Push+E-Mail-Eskalation) + interner Endpunkt + Worker-Job. 44 Tests gruen.
+- Iteration 7: Baby-Betreuung (care_assignments) am Termin — Ich-mache-es / Auto-Anfrage bei offen, Wer-ist-beim-Baby-Karte (Screenshot geprueft). Phase 2 abgeschlossen. 44 Tests gruen.

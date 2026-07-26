@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { saveNotes } from "@/app/termin/[uid]/actions";
+import { saveNotes, takeCareAction, requestCareAction } from "@/app/termin/[uid]/actions";
+import { Avatar } from "@/components/ui/Avatar";
 import type { DetailVM } from "@/lib/calendar/view-model";
 
 export function EventDetail({ vm }: { vm: DetailVM }) {
@@ -42,6 +43,8 @@ export function EventDetail({ vm }: { vm: DetailVM }) {
           </div>
         </div>
 
+        {!vm.allDay && <CareBlock vm={vm} />}
+
         {vm.prep.length > 0 && (
           <Section title="Vorbereitung" trailing={`${vm.prep.filter((p) => p.done).length} / ${vm.prep.length}`}>
             <ul className="flex flex-col gap-1">
@@ -64,6 +67,74 @@ export function EventDetail({ vm }: { vm: DetailVM }) {
         <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
       </div>
     </div>
+  );
+}
+
+function CareBlock({ vm }: { vm: DetailVM }) {
+  const [pending, start] = useTransition();
+  const care = vm.care;
+  const canAct = !vm.readOnly && !!vm.occurrenceISO;
+
+  const geklaert = care?.status === "geklaert" && care.responsiblePerson;
+
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-display text-lg">Wer ist beim Baby</h2>
+        {vm.timeLabel && vm.endLabel && (
+          <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent-light px-2.5 py-1 text-xs font-medium text-ink">
+            <ClockIcon /> {vm.timeLabel}–{vm.endLabel}
+          </span>
+        )}
+      </div>
+
+      {geklaert ? (
+        <div className="flex items-center gap-3">
+          <Avatar person={care!.responsiblePerson!} size={40} />
+          <div>
+            <p className="font-semibold">{care!.responsibleName} ist da</p>
+            <p className="text-sm text-ink-muted">Betreuung geklärt</p>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="mb-3 text-sm text-ink-muted">
+            {care?.status === "offen"
+              ? "Noch offen — eine Anfrage ist unterwegs."
+              : "Noch nicht geklärt."}
+          </p>
+          {canAct && (
+            <div className="flex flex-col gap-2">
+              <button
+                disabled={pending}
+                onClick={() => start(() => takeCareAction(vm.uid, vm.occurrenceISO!).then(() => {}))}
+                className="rounded-pill bg-accent px-5 py-3 font-medium text-surface disabled:opacity-60"
+              >
+                Ich mache es
+              </button>
+              <button
+                disabled={pending}
+                onClick={() =>
+                  start(() => requestCareAction(vm.uid, vm.occurrenceISO!, vm.title).then(() => {}))
+                }
+                className="rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
+              >
+                Den anderen fragen
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 8v4.5l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

@@ -84,6 +84,12 @@ export function buildWeek(
 
 /* ------------------------------ Termin-Detail ------------------------------ */
 
+export type CareVM = {
+  status: "offen" | "zugesagt" | "geklaert";
+  responsibleName: string | null;
+  responsiblePerson: Person | null;
+} | null;
+
 export type DetailVM = {
   uid: string;
   title: string;
@@ -96,6 +102,8 @@ export type DetailVM = {
   dotColor: string;
   notes: string;
   prep: { text: string; done: boolean }[];
+  occurrenceISO: string | null;
+  care: CareVM;
   readOnly?: boolean;
 };
 
@@ -109,6 +117,8 @@ export type DetailInput = {
   category: string;
   notes: string;
   prepChecklist: { text: string; done: boolean }[];
+  occurrenceISO?: string | null;
+  care?: CareVM;
 };
 
 export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
@@ -125,6 +135,8 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
     dotColor: cat.dotColor,
     notes: v.notes,
     prep: v.prepChecklist,
+    occurrenceISO: v.occurrenceISO ?? null,
+    care: v.care ?? null,
     readOnly,
   };
 }

@@ -18,6 +18,8 @@ export default function VorschauTermin() {
       allDay: false,
       category: "arzt",
       notes: "Fragen zu Schlaf & Beikoststart mitnehmen.",
+      occurrenceISO: start.toISOString(),
+      care: { status: "geklaert", responsibleName: "Dirk", responsiblePerson: "dirk" },
       prepChecklist: [
         { text: "Versichertenkarte", done: true },
         { text: "U-Heft", done: true },

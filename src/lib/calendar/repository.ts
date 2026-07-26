@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { expandOccurrences } from "./ical";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
+import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
 
 /** DB-Zugriff für die Kalenderansichten. Expandiert Wiederholungen aus den gespeicherten .ics. */
 
@@ -48,6 +49,12 @@ export type EventDetailView = {
   category: string;
   notes: string;
   prepChecklist: { text: string; done: boolean }[];
+  occurrenceISO: string | null;
+  care: {
+    status: "offen" | "zugesagt" | "geklaert";
+    responsibleName: string | null;
+    responsiblePerson: "dirk" | "constanze" | null;
+  } | null;
 };
 
 /** Ansicht für die Termin-Detailseite: nächstes Vorkommen + App-Zusatzdaten (an der UID). */
@@ -82,6 +89,25 @@ export async function getEventView(
     ? (detail!.prepChecklist as unknown as { text: string; done: boolean }[])
     : [];
 
+  // Betreuung für dieses Vorkommen laden.
+  let care: EventDetailView["care"] = null;
+  if (start) {
+    const occDate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+    const row = await prisma.careAssignment.findUnique({
+      where: { eventUid_occurrenceDate: { eventUid: uid, occurrenceDate: occDate } },
+      include: { responsible: true },
+    });
+    if (row) {
+      care = {
+        status: row.status as "offen" | "zugesagt" | "geklaert",
+        responsibleName: row.responsible
+          ? row.responsible.name ?? displayNameForEmail(row.responsible.email)
+          : null,
+        responsiblePerson: row.responsible ? personForEmail(row.responsible.email) : null,
+      };
+    }
+  }
+
   return {
     uid,
     title: event.title,
@@ -92,5 +118,7 @@ export async function getEventView(
     category: detail?.category ?? "sonstiges",
     notes: detail?.notes ?? "",
     prepChecklist: prep,
+    occurrenceISO: start ? start.toISOString() : null,
+    care,
   };
 }
