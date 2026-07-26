@@ -11,6 +11,8 @@ Status: **Warte auf „go"** vor dem ersten Produktcode. Dieses Dokument ist die
 ## 0. Leitplanken (nicht verhandelbar)
 
 - **Zwei Nutzer, keine Skalierung.** Kein Signup, keine Rollen, keine Mandanten. Allowlist auf zwei E-Mails.
+  Die Nutzer sind **Dirk** (Avatar Dunkelblau) und **Constanze** (Avatar Rosé) — fest verdrahtet.
+  Visuelle Zielästhetik + abgeleitetes Design-System: siehe `design/DESIGN.md` und `design/reference/`.
 - **Einhändig, nachts, mit Baby auf dem Arm.** Wichtigste Aktion pro Screen ohne Scrollen, großes Ziel, unteres Bildschirmdrittel.
 - **Zuverlässigkeit vor Features.** Nie stillschweigend Daten verlieren. Sync-Fehler sichtbar, nicht App-tötend.
 - **EU-Hosting, DSGVO.** Keine Tracker, keine Analytics-Pixel, selbst gehostete Fonts, keine Google-Fonts-CDN.

@@ -23,6 +23,12 @@ verknüpft, nicht über DB-ID oder href, weil iCloud href/etag bei Änderungen w
 Kollisionen gilt: iCloud ist Wahrheit für Kalenderfelder, die App für Zusatzdaten. Echte Konflikte
 lösen wir mit last-write-wins plus Protokolleintrag und sichtbarer UI-Info — nie stiller Datenverlust.
 
+## D-005 — Screenshots sind die kanonische Design-Referenz; Nutzer sind Dirk und Constanze
+Die vier gelieferten Mockups (`design/reference/`) legen die Zielästhetik verbindlich fest und sind
+in `design/DESIGN.md` als Design-System destilliert (Farbeinsatz, Typo-Rollen, Komponenten, Motion).
+Die beiden fest verdrahteten Nutzer sind Dirk (Avatar Dunkelblau `#111E33`) und Constanze (Avatar Rosé
+`#C08A86`); der Name „Marit" auf den Mockups war reiner Platzhalter und wird durchgängig durch Constanze ersetzt.
+
 ## D-004 — Design-Skills-Regeln fest verankert statt Skill-Abhängigkeit
 Die Skills Impeccable, Emil Kowalski und Taste sind in dieser Umgebung nicht installierbar, deshalb
 gießen wir ihre Kernprinzipien (Anti-Slop, Motion-Grammatik, gute Vorbilder) fest ins Design-System
