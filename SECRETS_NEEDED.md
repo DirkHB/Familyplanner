@@ -28,6 +28,12 @@ Nichts davon steht im Code. Reihenfolge = Priorität.
       Diese trägst du **nicht** in .env ein, sondern **in der App** unter Einstellungen
       (sie werden verschlüsselt in der DB gespeichert).
 
+## 4b. Worker → App Sync-Trigger
+- [ ] **`WORKER_SECRET`** — `openssl rand -base64 32`. Bei **app** UND **worker** identisch setzen.
+      (Der Worker ruft damit alle 5 Min den internen Sync-Endpunkt der App auf.)
+- [ ] Optional **`APP_INTERNAL_URL`** — nur nötig, falls der Worker die App nicht über `AUTH_URL`
+      erreicht (Default: `AUTH_URL`, sonst `https://planyourweek.app`).
+
 ## 5. Web Push (Benachrichtigungen)
 - [ ] **`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`** — `npx web-push generate-vapid-keys`
 - [ ] **`VAPID_SUBJECT`** — `mailto:dirkbrederecke@gmail.com`

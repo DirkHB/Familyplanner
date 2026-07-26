@@ -1,0 +1,163 @@
+import "server-only";
+import { prisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/crypto/envelope";
+import { createICloudClient } from "./tsdav-client";
+import { parseEvents } from "./ical";
+import { diffPull, type LocalState } from "./sync-diff";
+import type { CalDavClient, RemoteObject } from "./caldav";
+
+/**
+ * Sync-Orchestrierung. Phase 1: robuster PULL (iCloud → App). Push-Primitive existieren
+ * im Client für spätere App→iCloud-Änderungen. Ein Fehler kippt nie die ganze App — er
+ * wird pro Kalender gespeichert und im Einstellungen-Screen sichtbar (Abnahmekriterium 4).
+ */
+
+export type SyncSummary = {
+  calendars: number;
+  upserted: number;
+  deleted: number;
+  errors: { calendar: string; message: string }[];
+};
+
+async function clientForAccount(accountId: string): Promise<CalDavClient> {
+  const account = await prisma.calendarAccount.findUniqueOrThrow({
+    where: { id: accountId },
+  });
+  const password = decryptSecret(account.credentialsEncrypted);
+  return createICloudClient({ username: account.username ?? "", password });
+}
+
+/** Ein RemoteObject in eine Event-Zeile übersetzen (Kalenderfelder aus dem Master-VEVENT). */
+function rowFromObject(calendarId: string, obj: RemoteObject) {
+  const parsed = parseEvents(obj.ics);
+  const master = parsed.find((e) => !e.isOverride) ?? parsed[0];
+  if (!master) return null;
+  return {
+    calendarId,
+    uid: master.uid,
+    recurrenceId: "", // ganze Serie in einer Zeile (rawIcs enthält Overrides)
+    href: obj.href,
+    etag: obj.etag,
+    title: master.summary,
+    start: master.start,
+    end: master.end,
+    allDay: master.allDay,
+    location: master.location,
+    rrule: master.rrule,
+    rawIcs: obj.ics,
+    lastSyncedAt: new Date(),
+  };
+}
+
+async function syncCalendar(
+  client: CalDavClient,
+  calendar: { id: string; url: string; name: string },
+  summary: SyncSummary,
+) {
+  try {
+    const changes = await client.fetchChanges(calendar.url);
+
+    const existing = await prisma.event.findMany({
+      where: { calendarId: calendar.id },
+      select: { href: true, etag: true },
+    });
+    const local: LocalState = {
+      etagByHref: new Map(existing.map((e) => [e.href, e.etag ?? ""])),
+    };
+
+    // fetchChanges liefert immer den vollständigen Kalender → Löschungen ableitbar.
+    const diff = diffPull(changes.objects, local, true);
+
+    for (const obj of diff.toUpsert) {
+      const row = rowFromObject(calendar.id, obj);
+      if (!row) continue;
+      await prisma.event.upsert({
+        where: {
+          calendarId_uid_recurrenceId: {
+            calendarId: row.calendarId,
+            uid: row.uid,
+            recurrenceId: "",
+          },
+        },
+        create: row,
+        update: row,
+      });
+      summary.upserted++;
+    }
+
+    if (diff.hrefsToDelete.length) {
+      const del = await prisma.event.deleteMany({
+        where: { calendarId: calendar.id, href: { in: diff.hrefsToDelete } },
+      });
+      summary.deleted += del.count;
+    }
+
+    await prisma.calendar.update({
+      where: { id: calendar.id },
+      data: {
+        ctag: changes.ctag,
+        syncToken: changes.newSyncToken,
+        lastSyncedAt: new Date(),
+        lastSyncOk: true,
+        lastError: null,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    summary.errors.push({ calendar: calendar.name, message });
+    await prisma.calendar.update({
+      where: { id: calendar.id },
+      data: { lastSyncedAt: new Date(), lastSyncOk: false, lastError: message },
+    });
+    await prisma.activityLog.create({
+      data: {
+        entityType: "calendar",
+        entityId: calendar.id,
+        action: "sync_error",
+        actor: "sync",
+        detail: { message },
+      },
+    });
+  }
+}
+
+/** Alle verbundenen, zu synchronisierenden Kalender abgleichen. */
+export async function runSyncForAllAccounts(): Promise<SyncSummary> {
+  const summary: SyncSummary = { calendars: 0, upserted: 0, deleted: 0, errors: [] };
+  const accounts = await prisma.calendarAccount.findMany({
+    include: { calendars: { where: { isSynced: true } } },
+  });
+
+  for (const account of accounts) {
+    if (account.calendars.length === 0) continue;
+    let client: CalDavClient;
+    try {
+      client = await clientForAccount(account.id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      summary.errors.push({ calendar: account.username ?? account.id, message });
+      continue;
+    }
+    for (const cal of account.calendars) {
+      summary.calendars++;
+      await syncCalendar(client, cal, summary);
+    }
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      entityType: "sync",
+      entityId: "all",
+      action: "sync_run",
+      actor: "sync",
+      detail: {
+        calendars: summary.calendars,
+        upserted: summary.upserted,
+        deleted: summary.deleted,
+        errorCount: summary.errors.length,
+      },
+    },
+  });
+
+  return summary;
+}

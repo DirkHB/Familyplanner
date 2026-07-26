@@ -17,14 +17,26 @@ function log(job, msg) {
 log("boot", `Worker gestartet · Zeitzone ${TZ}`);
 
 // --- Kalender-Sync: alle 5 Minuten (Abschnitt 4) ---
-cron.schedule(
-  "*/5 * * * *",
-  async () => {
-    log("calendar-sync", "Tick — Phase 1 hängt hier den CalDAV-Pull/Push ein.");
-    // TODO(Phase 1): await runCalendarSync()
-  },
-  { timezone: TZ },
-);
+const APP_URL = process.env.APP_INTERNAL_URL || process.env.AUTH_URL || "http://localhost:3000";
+
+async function triggerSync() {
+  if (!process.env.WORKER_SECRET) {
+    log("calendar-sync", "Übersprungen — WORKER_SECRET nicht gesetzt.");
+    return;
+  }
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/sync`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    log("calendar-sync", `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log("calendar-sync", `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("*/5 * * * *", triggerSync, { timezone: TZ });
 
 // --- Täglicher Nudge für offene Anfragen: 09:00 (Abschnitt 6.3) ---
 cron.schedule(

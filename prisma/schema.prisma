@@ -94,6 +94,8 @@ model CalendarAccount {
   userId               String
   user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider             String     @default("icloud")
+  // Apple-ID (kein Geheimnis) — das App-spezifische Passwort liegt verschlüsselt daneben.
+  username             String?
   // Envelope-verschlüsselt at rest (App-spezifisches Passwort). Nie im Klartext.
   credentialsEncrypted String
   principalUrl         String?
@@ -110,10 +112,13 @@ model Calendar {
   account   CalendarAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   name      String
   url       String
-  ctag      String?
-  syncToken String?
-  isSynced  Boolean         @default(true)
-  color     String?
+  ctag         String?
+  syncToken    String?
+  isSynced     Boolean         @default(true)
+  color        String?
+  lastSyncedAt DateTime?
+  lastSyncOk   Boolean         @default(true)
+  lastError    String?
 
   events    Event[]
 

@@ -65,6 +65,7 @@ CREATE TABLE "calendar_accounts" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "provider" TEXT NOT NULL DEFAULT 'icloud',
+    "username" TEXT,
     "credentialsEncrypted" TEXT NOT NULL,
     "principalUrl" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -82,6 +83,9 @@ CREATE TABLE "calendars" (
     "syncToken" TEXT,
     "isSynced" BOOLEAN NOT NULL DEFAULT true,
     "color" TEXT,
+    "lastSyncedAt" TIMESTAMP(3),
+    "lastSyncOk" BOOLEAN NOT NULL DEFAULT true,
+    "lastError" TEXT,
 
     CONSTRAINT "calendars_pkey" PRIMARY KEY ("id")
 );

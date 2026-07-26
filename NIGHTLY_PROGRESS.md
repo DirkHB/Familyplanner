@@ -23,14 +23,15 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] CalDAV-Client hinter Interface + tsdav-Impl (noch nicht gegen echtes iCloud verifiziert)
 - [x] iCal-Parsing + Wiederholungen (ical.js): RRULE/EXDATE/RECURRENCE-ID + Tests (8)
 - [x] Sync-Diff (Pull-Reconciliation, Push-Konflikt-Erkennung) + Tests (7)
-- [ ] Sync-Engine an DB anbinden (Pull upsert/delete, Push If-Match/412) + Worker-Job
+- [x] Sync-Engine an DB (Pull upsert/delete, Konfliktprotokoll, Sync-Status pro Kalender)
 - [x] Datenzugriff (Repositories) für events/event_details
 - [x] Wochenansicht (Startbildschirm) nach Mockup + öffentliche Vorschau (/vorschau/woche)
 - [x] Termin-Detail (Notizen editierbar) nach Mockup + Vorschau (/vorschau/termin)
 - [x] Format/Kategorien/View-Model (Europe/Berlin) + Tests (5)
 - [x] Tab-Bar (Woche/Termine/Einkauf/Ideen)
-- [ ] Settings: Sync-Status (letzter Lauf/Fehler, „Jetzt synchronisieren")
-- [ ] Worker: echten Sync-Job einhängen
+- [x] Settings: iCloud verbinden, Kalender-Toggles, Sync-Status, „Jetzt synchronisieren"
+- [x] Worker: echter Sync-Job (Trigger via internem Endpunkt + WORKER_SECRET)
+- [ ] Push-Weg App→iCloud (Termin bearbeiten) — folgt mit Termin-Editor
 - [ ] Rate-Limiting auf API-Routen
 
 ### Phase 2 — Betreuung, Anfragen, Push
@@ -64,3 +65,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 1: Test-Infra, Envelope-Crypto (+6 Tests), Auth.js Magic-Link + Allowlist (+4 Tests), Auth-Migration. Landing/style bleiben oeffentlich, App-Routen gated.
 - Iteration 2: CalDAV-Interface + tsdav-Client, iCal-Parsing/Expansion (RRULE/EXDATE/RECURRENCE-ID, +8 Tests), Sync-Diff (+7 Tests). 25 Tests gruen, tsc sauber.
 - Iteration 3: Wochenansicht + Termin-Detail (Mockup-treu, Screenshots geprueft), Repository, Format/Kategorien/View-Model (+5 Tests), Tab-Bar, oeffentliche Vorschau-Routen. 30 Tests gruen.
+- Iteration 4: Sync-Engine an DB (Pull/upsert/delete, Konfliktprotokoll, Sync-Status), Account-Verbindung (Discovery, verschluesselt), interner Sync-Endpunkt + Worker-Trigger, Einstellungen-Screen (verbinden/toggles/sync). 30 Tests gruen, Build gruen.

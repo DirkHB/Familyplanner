@@ -20,10 +20,24 @@ export function WeekView({
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-28 pt-8">
-        <p className="eyebrow text-ink-muted">{dateLabel}</p>
-        <h1 className="mt-1 font-display text-4xl leading-tight">
-          Guten Morgen, {greetingName}
-        </h1>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="eyebrow text-ink-muted">{dateLabel}</p>
+            <h1 className="mt-1 font-display text-4xl leading-tight">
+              Guten Morgen, {greetingName}
+            </h1>
+          </div>
+          <Link
+            href="/einstellungen"
+            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-card"
+            aria-label="Einstellungen"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </Link>
+        </div>
 
         {empty ? (
           <EmptyState />

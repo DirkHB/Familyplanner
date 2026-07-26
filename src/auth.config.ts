@@ -23,6 +23,7 @@ export const authConfig = {
       const p = nextUrl.pathname;
       const PUBLIC = ["/", "/style"];
       if (p.startsWith("/anmelden")) return true;
+      if (p.startsWith("/api/internal")) return true; // per Shared-Secret geschützt (Worker)
       if (p.startsWith("/vorschau")) return true; // öffentliche Design-Vorschau (Beispieldaten)
       if (PUBLIC.includes(p)) return true;
       return !!auth?.user;
