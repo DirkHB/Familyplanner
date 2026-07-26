@@ -25,17 +25,14 @@
   /* Signal (nur wirklich Überfälliges) */
   --color-signal: oklch(54.78% 0.1426 30.75);
 
-  /* Schriftrollen — vom Font-Switcher überschreibbar (Default: Fraunces + Satoshi) */
+  /* Schriftrollen — gewählte Paarung: Fraunces (Display) + Geist (Body), beide OFL & selbst gehostet. */
   --font-fraunces: "Fraunces Variable", ui-serif, Georgia, serif;
   --font-instrument: "Instrument Serif", ui-serif, Georgia, serif;
   --font-hanken: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-geist: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  /* Satoshi ist Fontshare — Dateien nach public/fonts/satoshi/ legen (siehe README).
-     Bis dahin greift Hanken Grotesk als warmer OFL-Platzhalter. */
-  --font-satoshi: "Satoshi Variable", var(--font-hanken);
 
   --font-display: var(--font-fraunces);
-  --font-body: var(--font-satoshi);
+  --font-body: var(--font-geist);
 
   color-scheme: light;
 }
@@ -54,18 +51,6 @@
   --color-signal: oklch(62% 0.14 31);
 
   color-scheme: dark;
-}
-
-/* Satoshi-Drop-in: sobald die Dateien da sind, wird diese Regel aktiv.
-   local() zuerst, dann die selbst-gehostete Datei. */
-@font-face {
-  font-family: "Satoshi Variable";
-  src:
-    local("Satoshi Variable"),
-    url("/fonts/satoshi/Satoshi-Variable.woff2") format("woff2-variations");
-  font-weight: 300 900;
-  font-display: swap;
-  font-style: normal;
 }
 
 @layer base {

@@ -20,7 +20,8 @@ die **kanonische Zielästhetik**. Jeder gebaute Screen wird gegen sie und gegen 
 - Erhöhte Flächen (Cards, Sheets) in `#FBF7F1`, sehr weicher, richtungsgebundener Schatten.
 - **Serif-Display** (Fraunces-Charakter) für: Begrüßung, Wochentage, Uhrzeiten, Zahlen, Sektionstitel.
   Uhrzeiten mit **Tabellenziffern**. Große Uhrzeit im Detail-Hero (z. B. `10:15`).
-- **Sans** (Satoshi-Charakter) für: Termin-Titel (bold), Body, Buttons, Badges, Tab-Labels.
+- **Sans** (**Geist**, gewählt) für: Termin-Titel (bold), Body, Buttons, Badges, Tab-Labels.
+  Gewählte Paarung: **Fraunces + Geist** (beide OFL, selbst gehostet — kein Fontshare/Satoshi nötig).
 - **Uppercase, weit getrackte Labels** in gedämpfter Tinte: `MONTAG, 27. JULI`, `BRAUCHT DEINE ANTWORT`,
   `TERMIN-DETAIL`, Kategorie-Gruppen (`FRISCHES`, `BABY`, `HAUSHALT`).
 - **Türkis `#12A594` extrem sparsam**: aktiver Tab, aktive Checks, ein Label pro Card, FAB `+`.

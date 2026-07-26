@@ -25,11 +25,11 @@ const COLORS = [
 
 const FONT_PAIRINGS = [
   {
-    id: "fraunces-satoshi",
-    label: "Fraunces + Satoshi",
-    note: "Erste Wahl · Satoshi bis Fontshare-Datei = Hanken",
+    id: "fraunces-geist",
+    label: "Fraunces + Geist",
+    note: "Gewählt ✓ · warm trifft modern, beide selbst gehostet",
     display: "var(--font-fraunces)",
-    body: "var(--font-satoshi)",
+    body: "var(--font-geist)",
   },
   {
     id: "instrument-geist",
@@ -39,11 +39,11 @@ const FONT_PAIRINGS = [
     body: "var(--font-geist)",
   },
   {
-    id: "fraunces-geist",
-    label: "Fraunces + Geist",
-    note: "Warm trifft modern",
+    id: "fraunces-hanken",
+    label: "Fraunces + Hanken Grotesk",
+    note: "Rundere Sans zum Vergleich",
     display: "var(--font-fraunces)",
-    body: "var(--font-geist)",
+    body: "var(--font-hanken)",
   },
 ] as const;
 
@@ -137,7 +137,7 @@ export default function StylePage() {
             <p className="mt-1 font-display text-4xl">Guten Morgen, Dirk</p>
             <p className="tnum mt-4 font-display text-6xl leading-none">10:15</p>
             <p className="mt-4 text-base">
-              Body-Text in {pairing.body.includes("satoshi") ? "Satoshi" : "der gewählten Sans"}.
+              Body-Text in {pairing.id === "instrument-geist" || pairing.id === "fraunces-geist" ? "Geist" : "Hanken Grotesk"}.
               Warm, ruhig, gut lesbar — auch nachts mit einer Hand.
             </p>
             <p className="mt-1 text-sm text-ink-muted">

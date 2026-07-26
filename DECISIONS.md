@@ -23,12 +23,16 @@ verknüpft, nicht über DB-ID oder href, weil iCloud href/etag bei Änderungen w
 Kollisionen gilt: iCloud ist Wahrheit für Kalenderfelder, die App für Zusatzdaten. Echte Konflikte
 lösen wir mit last-write-wins plus Protokolleintrag und sichtbarer UI-Info — nie stiller Datenverlust.
 
-## D-007 — Fonts über npm/Fontsource selbst gehostet; Satoshi als Drop-in
+## D-008 — Font-Paarung final: Fraunces + Geist (beide OFL, selbst gehostet)
+Dirk hat sich für **Fraunces (Display) + Geist (Body)** entschieden; beide sind OFL und über npm/Fontsource
+selbst gehostet, damit entfällt der Fontshare-Font Satoshi samt manuellem Drop-in komplett. Wir haben die
+Satoshi-`@font-face`-Regel und `public/fonts/satoshi/` entfernt; der `/style`-Switcher behält Vergleichs-
+paarungen (Instrument Serif + Geist, Fraunces + Hanken). Kein Google-CDN, DSGVO-konform, kein externer Download nötig.
+
+## D-007 — Fonts über npm/Fontsource selbst gehostet (Historie)
 Der Egress-Proxy blockt beliebige Hosts (GitHub-Raw, Fontshare), erlaubt aber die npm-Registry, deshalb
 beziehen wir Fraunces, Instrument Serif und Geist als OFL-Pakete über Fontsource und hosten die woff2
-selbst (kein Google-CDN, DSGVO-konform). Satoshi/Boska/Switzer sind Fontshare und hier nicht ladbar;
-bis die Dateien in `public/fonts/…` liegen, greift Hanken Grotesk (OFL) als warmer Platzhalter, per
-`@font-face` mit `local()`-Vorrang, sodass das echte Satoshi ohne Codeänderung übernimmt.
+selbst (kein Google-CDN, DSGVO-konform). Satoshi war zunächst als Fontshare-Drop-in geplant — durch D-008 überholt.
 
 ## D-006 — Ein Docker-Image für App und Worker, standalone plus gezielte Worker-Pakete
 Wir bauen ein einziges Multi-Stage-Image mit Next.js `output: "standalone"` und starten daraus beide
