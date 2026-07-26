@@ -39,8 +39,9 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Anfragen (yes_no/choice/free_text/date), „Braucht deine Antwort"-Hero oben angepinnt
 - [x] Nudge-/Eskalationslogik (Push täglich, E-Mail ab 3 T., rot ab 7 T.) + Tests (7)
 - [x] Antwort in <5 s (ein Tap aus dem Hero) + Anfragen-Seite (erstellen/Verlauf)
-- [ ] Täglicher Nudge-Job (09:00) sendet Push/E-Mail (braucht Web Push)
-- [ ] Web Push (VAPID) + Ruhezeiten (Nachtfenster) + Tests
+- [x] Täglicher Nudge-Job (09:00): Push + E-Mail-Eskalation, Ruhezeiten beachtet, lastNudgeAt
+- [x] Web Push (VAPID): Versand, Subscribe-Route, SW-Push/Click, Aktivieren-Button in Settings
+- [x] Ruhezeiten (Nachtfenster 21–7) + Tests (7)
 
 ### Phase 3 — Listen, Checklisten, Offline
 - [ ] Einkaufslisten (Haupt + terminbezogen), Kategorien, Live-Sync
@@ -68,3 +69,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 3: Wochenansicht + Termin-Detail (Mockup-treu, Screenshots geprueft), Repository, Format/Kategorien/View-Model (+5 Tests), Tab-Bar, oeffentliche Vorschau-Routen. 30 Tests gruen.
 - Iteration 4: Sync-Engine an DB (Pull/upsert/delete, Konfliktprotokoll, Sync-Status), Account-Verbindung (Discovery, verschluesselt), interner Sync-Endpunkt + Worker-Trigger, Einstellungen-Screen (verbinden/toggles/sync). 30 Tests gruen, Build gruen.
 - Iteration 5: Phase 2 Anfragen — Nudge-/Eskalationslogik (+7 Tests), Requests-Backend (Partner-Aufloesung, erstellen/beantworten), Braucht-deine-Antwort-Hero (Screenshot geprueft), Anfragen-Seite, Tab-Platzhalter. 37 Tests gruen.
+- Iteration 6: Web Push (VAPID-Versand, Subscribe-Route, SW-Push/Click, Aktivieren-Button), Ruhezeiten (+7 Tests), taeglicher Nudge-Runner (Push+E-Mail-Eskalation) + interner Endpunkt + Worker-Job. 44 Tests gruen.

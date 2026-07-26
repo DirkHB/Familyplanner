@@ -39,14 +39,24 @@ async function triggerSync() {
 cron.schedule("*/5 * * * *", triggerSync, { timezone: TZ });
 
 // --- Täglicher Nudge für offene Anfragen: 09:00 (Abschnitt 6.3) ---
-cron.schedule(
-  "0 9 * * *",
-  async () => {
-    log("daily-nudge", "Tick — Phase 2 prüft offene Anfragen und pusht freundlich.");
-    // TODO(Phase 2): await runDailyNudge()
-  },
-  { timezone: TZ },
-);
+async function triggerNudge() {
+  if (!process.env.WORKER_SECRET) {
+    log("daily-nudge", "Übersprungen — WORKER_SECRET nicht gesetzt.");
+    return;
+  }
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/nudge`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    log("daily-nudge", `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log("daily-nudge", `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("0 9 * * *", triggerNudge, { timezone: TZ });
 
 // --- Wochenreview: Sonntag 19:00 (Abschnitt 6.5) ---
 cron.schedule(

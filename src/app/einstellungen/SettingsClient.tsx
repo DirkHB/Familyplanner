@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
+import { EnableNotifications } from "@/components/push/EnableNotifications";
 import {
   connectAction,
   toggleCalendarAction,
@@ -38,6 +39,14 @@ export function SettingsClient({ account }: { account: Account }) {
         </header>
 
         {account ? <Connected account={account} /> : <ConnectForm />}
+
+        <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+          <h2 className="font-display text-lg">Benachrichtigungen</h2>
+          <p className="mt-1 mb-3 text-sm text-ink-muted">
+            Für Anfragen und Erinnerungen. Nachts ist Ruhe (21–7 Uhr).
+          </p>
+          <EnableNotifications />
+        </section>
       </div>
     </div>
   );

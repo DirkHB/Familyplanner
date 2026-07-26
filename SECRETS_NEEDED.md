@@ -35,8 +35,12 @@ Nichts davon steht im Code. Reihenfolge = Priorität.
       erreicht (Default: `AUTH_URL`, sonst `https://planyourweek.app`).
 
 ## 5. Web Push (Benachrichtigungen)
-- [ ] **`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`** — `npx web-push generate-vapid-keys`
+- [ ] **`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`** — `npx web-push generate-vapid-keys` (bei app + worker)
+- [ ] **`NEXT_PUBLIC_VAPID_PUBLIC_KEY`** — **gleicher Wert** wie `VAPID_PUBLIC_KEY` (Client-Subscription).
+      Muss zur **Build-Zeit** gesetzt sein (NEXT_PUBLIC wird eingebacken) → im app-Service-Env eintragen.
 - [ ] **`VAPID_SUBJECT`** — `mailto:dirkbrederecke@gmail.com`
+- Hinweis: Push funktioniert auf iOS **nur in der installierten PWA**. In der App unter
+  Einstellungen → „Benachrichtigungen aktivieren" pro Gerät einmal erlauben.
 
 ## 6. KI
 - [ ] **`ANTHROPIC_API_KEY`** — console.anthropic.com → API Keys.
