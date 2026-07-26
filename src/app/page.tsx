@@ -12,15 +12,31 @@ export default function Home() {
         Für Constanze &amp; Dirk.
       </h1>
       <p className="mt-4 text-ink-muted">
-        Phase 0 steht: Fundament, Design-System und Deployment-Vorbereitung.
-        Die Screens folgen in Phase 1.
+        Ein Blick voraus: Wochenansicht und Termin-Detail als Vorschau mit Beispieldaten.
+        Der echte Kalender kommt, sobald wir ihn verbinden.
       </p>
-      <Link
-        href="/style"
-        className="mt-8 inline-flex w-fit rounded-pill bg-ink px-6 py-3.5 font-medium text-surface transition-transform duration-150 ease-out active:scale-[0.97]"
-      >
-        Design-System ansehen
-      </Link>
+      <div className="mt-8 flex flex-col gap-3">
+        <Link
+          href="/vorschau/woche"
+          className="inline-flex w-fit rounded-pill bg-accent px-6 py-3.5 font-medium text-surface transition-transform duration-150 ease-out active:scale-[0.97]"
+        >
+          Wochenansicht ansehen
+        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/vorschau/termin"
+            className="inline-flex w-fit rounded-pill bg-ink px-5 py-3 font-medium text-surface transition-transform duration-150 ease-out active:scale-[0.97]"
+          >
+            Termin-Detail
+          </Link>
+          <Link
+            href="/style"
+            className="inline-flex w-fit rounded-pill border border-ink/15 px-5 py-3 font-medium text-ink transition-transform duration-150 ease-out active:scale-[0.97]"
+          >
+            Design-System
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }
