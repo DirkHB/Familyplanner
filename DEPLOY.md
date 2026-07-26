@@ -1,6 +1,6 @@
 # DEPLOY.md — Familienplaner auf Sliplane
 
-Ziel: **ein Server, zwei Services** (App + Worker), **eine managed Postgres**, **eine Subdomain**.
+Ziel: **ein Server, zwei Services** (App + Worker), **eine managed Postgres**, **eine Domain** (`planyourweek.app`).
 Klein, EU, kein Redis, kein Kubernetes. Jeder Schritt ist markiert:
 **[DU]** = im Sliplane-Dashboard · **[CODE]** = liegt schon im Repo.
 
@@ -24,6 +24,14 @@ GitHub-Repo (dieses)  ──push──▶  Sliplane baut automatisch aus dem Doc
 Beide Services laufen auf **demselben Server** (kostet nichts extra) und deployen aus
 **demselben Repo/Image**, nur mit unterschiedlichem Start-Command.
 
+> ### ⚡ Phase-0-Schnellweg (nur die App aufs iPhone bringen)
+> Um `/` und `/style` live zu sehen und die PWA zu installieren, brauchst du **noch keine
+> Datenbank**: Die App liest in Phase 0 nichts aus der DB.
+> **Minimalster Weg:** Server anlegen (Schritt 2 Server-Teil) → **App-Service** aus dem Repo
+> (Abschnitt 2) → nur `TZ=Europe/Berlin` als Env → Domain (Abschnitt 6). **Fertig.**
+> Datenbank, Worker und die restlichen Env-Variablen kommen mit Phase 1. Wer gleich alles
+> aufsetzen will, macht die Abschnitte einfach der Reihe nach.
+
 ---
 
 ## 1. 🟢 Server & Datenbank anlegen  **[DU]**
@@ -39,10 +47,13 @@ Beide Services laufen auf **demselben Server** (kostet nichts extra) und deploye
 
 ## 2. 🟢 GitHub verbinden & App-Service erstellen  **[DU]**
 
-1. Service **„app"** → Quelle **GitHub** → dieses Repo, Branch `main` (oder dein Release-Branch).
+1. Service **„app"** → Quelle **GitHub** → dieses Repo, Branch **`claude/shared-calendar-ai-planning-h52bs7`**
+   (aktueller Default-Branch; später mergen wir nach `main` und stellen um).
 2. Build: **Dockerfile** (liegt im Repo-Root — Sliplane nutzt es automatisch, kein Railpack).
 3. **Port 3000** freigeben.
 4. **Start-Command** leer lassen → nutzt den Docker-`CMD` (`node server.js`). **[CODE]**
+   *(Für den Phase-0-Minimal-Deploy ohne DB genau so lassen — siehe Kasten unten. Der
+   Migrations-Start-Command aus Abschnitt 5 kommt erst mit Phase 1.)*
 5. Environment-Variablen setzen (siehe Abschnitt 4).
 
 ---
@@ -69,12 +80,12 @@ Beide Services laufen auf **demselben Server** (kostet nichts extra) und deploye
 | `DATABASE_URL` | interne Postgres-URL aus Schritt 1 | ✅ | ✅ | DB-Verbindung, nur internes Netz |
 | `TZ` | `Europe/Berlin` | ✅ | ✅ | Cron-Zeiten & Anzeige |
 | `AUTH_SECRET` | `openssl rand -base64 32` | ✅ | — | Session-Signatur (Auth.js) |
-| `AUTH_URL` | `https://plan.deinedomain.de` | ✅ | — | öffentliche App-URL |
+| `AUTH_URL` | `https://planyourweek.app` | ✅ | — | öffentliche App-URL |
 | `ALLOWED_EMAILS` | `dirkbrederecke@gmail.com,c.brederecke@gmail.com` | ✅ | — | Login-Allowlist (genau ihr beide) |
 | `ENCRYPTION_KEY` | `openssl rand -base64 32` | ✅ | ✅ | verschlüsselt CalDAV-Zugänge at rest |
 | `ANTHROPIC_API_KEY` | Anthropic Console | ✅ | ✅ | KI, nur serverseitig (ab Phase 4) |
 | `RESEND_API_KEY` | Resend | ✅ | ✅ | Magic-Link + Eskalations-Mails |
-| `EMAIL_FROM` | `Familienplaner <plan@deinedomain.de>` | ✅ | ✅ | Absender |
+| `EMAIL_FROM` | `Familienplaner <plan@planyourweek.app>` | ✅ | ✅ | Absender |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | `npx web-push generate-vapid-keys` | ✅ | ✅ | Web Push (ab Phase 2) |
 | `VAPID_SUBJECT` | `mailto:dirkbrederecke@gmail.com` | ✅ | ✅ | Push-Kontakt |
 
@@ -102,13 +113,28 @@ node_modules/.bin/prisma migrate deploy
 
 ---
 
-## 6. 🟢 Domain & DNS  **[DU]**
+## 6. 🟢 Domain & DNS — `planyourweek.app` bei united-domains  **[DU]**
 
-1. Service **„app"** → **Custom Domain** → `plan.deinedomain.de`.
-2. Bei deinem DNS-Anbieter einen **CNAME** `plan` auf den von Sliplane angezeigten Zielhost setzen
-   (Sliplane zeigt den genauen Wert an).
-3. HTTPS/Zertifikat macht Sliplane automatisch — kurz warten, bis „aktiv".
-4. `AUTH_URL` auf `https://plan.deinedomain.de` setzen (Abschnitt 4).
+Wir nutzen die **Apex-Domain** direkt (`https://planyourweek.app`), keine Subdomain.
+
+1. **In Sliplane:** Service **„app"** → **Custom Domain** → `planyourweek.app` eintragen.
+   Sliplane zeigt dir jetzt den **Ziel-Record** an — je nach Sliplane einen von zweien:
+   - eine **IP-Adresse** (für einen **A-Record**), oder
+   - einen **Zielhost** wie `xyz.sliplane.app` (für einen **CNAME/ALIAS**).
+2. **Bei united-domains:** Login → **Portfolio** → `planyourweek.app` → **DNS-Verwaltung**
+   (bzw. „Nameserver/DNS-Einstellungen").
+   - Zeigt Sliplane eine **IP** → neuer Eintrag: **Typ A**, **Host/Name `@`** (= die nackte Domain),
+     **Wert = die IP**.
+   - Zeigt Sliplane einen **Zielhost** → united-domains erlaubt auf `@` kein CNAME; nutze dann den
+     **ALIAS/ANAME**-Eintrag von united-domains auf den Zielhost. Gibt es keinen ALIAS, nimm die
+     **A-Record-Variante** (IP) aus Schritt 1.
+   - Zusätzlich empfehlenswert: **CNAME `www`** → `planyourweek.app` (oder den Sliplane-Zielhost),
+     damit `www.` auch geht.
+3. **TTL** ruhig niedrig (300 s) setzen, dann greift es schnell. DNS-Verbreitung: Minuten bis ~1 h.
+4. **HTTPS/Zertifikat** macht Sliplane automatisch (`.app` erzwingt HTTPS) — warten bis Status „aktiv".
+5. Erst **danach** `AUTH_URL=https://planyourweek.app` setzen (relevant ab Phase 1/Auth).
+
+> `.app` ist HSTS-preloaded: der Browser erzwingt HTTPS. Kein http-Fallback — ist bei Sliplane aber ok.
 
 ---
 
@@ -118,8 +144,8 @@ Jeder Push auf den verbundenen Branch baut und deployt automatisch — **App und
 Erststart: erst **app** (mit Migration), dann **worker**.
 
 **Abnahme Phase 0:**
-- `https://plan.deinedomain.de/` lädt in <2 s.
-- `https://plan.deinedomain.de/style` zeigt Farben, Typo, Komponenten, Font-Switcher.
+- `https://planyourweek.app/` lädt in <2 s.
+- `https://planyourweek.app/style` zeigt Farben, Typo, Komponenten, Font-Switcher.
 - Worker-Logs zeigen `"job":"boot"` und alle 5 Min `"job":"calendar-sync"`.
 
 ---
