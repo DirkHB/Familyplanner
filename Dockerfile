@@ -46,6 +46,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Schema + Migrationen (für `prisma migrate deploy`).
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# Versionierte KI-Prompts (zur Laufzeit gelesen).
+COPY --from=builder --chown=nextjs:nodejs /app/prompts ./prompts
+
 # Worker + die Pakete, die standalone nicht mitträgt
 # (Worker-Laufzeit und Migrations-CLI).
 COPY --from=builder --chown=nextjs:nodejs /app/worker ./worker

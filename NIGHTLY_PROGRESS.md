@@ -51,12 +51,14 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [ ] Offline-Queue (Abhaken offline persistent + später sync) — aktuell optimistisch/best-effort
 
 ### Phase 4 — KI
-- [ ] Prompt-Verzeichnis `/prompts` (versioniert)
+- [x] Prompt-Verzeichnis `/prompts` (versioniert) — schnellerfassung.v1.md
+- [x] Schnellerfassung (NL → Terminvorschlag, Vorschau, Übernehmen/Verwerfen) + Normalisierung + Tests (4)
+- [x] Anthropic-Client (serverseitig, Modell per Env, strukturierte Ausgabe, kein Thinking/low effort)
+- [x] ai_feedback bei jeder Aktion
+- [ ] Übernehmen legt Termin real in iCloud an (braucht CalDAV-Schreibweg / ICS-Builder)
 - [ ] Kontextaufbau (Woche + learned_patterns + offene Anfragen + Kategorien)
-- [ ] Schnellerfassung (NL → Terminvorschlag, Vorschau)
 - [ ] Wochenplanung (Sonntag), Fairness-Blick (deskriptiv)
 - [ ] learned_patterns (lesbar/editierbar im UI)
-- [ ] ai_feedback bei jeder Aktion
 
 ### Phase 5 — Ideen & Urlaub
 - [ ] Ideen-Board (Foto-Cards nach Mockup), Bewertung
@@ -74,3 +76,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 6: Web Push (VAPID-Versand, Subscribe-Route, SW-Push/Click, Aktivieren-Button), Ruhezeiten (+7 Tests), taeglicher Nudge-Runner (Push+E-Mail-Eskalation) + interner Endpunkt + Worker-Job. 44 Tests gruen.
 - Iteration 7: Baby-Betreuung (care_assignments) am Termin — Ich-mache-es / Auto-Anfrage bei offen, Wer-ist-beim-Baby-Karte (Screenshot geprueft). Phase 2 abgeschlossen. 44 Tests gruen.
 - Iteration 8: Phase 3 Einkaufsliste (gemeinsame Hauptliste, Kategorien, optimistisches Abhaken + Belohnung, Hinzufuegen) nach Mockup 3 (Screenshot geprueft), Kategorie-Heuristik (+6 Tests). 50 Tests gruen.
+- Iteration 9: Phase 4 KI-Schnellerfassung — versioniertes Prompt, Anthropic-Client (opus-5 default, konfigurierbar), strukturierte Ausgabe + Normalisierung (+4 Tests), Vorschau-UI (Uebernehmen/Verwerfen), ai_feedback, Erfassen-Zugang in der Woche. 54 Tests gruen.
