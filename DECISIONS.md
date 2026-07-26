@@ -41,7 +41,7 @@ das schlanke standalone-`node_modules` die Worker-Laufzeit und die Migrations-CL
 wir gezielt `@prisma`, `.prisma`, `prisma`, `node-cron` und `uuid` nach. Migrationen laufen idempotent per
 `prisma migrate deploy` im App-Start-Command, nicht als separater, vergessbarer Schritt.
 
-## D-005 — Screenshots sind die kanonische Design-Referenz; Nutzer sind Dirk und Constanze
+## D-005 — Screenshots sind die kanonische Design-Referenz; Nutzer sind Constanze und Dirk
 Die vier gelieferten Mockups (`design/reference/`) legen die Zielästhetik verbindlich fest und sind
 in `design/DESIGN.md` als Design-System destilliert (Farbeinsatz, Typo-Rollen, Komponenten, Motion).
 Die beiden fest verdrahteten Nutzer sind Dirk (Avatar Dunkelblau `#111E33`) und Constanze (Avatar Rosé

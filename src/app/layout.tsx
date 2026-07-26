@@ -11,7 +11,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Familienplaner",
-  description: "Unser gemeinsamer Plan — für Dirk und Constanze.",
+  description: "Unser gemeinsamer Plan — für Constanze und Dirk.",
   applicationName: "Familienplaner",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

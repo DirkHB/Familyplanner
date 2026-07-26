@@ -9,7 +9,7 @@ export default function Home() {
       <h1 className="mt-2 font-display text-5xl leading-tight">
         Unser Plan.
         <br />
-        Für Dirk &amp; Constanze.
+        Für Constanze &amp; Dirk.
       </h1>
       <p className="mt-4 text-ink-muted">
         Phase 0 steht: Fundament, Design-System und Deployment-Vorbereitung.

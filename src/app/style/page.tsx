@@ -156,7 +156,7 @@ export default function StylePage() {
           <div className="flex flex-col gap-3">
             <EventCard time="9:00" title="Physio" people={["dirk"]} badge={<Badge tone="geklaert">☺ Betreuung geklärt</Badge>} />
             <EventCard time="16:30" title="Einkauf" people={["constanze"]} badge={<Badge tone="offen">☹ Betreuung offen</Badge>} />
-            <EventCard time="10:15" title="Kinderarzt · U3" people={["dirk", "constanze"]} badge={<Badge tone="geklaert">☺ Betreuung geklärt</Badge>} />
+            <EventCard time="10:15" title="Kinderarzt · U3" people={["constanze", "dirk"]} badge={<Badge tone="geklaert">☺ Betreuung geklärt</Badge>} />
           </div>
         </Section>
 

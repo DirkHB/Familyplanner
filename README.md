@@ -1,6 +1,6 @@
 # Familienplaner
 
-Ein Alltagsplaner für **genau zwei Menschen** (Dirk & Constanze): den gemeinsamen Apple-Kalender
+Ein Alltagsplaner für **genau zwei Menschen** (Constanze & Dirk): den gemeinsamen Apple-Kalender
 bidirektional spiegeln, hinter jedem Termin die Vorbereitung und Absprache bündeln, und per KI
 beim Planen der Woche helfen.
 
