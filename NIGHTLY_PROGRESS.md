@@ -20,9 +20,10 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Verschlüsselung (Envelope, AES-256-GCM) + Tests (6)
 - [x] Auth.js v5: Magic Link (Resend) + Allowlist + Prisma-Adapter, lange Sessions (1 Jahr)
 - [x] Prisma-Schema um Auth-Modelle erweitern + Migration (17 Tabellen)
-- [ ] CalDAV-Client hinter Interface (tsdav) + Fixtures
-- [ ] iCal-Parsing + Wiederholungen (ical.js/rrule): RRULE/EXDATE/RECURRENCE-ID + Tests
-- [ ] Sync-Engine: Pull (sync-collection→CTag/ETag), Push (PUT If-Match, 412-Merge) + Konfliktlogik + Tests
+- [x] CalDAV-Client hinter Interface + tsdav-Impl (noch nicht gegen echtes iCloud verifiziert)
+- [x] iCal-Parsing + Wiederholungen (ical.js): RRULE/EXDATE/RECURRENCE-ID + Tests (8)
+- [x] Sync-Diff (Pull-Reconciliation, Push-Konflikt-Erkennung) + Tests (7)
+- [ ] Sync-Engine an DB anbinden (Pull upsert/delete, Push If-Match/412) + Worker-Job
 - [ ] Datenzugriff (Repositories) für events/event_details
 - [ ] Wochenansicht (Startbildschirm) nach Mockup
 - [ ] Termin-Detail (Notizen) nach Mockup
@@ -59,3 +60,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 ## Log (neueste oben)
 - _(Start)_ Loop eingerichtet, Nacht-Plan angelegt.
 - Iteration 1: Test-Infra, Envelope-Crypto (+6 Tests), Auth.js Magic-Link + Allowlist (+4 Tests), Auth-Migration. Landing/style bleiben oeffentlich, App-Routen gated.
+- Iteration 2: CalDAV-Interface + tsdav-Client, iCal-Parsing/Expansion (RRULE/EXDATE/RECURRENCE-ID, +8 Tests), Sync-Diff (+7 Tests). 25 Tests gruen, tsc sauber.
