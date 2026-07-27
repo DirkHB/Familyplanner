@@ -2,8 +2,15 @@
 
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
-import { saveNotes, takeCareAction, requestCareAction } from "@/app/termin/[uid]/actions";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  saveNotes,
+  takeCareAction,
+  requestCareAction,
+  savePrep,
+  suggestPrepAction,
+  type PrepItem,
+} from "@/app/termin/[uid]/actions";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DetailVM } from "@/lib/calendar/view-model";
 
@@ -45,24 +52,13 @@ export function EventDetail({ vm }: { vm: DetailVM }) {
 
         {!vm.allDay && <CareBlock vm={vm} />}
 
-        {vm.prep.length > 0 && (
-          <Section title="Vorbereitung" trailing={`${vm.prep.filter((p) => p.done).length} / ${vm.prep.length}`}>
-            <ul className="flex flex-col gap-1">
-              {vm.prep.map((p, i) => (
-                <li key={i} className="flex items-center gap-3 py-1.5">
-                  <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
-                      p.done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"
-                    }`}
-                  >
-                    {p.done && <Check />}
-                  </span>
-                  <span className={p.done ? "text-ink-muted line-through" : ""}>{p.text}</span>
-                </li>
-              ))}
-            </ul>
-          </Section>
-        )}
+        <PrepChecklist
+          uid={vm.uid}
+          initial={vm.prep}
+          title={vm.title}
+          category={vm.categoryLabel}
+          readOnly={vm.readOnly}
+        />
 
         <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
       </div>
@@ -190,23 +186,141 @@ function NotesEditor({
   );
 }
 
-function Section({
+function PrepChecklist({
+  uid,
+  initial,
   title,
-  trailing,
-  children,
+  category,
+  readOnly,
 }: {
+  uid: string;
+  initial: PrepItem[];
   title: string;
-  trailing?: string;
-  children: React.ReactNode;
+  category: string;
+  readOnly?: boolean;
 }) {
+  const [items, setItems] = useState<PrepItem[]>(initial);
+  const [draft, setDraft] = useState("");
+  const [pending, start] = useTransition();
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function persist(next: PrepItem[]) {
+    setItems(next);
+    if (!readOnly) void savePrep(uid, next);
+  }
+  function toggle(i: number) {
+    if (readOnly) return;
+    persist(items.map((p, idx) => (idx === i ? { ...p, done: !p.done } : p)));
+  }
+  function remove(i: number) {
+    if (readOnly) return;
+    persist(items.filter((_, idx) => idx !== i));
+  }
+  function add(text: string) {
+    const t = text.trim();
+    if (!t || readOnly) return;
+    if (items.some((p) => p.text.toLowerCase() === t.toLowerCase())) return;
+    persist([...items, { text: t, done: false }]);
+  }
+  function suggest() {
+    setError(null);
+    start(async () => {
+      const res = await suggestPrepAction(title, category);
+      if (res.ok) setSuggestions(res.items.filter((s) => !items.some((p) => p.text.toLowerCase() === s.toLowerCase())));
+      else setError(res.error);
+    });
+  }
+
+  const done = items.filter((p) => p.done).length;
+
   return (
     <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-display text-lg">{title}</h2>
-        {trailing && <span className="tnum text-ink-muted">{trailing}</span>}
+        <h2 className="font-display text-lg">Vorbereitung</h2>
+        {items.length > 0 && <span className="tnum text-ink-muted">{done} / {items.length}</span>}
       </div>
-      {children}
+
+      <ul className="flex flex-col gap-1">
+        {items.map((p, i) => (
+          <li key={i} className="group flex items-center gap-3 py-1.5">
+            <button
+              onClick={() => toggle(i)}
+              disabled={readOnly}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                p.done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"
+              }`}
+              aria-label={p.done ? "Erledigt" : "Offen"}
+            >
+              {p.done && <Check />}
+            </button>
+            <span className={`flex-1 ${p.done ? "text-ink-muted line-through" : ""}`}>{p.text}</span>
+            {!readOnly && (
+              <button onClick={() => remove(i)} className="text-sm text-ink-muted/50" aria-label="Entfernen">✕</button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {items.length === 0 && (
+        <p className="text-sm text-ink-muted">Noch nichts — füg etwas hinzu oder frag die KI.</p>
+      )}
+
+      {!readOnly && (
+        <>
+          <form
+            onSubmit={(e) => { e.preventDefault(); add(draft); setDraft(""); }}
+            className="mt-3 flex gap-2"
+          >
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Punkt hinzufügen"
+              className="flex-1 rounded-pill border border-surface-muted bg-bg px-4 py-2.5 text-sm outline-none focus:border-accent"
+            />
+            <button type="submit" className="rounded-pill bg-surface-muted px-4 py-2.5 text-sm font-medium text-ink">
+              Hinzufügen
+            </button>
+          </form>
+
+          <button
+            onClick={suggest}
+            disabled={pending}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-signal disabled:opacity-60"
+          >
+            <Sparkle /> {pending ? "Denke nach …" : "KI-Vorschläge"}
+          </button>
+          {error && <p className="mt-1 text-sm text-signal">{error}</p>}
+
+          <AnimatePresence>
+            {suggestions && suggestions.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 flex flex-wrap gap-1.5">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { add(s); setSuggestions((prev) => prev?.filter((x) => x !== s) ?? null); }}
+                    className="inline-flex items-center gap-1 rounded-pill bg-counter-light px-3 py-1.5 text-sm text-ink"
+                  >
+                    <span className="text-signal">+</span> {s}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+            {suggestions && suggestions.length === 0 && (
+              <p className="mt-2 text-sm text-ink-muted">Alles schon auf der Liste.</p>
+            )}
+          </AnimatePresence>
+        </>
+      )}
     </section>
+  );
+}
+
+function Sparkle() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Z" />
+    </svg>
   );
 }
 

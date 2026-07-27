@@ -47,7 +47,7 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Einkaufsliste (gemeinsame Hauptliste), Kategorien, Abhaken (optimistisch) + Belohnung — nach Mockup 3
 - [x] Kategorie-Heuristik + Tests (6)
 - [ ] Terminbezogene Listen (Items aus Hauptliste in Einkaufstermin ziehen)
-- [ ] Vorbereitungs-Checklisten editierbar am Termin (+ KI-Vorschläge je Kategorie in Phase 4)
+- [x] Vorbereitungs-Checklisten editierbar am Termin (abhaken/hinzufügen/entfernen) + KI-Vorschläge je Termin (+3 Tests)
 - [ ] Offline-Queue (Abhaken offline persistent + später sync) — aktuell optimistisch/best-effort
 
 ### Phase 4 — KI
@@ -83,3 +83,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 10: App->iCloud-Schreibweg — ICS-Builder (+4 Round-Trip-Tests gegen den Parser), createEvent (PUT + lokale Spiegelung + event_details + Auto-Betreuungsanfrage), Schnellerfassung-Uebernehmen legt real an. Abnahmekriterium 2 abgedeckt. 58 Tests gruen.
 - Iteration 11: Phase 5 Ideen- & Urlaubsboard (Mockup 4) — Repository (listIdeas/createIdea/toggleVote/deleteIdea/markIdeaPlanned), Server-Actions, IdeenClient (Foto-/Gradient-Cards, Herz-Bewertung je Person, „Passt gut"-Chip, „In Termin verwandeln" legt ganztaegigen Termin an), oeffentliche Vorschau /vorschau/ideen (Screenshot geprueft). 58 Tests gruen, Build gruen.
 - Iteration 12: Phase 4 KI-Wochenplanung — Fairness-Berechnung (deskriptiv, +6 Tests), Kontextaufbau Woche/Betreuung/Anfragen/Muster (+4 Tests), Wochenplan-Schema/Normalisierung (+3 Tests), versioniertes Prompt (wochenplanung.v1), learned_patterns-Repository + editierbares UI, /planung-Seite (Auf-einen-Blick-Karten, KI-Vorschlaege, Vorlieben) + Vorschau (Screenshot geprueft), Zugang aus der Woche. 71 Tests gruen, Build gruen.
+- Iteration 13: Phase 3/4 Vorbereitungs-Checklisten am Termin editierbar (abhaken/hinzufuegen/entfernen, sofort gespeichert an der UID) + KI-Vorschlaege je Termin (prep-suggest, +3 Tests) als antippbare Chips. EventDetail-Prep-Sektion interaktiv, Vorschau readonly (Screenshot geprueft). 74 Tests gruen, Build gruen.
