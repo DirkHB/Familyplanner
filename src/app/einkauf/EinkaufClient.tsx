@@ -1,12 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { TabBar } from "@/components/app/TabBar";
 import type { Person } from "@/lib/auth/allowlist";
 import { addItemAction, toggleItemAction, deleteItemAction } from "./actions";
+import {
+  localQueueStore,
+  loadQueue,
+  enqueue,
+  saveQueue,
+  collapseOps,
+  type QueuedOp,
+} from "@/lib/offline/queue";
+
+const isOffline = () => typeof navigator !== "undefined" && !navigator.onLine;
 
 type Item = { id: string; text: string; checked: boolean; addedByPerson: Person | null };
 type Group = { category: string; label: string; items: Item[] };
@@ -23,17 +33,72 @@ export function EinkaufClient({
   const router = useRouter();
   const [, start] = useTransition();
   const [override, setOverride] = useState<Record<string, boolean>>({});
+  const [removed, setRemoved] = useState<Record<string, boolean>>({});
+  const [pendingAdds, setPendingAdds] = useState<string[]>([]);
   const [text, setText] = useState("");
+  const [queued, setQueued] = useState(0);
+  const [online, setOnline] = useState(true);
 
   const isChecked = (it: Item) => override[it.id] ?? it.checked;
-  const all = groups.flatMap((g) => g.items);
+  const all = groups.flatMap((g) => g.items).filter((it) => !removed[it.id]);
   const open = all.filter((it) => !isChecked(it)).length;
   const allDone = all.length > 0 && open === 0;
 
+  // Verbindungsstatus beobachten und Warteschlange bei Rückkehr online abspielen.
+  useEffect(() => {
+    setOnline(!isOffline());
+    setQueued(loadQueue(localQueueStore).length);
+    const onOnline = () => { setOnline(true); void flushQueue(); };
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    void flushQueue();
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function applyOp(op: QueuedOp) {
+    if (op.kind === "toggle") await toggleItemAction(op.id);
+    else if (op.kind === "add") await addItemAction(op.text);
+    else if (op.kind === "delete") await deleteItemAction(op.id);
+  }
+
+  /** Spielt die Warteschlange ab; jede Aktion wird erst nach Erfolg entfernt (at-least-once). */
+  async function flushQueue() {
+    if (isOffline()) { setQueued(loadQueue(localQueueStore).length); return; }
+    let remaining = collapseOps(loadQueue(localQueueStore));
+    saveQueue(localQueueStore, remaining);
+    while (remaining.length) {
+      try {
+        await applyOp(remaining[0]);
+      } catch {
+        break;
+      }
+      remaining = remaining.slice(1);
+      saveQueue(localQueueStore, remaining);
+      setQueued(remaining.length);
+    }
+    setQueued(remaining.length);
+    if (remaining.length === 0) {
+      setPendingAdds([]);
+      router.refresh();
+    }
+  }
+
   function toggle(it: Item) {
     setOverride((o) => ({ ...o, [it.id]: !isChecked(it) }));
-    start(() => {
-      toggleItemAction(it.id);
+    const op: QueuedOp = { kind: "toggle", id: it.id, ts: Date.now() };
+    start(async () => {
+      if (isOffline()) { enqueue(localQueueStore, op); setQueued((n) => n + 1); return; }
+      try {
+        await toggleItemAction(it.id);
+      } catch {
+        enqueue(localQueueStore, op);
+        setQueued((n) => n + 1);
+      }
     });
   }
   function add(e: React.FormEvent) {
@@ -41,15 +106,36 @@ export function EinkaufClient({
     const t = text.trim();
     if (!t) return;
     setText("");
+    const op: QueuedOp = { kind: "add", text: t, ts: Date.now() };
     start(async () => {
-      await addItemAction(t);
-      router.refresh();
+      if (isOffline()) {
+        enqueue(localQueueStore, op);
+        setPendingAdds((p) => [...p, t]);
+        setQueued((n) => n + 1);
+        return;
+      }
+      try {
+        await addItemAction(t);
+        router.refresh();
+      } catch {
+        enqueue(localQueueStore, op);
+        setPendingAdds((p) => [...p, t]);
+        setQueued((n) => n + 1);
+      }
     });
   }
   function remove(it: Item) {
+    setRemoved((r) => ({ ...r, [it.id]: true }));
+    const op: QueuedOp = { kind: "delete", id: it.id, ts: Date.now() };
     start(async () => {
-      await deleteItemAction(it.id);
-      router.refresh();
+      if (isOffline()) { enqueue(localQueueStore, op); setQueued((n) => n + 1); return; }
+      try {
+        await deleteItemAction(it.id);
+        router.refresh();
+      } catch {
+        enqueue(localQueueStore, op);
+        setQueued((n) => n + 1);
+      }
     });
   }
 
@@ -64,29 +150,52 @@ export function EinkaufClient({
           </span>
           Gemeinsam mit {partnerName} · {open} offen
         </p>
+        {(!online || queued > 0) && (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-pill bg-counter-light px-3 py-1.5 text-sm font-medium text-signal">
+            <span className="h-2 w-2 rounded-full bg-signal" />
+            {!online
+              ? `Offline — ${queued} Änderung${queued === 1 ? "" : "en"} wird gespeichert`
+              : `${queued} Änderung${queued === 1 ? "" : "en"} wird synchronisiert …`}
+          </div>
+        )}
 
-        {all.length === 0 ? (
+        {all.length === 0 && pendingAdds.length === 0 ? (
           <div className="mt-8 rounded-card bg-surface p-6 text-center shadow-card">
             <p className="font-display text-xl">Noch nichts drauf</p>
             <p className="mt-2 text-ink-muted">Was fehlt zu Hause? Trag es unten ein.</p>
           </div>
         ) : (
           <div className="mt-6 rounded-card bg-surface p-4 shadow-card">
-            {groups.map((g) => (
-              <div key={g.category} className="mb-4 last:mb-0">
-                <p className="eyebrow mb-1 text-accent">{g.label}</p>
-                {g.items.map((it) => (
-                  <ItemRow
-                    key={it.id}
-                    it={it}
-                    checked={isChecked(it)}
-                    onToggle={() => toggle(it)}
-                    onRemove={() => remove(it)}
-                    partnerPerson={partnerPerson}
-                  />
+            {groups.map((g) => {
+              const items = g.items.filter((it) => !removed[it.id]);
+              if (items.length === 0) return null;
+              return (
+                <div key={g.category} className="mb-4 last:mb-0">
+                  <p className="eyebrow mb-1 text-accent">{g.label}</p>
+                  {items.map((it) => (
+                    <ItemRow
+                      key={it.id}
+                      it={it}
+                      checked={isChecked(it)}
+                      onToggle={() => toggle(it)}
+                      onRemove={() => remove(it)}
+                      partnerPerson={partnerPerson}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+            {pendingAdds.length > 0 && (
+              <div className="mb-4 last:mb-0">
+                <p className="eyebrow mb-1 text-ink-muted">Wird synchronisiert</p>
+                {pendingAdds.map((t, i) => (
+                  <div key={i} className="flex items-center gap-3 border-b border-surface-muted/60 py-3 last:border-0 opacity-70">
+                    <span className="h-6 w-6 shrink-0 rounded-full border-2 border-dashed border-ink-muted/40" />
+                    <span className="flex-1">{t}</span>
+                  </div>
                 ))}
               </div>
-            ))}
+            )}
             <AnimatePresence>
               {allDone && (
                 <motion.div

@@ -48,7 +48,7 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Kategorie-Heuristik + Tests (6)
 - [ ] Terminbezogene Listen (Items aus Hauptliste in Einkaufstermin ziehen)
 - [x] Vorbereitungs-Checklisten editierbar am Termin (abhaken/hinzufügen/entfernen) + KI-Vorschläge je Termin (+3 Tests)
-- [ ] Offline-Queue (Abhaken offline persistent + später sync) — aktuell optimistisch/best-effort
+- [x] Offline-Queue: Abhaken/Hinzufügen/Entfernen offline persistent (localStorage), Abspielen bei Rückkehr online (at-least-once, Toggle-Kollaps) + Offline-/Sync-Anzeige + Tests (6)
 
 ### Phase 4 — KI
 - [x] Prompt-Verzeichnis `/prompts` (versioniert) — schnellerfassung.v1.md
@@ -85,3 +85,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 12: Phase 4 KI-Wochenplanung — Fairness-Berechnung (deskriptiv, +6 Tests), Kontextaufbau Woche/Betreuung/Anfragen/Muster (+4 Tests), Wochenplan-Schema/Normalisierung (+3 Tests), versioniertes Prompt (wochenplanung.v1), learned_patterns-Repository + editierbares UI, /planung-Seite (Auf-einen-Blick-Karten, KI-Vorschlaege, Vorlieben) + Vorschau (Screenshot geprueft), Zugang aus der Woche. 71 Tests gruen, Build gruen.
 - Iteration 13: Phase 3/4 Vorbereitungs-Checklisten am Termin editierbar (abhaken/hinzufuegen/entfernen, sofort gespeichert an der UID) + KI-Vorschlaege je Termin (prep-suggest, +3 Tests) als antippbare Chips. EventDetail-Prep-Sektion interaktiv, Vorschau readonly (Screenshot geprueft). 74 Tests gruen, Build gruen.
 - Iteration 14: Rate-Limiting (In-Memory, fixes Fenster, +3 Tests) auf kostenverursachende KI-Aktionen (Schnellerfassung/Wochenplanung/Prep-Vorschlaege je Nutzer), Magic-Link-Versand (pro Adresse) und Push-Subscribe (429 + Retry-After). Interne Endpunkte bleiben Secret-gated. Phase 1 abgeschlossen. 77 Tests gruen, Build gruen.
+- Iteration 15: Offline-Queue fuer die Einkaufsliste (localStorage) — Abhaken/Hinzufuegen/Entfernen werden offline gepuffert und bei Rueckkehr online abgespielt (jede Aktion erst nach Erfolg entfernt = at-least-once, Toggle-Kollaps nach Paritaet), Offline-/Sync-Pille, „Wird synchronisiert"-Bereich fuer offene Adds. Reine Queue-Logik +6 Tests. 83 Tests gruen, Build gruen (Einkauf-Screenshot ohne Regression).
