@@ -84,3 +84,52 @@ export async function toggleItem(id: string, checkedBy: Person) {
 export async function deleteItem(id: string) {
   return prisma.shoppingItem.delete({ where: { id } }).catch(() => null);
 }
+
+/* --------------------- Terminbezogene Einkaufslisten (Abschnitt 6.3) --------------------- */
+
+/** Offene Items der Hauptliste, die noch keinem Termin zugeordnet sind — zum „Ziehen". */
+export async function getLinkableItems(): Promise<{ id: string; text: string }[]> {
+  const list = await getOrCreateMainList();
+  const items = await prisma.shoppingItem.findMany({
+    where: { listId: list.id, eventUid: null, checkedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, text: true },
+  });
+  return items;
+}
+
+/** Items, die diesem Termin zugeordnet sind (bleiben Teil der Hauptliste). */
+export async function getEventItems(eventUid: string): Promise<ItemVM[]> {
+  const items = await prisma.shoppingItem.findMany({
+    where: { eventUid },
+    orderBy: [{ checkedAt: "asc" }, { createdAt: "asc" }],
+  });
+  return items.map((it) => ({
+    id: it.id,
+    text: it.text,
+    checked: !!it.checkedAt,
+    addedByPerson: (it.addedBy as Person) ?? null,
+  }));
+}
+
+export async function linkItemToEvent(id: string, eventUid: string) {
+  return prisma.shoppingItem.update({ where: { id }, data: { eventUid } }).catch(() => null);
+}
+
+export async function unlinkItem(id: string) {
+  return prisma.shoppingItem.update({ where: { id }, data: { eventUid: null } }).catch(() => null);
+}
+
+/** Neues Item direkt einem Termin zugeordnet anlegen (bleibt in der Hauptliste). */
+export async function addItemToEvent(text: string, eventUid: string, addedBy: Person) {
+  const list = await getOrCreateMainList();
+  return prisma.shoppingItem.create({
+    data: {
+      listId: list.id,
+      eventUid,
+      text: text.trim(),
+      category: guessShoppingCategory(text),
+      addedBy,
+    },
+  });
+}

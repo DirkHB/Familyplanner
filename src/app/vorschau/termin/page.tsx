@@ -30,5 +30,19 @@ export default function VorschauTermin() {
     },
     true, // readOnly in der Vorschau
   );
-  return <EventDetail vm={vm} />;
+  return (
+    <EventDetail
+      vm={vm}
+      shopping={{
+        linked: [
+          { id: "a", text: "Fiebersaft", checked: false },
+          { id: "b", text: "Feuchttücher", checked: true },
+        ],
+        linkable: [
+          { id: "c", text: "Windeln Größe 2" },
+          { id: "d", text: "Haferdrink" },
+        ],
+      }}
+    />
+  );
 }

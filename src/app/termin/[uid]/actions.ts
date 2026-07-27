@@ -8,6 +8,13 @@ import { takeCare, requestCare } from "@/lib/care/repository";
 import { aiConfigured, getAnthropic, AI_MODEL } from "@/lib/ai/client";
 import { suggestPrep } from "@/lib/ai/prep-suggest";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { personForEmail } from "@/lib/auth/allowlist";
+import {
+  linkItemToEvent,
+  unlinkItem,
+  addItemToEvent,
+  toggleItem,
+} from "@/lib/shopping/repository";
 
 export type PrepItem = { text: string; done: boolean };
 
@@ -83,5 +90,49 @@ export async function requestCareAction(uid: string, occurrenceISO: string, titl
   await requestCare(uid, new Date(occurrenceISO), session.user.id, title);
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
+  return { ok: true };
+}
+
+/* --------------------- Terminbezogener Einkauf (Abschnitt 6.3) --------------------- */
+
+function revalTermin(uid: string) {
+  revalidatePath(`/termin/${encodeURIComponent(uid)}`);
+  revalidatePath("/einkauf");
+}
+
+/** Ein offenes Item der Hauptliste diesem Termin zuordnen. */
+export async function linkShoppingItemAction(uid: string, itemId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await linkItemToEvent(itemId, uid);
+  revalTermin(uid);
+  return { ok: true };
+}
+
+export async function unlinkShoppingItemAction(uid: string, itemId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await unlinkItem(itemId);
+  revalTermin(uid);
+  return { ok: true };
+}
+
+/** Neues Item direkt für diesen Termin anlegen (bleibt Teil der Hauptliste). */
+export async function addShoppingItemToEventAction(uid: string, text: string) {
+  const session = await auth();
+  if (!session?.user?.email) return { ok: false };
+  const t = text.trim();
+  if (!t) return { ok: false };
+  await addItemToEvent(t, uid, personForEmail(session.user.email));
+  revalTermin(uid);
+  return { ok: true };
+}
+
+/** Item abhaken (wirkt auch in der Hauptliste — es ist dasselbe Item). */
+export async function toggleShoppingItemAction(uid: string, itemId: string) {
+  const session = await auth();
+  if (!session?.user?.email) return { ok: false };
+  await toggleItem(itemId, personForEmail(session.user.email));
+  revalTermin(uid);
   return { ok: true };
 }

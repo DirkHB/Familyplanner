@@ -9,12 +9,21 @@ import {
   requestCareAction,
   savePrep,
   suggestPrepAction,
+  linkShoppingItemAction,
+  unlinkShoppingItemAction,
+  addShoppingItemToEventAction,
+  toggleShoppingItemAction,
   type PrepItem,
 } from "@/app/termin/[uid]/actions";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DetailVM } from "@/lib/calendar/view-model";
 
-export function EventDetail({ vm }: { vm: DetailVM }) {
+export type EventShoppingData = {
+  linked: { id: string; text: string; checked: boolean }[];
+  linkable: { id: string; text: string }[];
+};
+
+export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventShoppingData | null }) {
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-28 pt-6">
@@ -59,6 +68,8 @@ export function EventDetail({ vm }: { vm: DetailVM }) {
           category={vm.categoryLabel}
           readOnly={vm.readOnly}
         />
+
+        {shopping && <EventShopping uid={vm.uid} data={shopping} readOnly={vm.readOnly} />}
 
         <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
       </div>
@@ -320,6 +331,143 @@ function Sparkle() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Z" />
+    </svg>
+  );
+}
+
+function EventShopping({
+  uid,
+  data,
+  readOnly,
+}: {
+  uid: string;
+  data: EventShoppingData;
+  readOnly?: boolean;
+}) {
+  const [linked, setLinked] = useState(data.linked);
+  const [linkable, setLinkable] = useState(data.linkable);
+  const [check, setCheck] = useState<Record<string, boolean>>({});
+  const [draft, setDraft] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const [, start] = useTransition();
+
+  const isChecked = (id: string, fallback: boolean) => check[id] ?? fallback;
+
+  function toggle(id: string, current: boolean) {
+    if (readOnly) return;
+    setCheck((c) => ({ ...c, [id]: !isChecked(id, current) }));
+    start(() => { void toggleShoppingItemAction(uid, id); });
+  }
+  function link(item: { id: string; text: string }) {
+    if (readOnly) return;
+    setLinkable((l) => l.filter((x) => x.id !== item.id));
+    setLinked((l) => [...l, { ...item, checked: false }]);
+    start(() => { void linkShoppingItemAction(uid, item.id); });
+  }
+  function unlink(id: string) {
+    if (readOnly) return;
+    const item = linked.find((x) => x.id === id);
+    setLinked((l) => l.filter((x) => x.id !== id));
+    if (item && !isChecked(id, item.checked)) setLinkable((l) => [...l, { id, text: item.text }]);
+    start(() => { void unlinkShoppingItemAction(uid, id); });
+  }
+  function add(e: React.FormEvent) {
+    e.preventDefault();
+    const t = draft.trim();
+    if (!t || readOnly) return;
+    setDraft("");
+    const tempId = `tmp-${t}`;
+    setLinked((l) => [...l, { id: tempId, text: t, checked: false }]);
+    start(() => { void addShoppingItemToEventAction(uid, t); });
+  }
+
+  const openCount = linked.filter((it) => !isChecked(it.id, it.checked)).length;
+
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 font-display text-lg">
+          <BasketIcon /> Einkauf für diesen Termin
+        </h2>
+        {linked.length > 0 && <span className="tnum text-ink-muted">{openCount} offen</span>}
+      </div>
+
+      {linked.length === 0 && <p className="text-sm text-ink-muted">Zieh Dinge aus der Liste hierher oder trag etwas ein.</p>}
+
+      <ul className="flex flex-col gap-1">
+        {linked.map((it) => {
+          const done = isChecked(it.id, it.checked);
+          return (
+            <li key={it.id} className="flex items-center gap-3 py-1.5">
+              <button
+                onClick={() => toggle(it.id, it.checked)}
+                disabled={readOnly}
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                  done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"
+                }`}
+                aria-label={done ? "Erledigt" : "Offen"}
+              >
+                {done && <Check />}
+              </button>
+              <span className={`flex-1 ${done ? "text-ink-muted line-through" : ""}`}>{it.text}</span>
+              {!readOnly && (
+                <button onClick={() => unlink(it.id)} className="text-sm text-ink-muted/50" aria-label="Vom Termin lösen">✕</button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {!readOnly && (
+        <>
+          <form onSubmit={add} className="mt-3 flex gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Etwas hinzufügen"
+              className="flex-1 rounded-pill border border-surface-muted bg-bg px-4 py-2.5 text-sm outline-none focus:border-accent"
+            />
+            <button type="submit" className="rounded-pill bg-surface-muted px-4 py-2.5 text-sm font-medium text-ink">
+              Hinzufügen
+            </button>
+          </form>
+
+          {linkable.length > 0 && (
+            <div className="mt-3">
+              <button
+                onClick={() => setShowPicker((s) => !s)}
+                className="text-sm font-medium text-accent"
+              >
+                {showPicker ? "Fertig" : `Aus der Liste ziehen (${linkable.length})`}
+              </button>
+              <AnimatePresence>
+                {showPicker && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 flex flex-wrap gap-1.5">
+                    {linkable.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => link(item)}
+                        className="inline-flex items-center gap-1 rounded-pill bg-accent-light px-3 py-1.5 text-sm text-ink"
+                      >
+                        <span className="text-accent">+</span> {item.text}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function BasketIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M8.5 8l3.5-4 3.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

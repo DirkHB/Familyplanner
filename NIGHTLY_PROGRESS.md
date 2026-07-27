@@ -46,7 +46,7 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 ### Phase 3 — Listen, Checklisten, Offline
 - [x] Einkaufsliste (gemeinsame Hauptliste), Kategorien, Abhaken (optimistisch) + Belohnung — nach Mockup 3
 - [x] Kategorie-Heuristik + Tests (6)
-- [ ] Terminbezogene Listen (Items aus Hauptliste in Einkaufstermin ziehen)
+- [x] Terminbezogene Listen: Items aus der Hauptliste an einen Termin ziehen, am Termin abhaken (wirkt in der Hauptliste), direkt am Termin hinzufügen/lösen
 - [x] Vorbereitungs-Checklisten editierbar am Termin (abhaken/hinzufügen/entfernen) + KI-Vorschläge je Termin (+3 Tests)
 - [x] Offline-Queue: Abhaken/Hinzufügen/Entfernen offline persistent (localStorage), Abspielen bei Rückkehr online (at-least-once, Toggle-Kollaps) + Offline-/Sync-Anzeige + Tests (6)
 
@@ -86,3 +86,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 13: Phase 3/4 Vorbereitungs-Checklisten am Termin editierbar (abhaken/hinzufuegen/entfernen, sofort gespeichert an der UID) + KI-Vorschlaege je Termin (prep-suggest, +3 Tests) als antippbare Chips. EventDetail-Prep-Sektion interaktiv, Vorschau readonly (Screenshot geprueft). 74 Tests gruen, Build gruen.
 - Iteration 14: Rate-Limiting (In-Memory, fixes Fenster, +3 Tests) auf kostenverursachende KI-Aktionen (Schnellerfassung/Wochenplanung/Prep-Vorschlaege je Nutzer), Magic-Link-Versand (pro Adresse) und Push-Subscribe (429 + Retry-After). Interne Endpunkte bleiben Secret-gated. Phase 1 abgeschlossen. 77 Tests gruen, Build gruen.
 - Iteration 15: Offline-Queue fuer die Einkaufsliste (localStorage) — Abhaken/Hinzufuegen/Entfernen werden offline gepuffert und bei Rueckkehr online abgespielt (jede Aktion erst nach Erfolg entfernt = at-least-once, Toggle-Kollaps nach Paritaet), Offline-/Sync-Pille, „Wird synchronisiert"-Bereich fuer offene Adds. Reine Queue-Logik +6 Tests. 83 Tests gruen, Build gruen (Einkauf-Screenshot ohne Regression).
+- Iteration 16: Terminbezogene Einkaufslisten — „Einkauf fuer diesen Termin"-Sektion am Termin: Items aus der Hauptliste ziehen (Picker), direkt anlegen, abhaken (wirkt in der Hauptliste, selbes Item), vom Termin loesen. Repository-Funktionen (getEventItems/getLinkableItems/link/unlink/addToEvent) + Server-Actions, Vorschau mit Beispieldaten (Screenshot geprueft). Letztes offenes Feature aus Phase 3. 83 Tests gruen, Build gruen.
