@@ -3,6 +3,11 @@
 Autonomer Loop über Nacht (26./27.07.). Ziel: App phasenweise fertigbauen, jeden Baustein
 committen/pushen, Secrets für morgen sammeln (→ `SECRETS_NEEDED.md`).
 
+> **✅ Stand 27.07., ~00:20 — Phasen 1–5 funktional fertig.** Alle Feature-Punkte abgehakt
+> (bis auf eine optionale KI-Verfeinerung des Zeitfensters in Phase 5). 83 Tests grün,
+> `next build` grün, Prisma-Migration deckt alle 17 Tabellen. Alles committet & gepusht.
+> Zum Live-Schalten fehlen nur noch die Secrets → **`SECRETS_NEEDED.md`** (+ `DEPLOY.md`).
+
 **Grundregeln, die ich einhalte:** immer „Constanze und Dirk"; keine Secrets im Code; Sync/
 Wiederholungen/Erinnerungen bekommen Tests; jeder Commit lässt `next build` grün; Design nach
 `design/DESIGN.md`.
