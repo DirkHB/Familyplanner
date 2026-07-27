@@ -42,6 +42,15 @@ export function WeekView({
               </svg>
             </Link>
             <Link
+              href="/planung"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
+              aria-label="Wochenplanung"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l2.09 4.26L19 8l-3.5 3.4.8 4.8L12 14l-4.3 2.2.8-4.8L5 8l4.91-.74L12 3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+            </Link>
+            <Link
               href="/einstellungen"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
               aria-label="Einstellungen"

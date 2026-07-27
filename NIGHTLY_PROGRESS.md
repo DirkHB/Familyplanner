@@ -56,9 +56,11 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Anthropic-Client (serverseitig, Modell per Env, strukturierte Ausgabe, kein Thinking/low effort)
 - [x] ai_feedback bei jeder Aktion
 - [x] Übernehmen legt Termin real in iCloud an (ICS-Builder + createEvent)
-- [ ] Kontextaufbau (Woche + learned_patterns + offene Anfragen + Kategorien)
-- [ ] Wochenplanung (Sonntag), Fairness-Blick (deskriptiv)
-- [ ] learned_patterns (lesbar/editierbar im UI)
+- [x] Kontextaufbau (Woche + Betreuungslücken + offene Anfragen + Fairness + Muster) + Tests (4)
+- [x] Wochenplanung (Sonntag): KI-Überblick + konkrete Vorschläge, versioniertes Prompt + Schema/Normalisierung + Tests (3)
+- [x] Fairness-Blick (deskriptiv, „Constanze und Dirk"), reine Berechnung + Tests (6)
+- [x] learned_patterns lesbar/editierbar im UI (aktiv/inaktiv, hinzufügen/entfernen), fließen in Kontext
+- [x] /planung-Seite nach Design + öffentliche Vorschau (/vorschau/planung, Screenshot geprüft), Zugang aus der Woche
 
 ### Phase 5 — Ideen & Urlaub
 - [x] Ideen-Board (Foto-/Gradient-Cards nach Mockup 4), Bewertung pro Person (Constanze/Dirk) + Vorschau (/vorschau/ideen)
@@ -80,3 +82,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 9: Phase 4 KI-Schnellerfassung — versioniertes Prompt, Anthropic-Client (opus-5 default, konfigurierbar), strukturierte Ausgabe + Normalisierung (+4 Tests), Vorschau-UI (Uebernehmen/Verwerfen), ai_feedback, Erfassen-Zugang in der Woche. 54 Tests gruen.
 - Iteration 10: App->iCloud-Schreibweg — ICS-Builder (+4 Round-Trip-Tests gegen den Parser), createEvent (PUT + lokale Spiegelung + event_details + Auto-Betreuungsanfrage), Schnellerfassung-Uebernehmen legt real an. Abnahmekriterium 2 abgedeckt. 58 Tests gruen.
 - Iteration 11: Phase 5 Ideen- & Urlaubsboard (Mockup 4) — Repository (listIdeas/createIdea/toggleVote/deleteIdea/markIdeaPlanned), Server-Actions, IdeenClient (Foto-/Gradient-Cards, Herz-Bewertung je Person, „Passt gut"-Chip, „In Termin verwandeln" legt ganztaegigen Termin an), oeffentliche Vorschau /vorschau/ideen (Screenshot geprueft). 58 Tests gruen, Build gruen.
+- Iteration 12: Phase 4 KI-Wochenplanung — Fairness-Berechnung (deskriptiv, +6 Tests), Kontextaufbau Woche/Betreuung/Anfragen/Muster (+4 Tests), Wochenplan-Schema/Normalisierung (+3 Tests), versioniertes Prompt (wochenplanung.v1), learned_patterns-Repository + editierbares UI, /planung-Seite (Auf-einen-Blick-Karten, KI-Vorschlaege, Vorlieben) + Vorschau (Screenshot geprueft), Zugang aus der Woche. 71 Tests gruen, Build gruen.
