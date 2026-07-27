@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,14 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
+
+  const rl = rateLimit(`push:${session.user.id}`, LIMITS.pushSubscribe.limit, LIMITS.pushSubscribe.windowMs);
+  if (!rl.ok) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+    });
+  }
 
   const sub = (await req.json().catch(() => null)) as
     | { endpoint?: string; keys?: { p256dh: string; auth: string } }

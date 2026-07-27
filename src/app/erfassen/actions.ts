@@ -7,6 +7,7 @@ import { quickCapture } from "@/lib/ai/quick-capture";
 import { logAiFeedback } from "@/lib/ai/feedback";
 import { createEvent } from "@/lib/calendar/create";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import type { CaptureEvent, CaptureResult } from "@/lib/ai/schemas";
 
 export async function captureAction(
@@ -16,6 +17,8 @@ export async function captureAction(
   if (!session?.user?.id) return { ok: false, error: "Nicht angemeldet." };
   if (!aiConfigured()) return { ok: false, error: "KI ist noch nicht konfiguriert (API-Key fehlt)." };
   if (!text.trim()) return { ok: false, error: "Bitte etwas eingeben." };
+  const rl = rateLimit(`capture:${session.user.id}`, LIMITS.aiCapture.limit, LIMITS.aiCapture.windowMs);
+  if (!rl.ok) return { ok: false, error: "Zu viele Anfragen. Versuch es in einer Weile noch einmal." };
   try {
     const result = await quickCapture(text.trim());
     return { ok: true, result };

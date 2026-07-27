@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { aiConfigured } from "@/lib/ai/client";
+import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { runWeeklyPlan } from "@/lib/ai/weekly-plan-runner";
 import type { WeeklyPlan } from "@/lib/ai/weekly-plan";
 import {
@@ -18,6 +19,8 @@ export async function generatePlanAction(): Promise<
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Nicht angemeldet." };
   if (!aiConfigured()) return { ok: false, error: "KI ist noch nicht konfiguriert (API-Key fehlt)." };
+  const rl = rateLimit(`plan:${session.user.id}`, LIMITS.aiPlan.limit, LIMITS.aiPlan.windowMs);
+  if (!rl.ok) return { ok: false, error: "Zu viele Anfragen. Versuch es in einer Weile noch einmal." };
   try {
     const plan = await runWeeklyPlan(session.user.id);
     return { ok: true, plan };

@@ -32,7 +32,7 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - [x] Settings: iCloud verbinden, Kalender-Toggles, Sync-Status, „Jetzt synchronisieren"
 - [x] Worker: echter Sync-Job (Trigger via internem Endpunkt + WORKER_SECRET)
 - [x] Push-Weg App→iCloud: ICS-Builder (Round-Trip-Tests) + createEvent (PUT) — „Übernehmen" legt real an
-- [ ] Rate-Limiting auf API-Routen
+- [x] Rate-Limiting (In-Memory, fixes Fenster) für KI-Aktionen, Magic-Link-Versand, Push-Subscribe (+3 Tests)
 
 ### Phase 2 — Betreuung, Anfragen, Push  ✓ abgeschlossen
 - [x] Baby-Betreuung (care_assignments) am Termin, „Ich mache es" / Auto-Anfrage bei „offen"
@@ -84,3 +84,4 @@ DB-Integrationstests laufen gegen die Sliplane-Postgres (Prod).
 - Iteration 11: Phase 5 Ideen- & Urlaubsboard (Mockup 4) — Repository (listIdeas/createIdea/toggleVote/deleteIdea/markIdeaPlanned), Server-Actions, IdeenClient (Foto-/Gradient-Cards, Herz-Bewertung je Person, „Passt gut"-Chip, „In Termin verwandeln" legt ganztaegigen Termin an), oeffentliche Vorschau /vorschau/ideen (Screenshot geprueft). 58 Tests gruen, Build gruen.
 - Iteration 12: Phase 4 KI-Wochenplanung — Fairness-Berechnung (deskriptiv, +6 Tests), Kontextaufbau Woche/Betreuung/Anfragen/Muster (+4 Tests), Wochenplan-Schema/Normalisierung (+3 Tests), versioniertes Prompt (wochenplanung.v1), learned_patterns-Repository + editierbares UI, /planung-Seite (Auf-einen-Blick-Karten, KI-Vorschlaege, Vorlieben) + Vorschau (Screenshot geprueft), Zugang aus der Woche. 71 Tests gruen, Build gruen.
 - Iteration 13: Phase 3/4 Vorbereitungs-Checklisten am Termin editierbar (abhaken/hinzufuegen/entfernen, sofort gespeichert an der UID) + KI-Vorschlaege je Termin (prep-suggest, +3 Tests) als antippbare Chips. EventDetail-Prep-Sektion interaktiv, Vorschau readonly (Screenshot geprueft). 74 Tests gruen, Build gruen.
+- Iteration 14: Rate-Limiting (In-Memory, fixes Fenster, +3 Tests) auf kostenverursachende KI-Aktionen (Schnellerfassung/Wochenplanung/Prep-Vorschlaege je Nutzer), Magic-Link-Versand (pro Adresse) und Push-Subscribe (429 + Retry-After). Interne Endpunkte bleiben Secret-gated. Phase 1 abgeschlossen. 77 Tests gruen, Build gruen.

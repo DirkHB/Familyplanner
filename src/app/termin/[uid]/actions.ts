@@ -7,6 +7,7 @@ import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { takeCare, requestCare } from "@/lib/care/repository";
 import { aiConfigured, getAnthropic, AI_MODEL } from "@/lib/ai/client";
 import { suggestPrep } from "@/lib/ai/prep-suggest";
+import { rateLimit, LIMITS } from "@/lib/rate-limit";
 
 export type PrepItem = { text: string; done: boolean };
 
@@ -43,6 +44,8 @@ export async function suggestPrepAction(
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Nicht angemeldet." };
   if (!aiConfigured()) return { ok: false, error: "KI ist noch nicht konfiguriert (API-Key fehlt)." };
+  const rl = rateLimit(`prep:${session.user.id}`, LIMITS.aiPrep.limit, LIMITS.aiPrep.windowMs);
+  if (!rl.ok) return { ok: false, error: "Zu viele Anfragen. Versuch es in einer Weile noch einmal." };
   try {
     const items = await suggestPrep(getAnthropic(), AI_MODEL, title, category);
     return { ok: true, items };
