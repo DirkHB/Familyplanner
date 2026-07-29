@@ -24,6 +24,7 @@ export const authConfig = {
       const PUBLIC = ["/", "/style"];
       if (p.startsWith("/anmelden")) return true;
       if (p.startsWith("/api/internal")) return true; // per Shared-Secret geschützt (Worker)
+      if (p === "/api/push/vapid-key") return true; // nur der öffentliche VAPID-Key
       if (p.startsWith("/vorschau")) return true; // öffentliche Design-Vorschau (Beispieldaten)
       if (PUBLIC.includes(p)) return true;
       return !!auth?.user;

@@ -18,7 +18,24 @@ type State = "unsupported" | "default" | "granted" | "denied" | "nokey";
 export function EnableNotifications() {
   const [state, setState] = useState<State>("default");
   const [busy, setBusy] = useState(false);
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [keyLoaded, setKeyLoaded] = useState(false);
+
+  // Öffentlichen VAPID-Key zur Laufzeit holen (nicht build-time NEXT_PUBLIC).
+  useEffect(() => {
+    let active = true;
+    fetch("/api/push/vapid-key")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!active) return;
+        setPublicKey(typeof d?.key === "string" ? d.key : null);
+        setKeyLoaded(true);
+      })
+      .catch(() => active && setKeyLoaded(true));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -26,12 +43,13 @@ export function EnableNotifications() {
       setState("unsupported");
       return;
     }
+    if (!keyLoaded) return;
     if (!publicKey) {
       setState("nokey");
       return;
     }
     setState(Notification.permission as State);
-  }, [publicKey]);
+  }, [publicKey, keyLoaded]);
 
   async function enable() {
     if (!publicKey) return;
