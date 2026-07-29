@@ -49,15 +49,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Versionierte KI-Prompts (zur Laufzeit gelesen).
 COPY --from=builder --chown=nextjs:nodejs /app/prompts ./prompts
 
-# Worker + die Pakete, die standalone nicht mitträgt
-# (Worker-Laufzeit und Migrations-CLI).
+# Worker-Quelle.
 COPY --from=builder --chown=nextjs:nodejs /app/worker ./worker
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/node-cron ./node_modules/node-cron
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/uuid ./node_modules/uuid
+
+# Vollständige node_modules übernehmen: Die Prisma-CLI (`migrate deploy`) hat viele
+# Transitiv-Abhängigkeiten (z. B. effect, @prisma/config), die das schlanke standalone-
+# Bundle nicht mitbringt. Statt sie einzeln nachzuziehen (fehleranfällig), nehmen wir die
+# kompletten node_modules — überschreibt die minimalen aus dem standalone-Copy. Enthält
+# damit auch node-cron (Worker) und den Prisma-Client. Kostet etwas Image-Größe, ist dafür
+# robust.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 USER nextjs
 EXPOSE 3000

@@ -98,15 +98,17 @@ Beide Services laufen auf **demselben Server** (kostet nichts extra) und deploye
 
 Die Migrationen liegen versioniert unter `prisma/migrations/`. **[CODE]**
 
-**Empfohlener Weg (einmal pro Deploy, sicher):** in den **App-Service** als Start-Command setzen:
+**Empfohlener Weg (einmal pro Deploy, sicher):** in den **App-Service** als Start-Command (CMD Override) setzen:
 ```
-node_modules/.bin/prisma migrate deploy && node server.js
+node node_modules/prisma/build/index.js migrate deploy && node server.js
 ```
 Das spielt neue Migrationen ein und startet dann die App. Der Worker braucht das nicht.
+(Die echte CLI-Datei direkt aufrufen — der `.bin/prisma`-Wrapper kann in kopierten Images
+seine `.wasm`-Hilfsdateien nicht finden.)
 
 **Alternativ manuell** (z. B. beim ersten Mal), über die Service-Konsole:
 ```
-node_modules/.bin/prisma migrate deploy
+node node_modules/prisma/build/index.js migrate deploy
 ```
 
 > `migrate deploy` ist idempotent: bereits angewandte Migrationen werden übersprungen.
