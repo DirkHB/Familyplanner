@@ -44,8 +44,9 @@ Nichts davon steht im Code. Reihenfolge = Priorität.
 
 ## 6. KI
 - [ ] **`ANTHROPIC_API_KEY`** — console.anthropic.com → API Keys.
-- [ ] Optional **`ANTHROPIC_MODEL`** — Default `claude-opus-5`. Für weniger Kosten `claude-sonnet-5`
-      oder `claude-haiku-4-5`. (Schnellerfassung nutzt bereits geringe Effort-Stufe + kein Thinking.)
+- [ ] Optional **`ANTHROPIC_MODEL`** — Default ist jetzt `claude-sonnet-5` (bewusst gewählt, reicht aus).
+      Für mehr Qualität `claude-opus-5`, für weniger Kosten `claude-haiku-4-5`.
+      (Alle KI-Aufrufe nutzen geringe Effort-Stufe + kein Thinking.)
 
 ---
 Details/Genauigkeit ergänze ich pro Feature über Nacht.

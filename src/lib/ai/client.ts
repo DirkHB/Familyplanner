@@ -3,8 +3,9 @@ import Anthropic from "@anthropic-ai/sdk";
 
 /**
  * Anthropic-Client, nur serverseitig. Key niemals im Client.
- * Modell per Env konfigurierbar (Default: claude-opus-5) — für Kostenkontrolle
- * kann Dirk auf claude-sonnet-5 oder claude-haiku-4-5 stellen.
+ * Modell per Env konfigurierbar (Default: claude-sonnet-5) — reicht für die
+ * strukturierten Aufgaben hier locker aus. Für mehr Qualität ginge claude-opus-5,
+ * für weniger Kosten claude-haiku-4-5.
  */
 
 let cached: Anthropic | null = null;
@@ -21,4 +22,4 @@ export function aiConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
-export const AI_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+export const AI_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
