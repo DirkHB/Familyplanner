@@ -48,11 +48,13 @@ export function WeekView({
           <div className="mt-1 flex shrink-0 items-center gap-2">
             <Link
               href="/einstellungen"
-              className="flex items-center gap-1.5 rounded-pill bg-surface py-2 pl-2.5 pr-3.5 shadow-card"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
               aria-label="Einstellungen"
             >
-              {/* Klassisches Zahnrad — die frühere Strahlen-Variante wurde als Sonne gelesen. */}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              {/* Klassisches Zahnrad — die frühere Strahlen-Variante wurde als Sonne gelesen.
+                  Ohne Beschriftung: das Zahnrad ist als Symbol eindeutig genug, und der
+                  runde Knopf entspricht den anderen Icon-Knöpfen (Monatsnavigation, +). */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
                 <path
                   d="M19.1 13.6a7.6 7.6 0 0 0 0-3.2l1.9-1.4-1.9-3.3-2.2.9a7.6 7.6 0 0 0-2.8-1.6L13.7 2h-3.4l-.4 2.4a7.6 7.6 0 0 0-2.8 1.6l-2.2-.9L3 8.4l1.9 1.4a7.6 7.6 0 0 0 0 3.2L3 14.4l1.9 3.3 2.2-.9a7.6 7.6 0 0 0 2.8 1.6l.4 2.4h3.4l.4-2.4a7.6 7.6 0 0 0 2.8-1.6l2.2.9 1.9-3.3-1.9-1.4Z"
@@ -61,7 +63,6 @@ export function WeekView({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="text-sm font-medium">Einstellungen</span>
             </Link>
           </div>
         </div>
