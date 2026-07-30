@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { invalidateKalender } from "./range-data";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { parseEvents } from "./ical";
@@ -158,6 +159,9 @@ export async function runSyncForAllAccounts(): Promise<SyncSummary> {
       },
     },
   });
+
+  // Frische Daten sofort sichtbar machen (60-s-Ansichts-Cache verwerfen).
+  if (summary.upserted > 0 || summary.deleted > 0) invalidateKalender();
 
   return summary;
 }

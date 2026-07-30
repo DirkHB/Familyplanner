@@ -7,6 +7,9 @@ import {
   saveNotes,
   takeCareAction,
   requestCareAction,
+  dismissCareAction,
+  deleteEventAction,
+  updateEventAction,
   savePrep,
   suggestPrepAction,
   linkShoppingItemAction,
@@ -72,8 +75,100 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
         {shopping && <EventShopping uid={vm.uid} data={shopping} readOnly={vm.readOnly} />}
 
         <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
+
+        {!vm.readOnly && <ManageBlock vm={vm} />}
       </div>
     </div>
+  );
+}
+
+/** Bearbeiten (Titel/Zeit → iCloud) und Löschen (auch in iCloud). */
+function ManageBlock({ vm }: { vm: DetailVM }) {
+  const [pending, start] = useTransition();
+  const [mode, setMode] = useState<"idle" | "edit" | "confirmDelete">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState(vm.title);
+  const initialDate = vm.occurrenceISO
+    ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date(vm.occurrenceISO))
+    : "";
+  const [date, setDate] = useState(initialDate);
+  const [startTime, setStartTime] = useState(vm.timeLabel);
+  const [endTime, setEndTime] = useState(vm.endLabel);
+
+  function save() {
+    setError(null);
+    start(async () => {
+      const payload: { title: string; startISO?: string; endISO?: string } = { title };
+      if (!vm.allDay && date && startTime && endTime) {
+        // Browser der beiden läuft in Berliner Zeit → lokale Konstruktion ist korrekt.
+        payload.startISO = new Date(`${date}T${startTime}:00`).toISOString();
+        payload.endISO = new Date(`${date}T${endTime}:00`).toISOString();
+      }
+      const r = await updateEventAction(vm.uid, payload);
+      if (r.ok) setMode("idle");
+      else setError(r.reason ?? "Ändern fehlgeschlagen.");
+    });
+  }
+  function doDelete() {
+    setError(null);
+    start(async () => {
+      const r = await deleteEventAction(vm.uid);
+      if (r && !r.ok) setError(r.reason ?? "Löschen fehlgeschlagen.");
+    });
+  }
+
+  return (
+    <section className="mt-6">
+      {mode === "edit" ? (
+        <div className="rounded-card bg-surface p-5 shadow-card">
+          <h2 className="mb-3 font-display text-lg">Termin bearbeiten</h2>
+          <div className="flex flex-col gap-3">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent"
+            />
+            {!vm.allDay && (
+              <div className="flex gap-2">
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+                  className="min-w-0 flex-1 rounded-card border border-surface-muted bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent" />
+                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
+                  className="w-24 rounded-card border border-surface-muted bg-bg px-2 py-2.5 text-sm outline-none focus:border-accent" />
+                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
+                  className="w-24 rounded-card border border-surface-muted bg-bg px-2 py-2.5 text-sm outline-none focus:border-accent" />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={save} disabled={pending}
+                className="rounded-pill bg-accent px-4 py-3 font-medium text-surface disabled:opacity-60">
+                {pending ? "Speichere …" : "Speichern"}
+              </button>
+              <button onClick={() => setMode("idle")} className="rounded-pill bg-surface-muted px-4 py-3 font-medium text-ink">
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-6">
+          {!vm.isSeries && (
+            <button onClick={() => setMode("edit")} className="text-sm font-medium text-ink-muted">
+              Bearbeiten
+            </button>
+          )}
+          {mode === "confirmDelete" ? (
+            <button onClick={doDelete} disabled={pending} className="text-sm font-semibold text-signal">
+              {pending ? "Lösche …" : vm.isSeries ? "Wirklich ganze Serie löschen?" : "Wirklich löschen?"}
+            </button>
+          ) : (
+            <button onClick={() => setMode("confirmDelete")} className="text-sm text-ink-muted/70">
+              {vm.isSeries ? "Serie löschen" : "Löschen"}
+            </button>
+          )}
+        </div>
+      )}
+      {error && <p className="mt-2 text-center text-sm text-signal">{error}</p>}
+    </section>
   );
 }
 
@@ -95,7 +190,22 @@ function CareBlock({ vm }: { vm: DetailVM }) {
         )}
       </div>
 
-      {geklaert ? (
+      {care?.status === "keine" ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-ink-muted">Keine Betreuung nötig.</p>
+          {canAct && (
+            <button
+              disabled={pending}
+              onClick={() =>
+                start(() => requestCareAction(vm.uid, vm.occurrenceISO!, vm.title).then(() => {}))
+              }
+              className="text-sm font-medium text-accent"
+            >
+              Doch klären
+            </button>
+          )}
+        </div>
+      ) : geklaert ? (
         <div className="flex items-center gap-3">
           <Avatar person={care!.responsiblePerson!} size={40} />
           <div>
@@ -127,6 +237,15 @@ function CareBlock({ vm }: { vm: DetailVM }) {
                 className="rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
               >
                 Den anderen fragen
+              </button>
+              <button
+                disabled={pending}
+                onClick={() =>
+                  start(() => dismissCareAction(vm.uid, vm.occurrenceISO!).then(() => {}))
+                }
+                className="text-sm text-ink-muted/70"
+              >
+                Braucht keine Betreuung
               </button>
             </div>
           )}

@@ -56,12 +56,13 @@ export type EventDetailView = {
   start: Date | null;
   end: Date | null;
   allDay: boolean;
+  isSeries: boolean;
   category: string;
   notes: string;
   prepChecklist: { text: string; done: boolean }[];
   occurrenceISO: string | null;
   care: {
-    status: "offen" | "zugesagt" | "geklaert";
+    status: "offen" | "zugesagt" | "geklaert" | "keine";
     responsibleName: string | null;
     responsiblePerson: "dirk" | "constanze" | null;
   } | null;
@@ -74,7 +75,7 @@ export async function getEventView(
 ): Promise<EventDetailView | null> {
   const event = await prisma.event.findFirst({
     where: { uid },
-    select: { rawIcs: true, title: true, location: true },
+    select: { rawIcs: true, title: true, location: true, rrule: true },
   });
   if (!event) return null;
 
@@ -109,7 +110,7 @@ export async function getEventView(
     });
     if (row) {
       care = {
-        status: row.status as "offen" | "zugesagt" | "geklaert",
+        status: row.status as "offen" | "zugesagt" | "geklaert" | "keine",
         responsibleName: row.responsible
           ? row.responsible.name ?? displayNameForEmail(row.responsible.email)
           : null,
@@ -125,6 +126,7 @@ export async function getEventView(
     start,
     end,
     allDay,
+    isSeries: !!event.rrule,
     category: detail?.category ?? "sonstiges",
     notes: detail?.notes ?? "",
     prepChecklist: prep,

@@ -3,11 +3,19 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
+import { BabyIcon } from "@/components/ui/BabyIcon";
 import { TabBar } from "@/components/app/TabBar";
 import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
 import type { RequestVM } from "@/lib/requests/view-model";
+
+export type TodayFocus = {
+  nextTitle: string | null;
+  nextTime: string | null;
+  careStatus: "offen" | "da" | null;
+  carePerson: "dirk" | "constanze" | null;
+  todosDue: number;
+};
 
 export function WeekView({
   greetingName,
@@ -15,12 +23,14 @@ export function WeekView({
   dateLabel,
   days,
   requests = [],
+  focus,
 }: {
   greetingName: string;
   greeting?: string;
   dateLabel: string;
   days: DayVM[];
   requests?: RequestVM[];
+  focus?: TodayFocus;
 }) {
   const empty = days.length === 0;
   return (
@@ -65,6 +75,8 @@ export function WeekView({
           </div>
         </div>
 
+        {focus && (focus.nextTitle || focus.todosDue > 0) && <TodayCard focus={focus} />}
+
         <RequestHero requests={requests} />
 
         {empty ? (
@@ -81,6 +93,35 @@ export function WeekView({
     </div>
   );
 }
+
+function TodayCard({ focus }: { focus: TodayFocus }) {
+  return (
+    <div className="mt-6 flex items-center gap-4 rounded-card bg-surface p-4 shadow-card">
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow text-ink-muted">Heute</p>
+        {focus.nextTitle ? (
+          <p className="mt-0.5 truncate font-medium">
+            <span className="tnum text-accent">{focus.nextTime}</span> · {focus.nextTitle}
+          </p>
+        ) : (
+          <p className="mt-0.5 text-ink-muted">Keine Termine mehr heute</p>
+        )}
+        {focus.todosDue > 0 && (
+          <Link href="/aufgaben" className="mt-0.5 block text-sm text-ink-muted">
+            {focus.todosDue} Aufgabe{focus.todosDue === 1 ? "" : "n"} fällig
+          </Link>
+        )}
+      </div>
+      {focus.careStatus && (
+        <div className="flex shrink-0 items-center gap-1.5">
+          <BabyIcon tone={focus.careStatus === "offen" ? "offen" : "da"} />
+          {focus.carePerson && <Avatar person={focus.carePerson} size={22} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function DaySection({ day }: { day: DayVM }) {
   return (
@@ -121,8 +162,17 @@ function EventRow({ ev, index }: { ev: EventVM; index: number }) {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor }} />
             <span className="truncate text-lg font-semibold">{ev.title}</span>
+            {ev.care && (
+              <span className="ml-auto flex shrink-0 items-center gap-1">
+                <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />
+                {ev.care.person && <Avatar person={ev.care.person} size={20} />}
+              </span>
+            )}
           </div>
-          {(ev.people.length > 0 || ev.care || ev.openCount > 0) && (
+          {ev.notesPreview && (
+            <p className="mt-1 truncate text-xs text-ink-muted">{ev.notesPreview}</p>
+          )}
+          {(ev.people.length > 0 || ev.openCount > 0) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {ev.people.length > 0 && (
                 <span className="flex -space-x-1.5">
@@ -130,11 +180,6 @@ function EventRow({ ev, index }: { ev: EventVM; index: number }) {
                     <Avatar key={p} person={p} size={22} />
                   ))}
                 </span>
-              )}
-              {ev.care && (
-                <Badge tone={ev.care.status === "offen" ? "offen" : ev.care.status === "da" ? "da" : "geklaert"}>
-                  {ev.care.label}
-                </Badge>
               )}
               {ev.openCount > 0 && (
                 <span className="rounded-pill bg-counter-light px-2 py-0.5 text-xs font-medium text-signal">

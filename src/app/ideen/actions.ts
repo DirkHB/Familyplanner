@@ -81,3 +81,15 @@ export async function convertIdeaAction(
     return { ok: true, created: false, reason: "Anlegen fehlgeschlagen." };
   }
 }
+
+export async function updateIdeaAction(
+  id: string,
+  input: { title: string; description: string; targetPeriod: string; imageUrl: string },
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const { updateIdea } = await import("@/lib/ideas/repository");
+  await updateIdea(id, input);
+  revalidatePath("/ideen");
+  return { ok: true };
+}

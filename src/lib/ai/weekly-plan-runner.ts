@@ -71,3 +71,36 @@ export async function runWeeklyPlan(userId: string | null, now: Date = new Date(
   const client = getAnthropic();
   return generateWeeklyPlan(client, AI_MODEL, ctx);
 }
+
+/** Sonntagabend-Push „Eure Woche" an beide (Worker, So 19:00). */
+export async function runWeeklySummaryPush(): Promise<{ pushed: number }> {
+  const { parseAllowlist, displayNameForEmail } = await import("@/lib/auth/allowlist");
+  const { notifyUserId } = await import("@/lib/push/notify");
+  const { aiConfigured } = await import("./client");
+
+  let body = "Werft einen Blick auf eure Woche — Termine, Betreuung, Aufgaben.";
+  try {
+    if (aiConfigured()) {
+      const plan = await runWeeklyPlan(null);
+      if (plan.summary) body = plan.summary.slice(0, 160);
+    }
+  } catch {
+    /* Fallback-Text reicht */
+  }
+
+  let pushed = 0;
+  for (const email of parseAllowlist(process.env.ALLOWED_EMAILS)) {
+    const user = await prisma.user.upsert({
+      where: { email },
+      create: { email, name: displayNameForEmail(email) },
+      update: {},
+    });
+    pushed += await notifyUserId(user.id, {
+      title: "Eure Woche 🌱",
+      body,
+      url: "/planung",
+      tag: "weekly-summary",
+    });
+  }
+  return { pushed };
+}

@@ -5,6 +5,7 @@ import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { buildIcs } from "./ics-builder";
 import { requestCare } from "@/lib/care/repository";
+import { invalidateKalender } from "./range-data";
 
 /** App→iCloud: neuen Termin per PUT anlegen und lokal spiegeln. */
 
@@ -88,5 +89,6 @@ export async function createEvent(
     await requestCare(uid, input.start, userId, input.title);
   }
 
+  invalidateKalender();
   return { created: true, uid };
 }

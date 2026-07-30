@@ -33,11 +33,14 @@ type Drag = { id: string; text: string; x: number; y: number; from: Store };
 export function EinkaufClient({
   groups,
   partnerName,
+  suggestions = [],
 }: {
   groups: Group[];
   partnerName: string;
   partnerPerson?: Person;
+  suggestions?: string[];
 }) {
+  const [usedSuggestions, setUsedSuggestions] = useState<string[]>([]);
   const router = useRouter();
   const [, start] = useTransition();
   const [override, setOverride] = useState<Record<string, boolean>>({});
@@ -113,17 +116,24 @@ export function EinkaufClient({
       catch { enqueue(localQueueStore, op); setQueued((n) => n + 1); }
     });
   }
-  function add(e: React.FormEvent) {
-    e.preventDefault();
-    const t = text.trim();
+  function addText(t: string) {
     if (!t) return;
-    setText("");
     const op: QueuedOp = { kind: "add", text: t, ts: Date.now() };
     start(async () => {
       if (isOffline()) { enqueue(localQueueStore, op); setPendingAdds((p) => [...p, t]); setQueued((n) => n + 1); return; }
       try { await addItemAction(t); router.refresh(); }
       catch { enqueue(localQueueStore, op); setPendingAdds((p) => [...p, t]); setQueued((n) => n + 1); }
     });
+  }
+  function add(e: React.FormEvent) {
+    e.preventDefault();
+    const t = text.trim();
+    setText("");
+    addText(t);
+  }
+  function addSuggestion(t: string) {
+    setUsedSuggestions((u) => [...u, t]);
+    addText(t);
   }
   function remove(it: Item) {
     setRemoved((r) => ({ ...r, [it.id]: true }));
@@ -189,7 +199,8 @@ export function EinkaufClient({
           </div>
         )}
 
-        <div className="mt-5 flex flex-col gap-4">
+        {/* Während des Ziehens Textauswahl global unterbinden (iOS-Markieren) */}
+        <div className={`mt-5 flex flex-col gap-4 ${drag ? "select-none" : ""}`}>
           {sections.map((s) => (
             <section
               key={s.store}
@@ -277,6 +288,20 @@ export function EinkaufClient({
         className="fixed inset-x-0 z-30 mx-auto max-w-md px-5"
         style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
       >
+        {suggestions.filter((s) => !usedSuggestions.includes(s)).length > 0 && (
+          <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-0.5">
+            {suggestions.filter((s) => !usedSuggestions.includes(s)).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => addSuggestion(s)}
+                className="shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm text-ink shadow-card"
+              >
+                + {s}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-hero">
           <input
             value={text}
@@ -355,17 +380,24 @@ function Row({
           <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
-      {/* Drag-Griff: touch-action none nur hier — Seite bleibt überall sonst scrollbar */}
+      {/* Drag-Griff: touch-action/user-select none nur hier — Seite bleibt scrollbar,
+          und iOS startet kein Text-Markieren/Long-Press-Menü. Große Trefferfläche. */}
       <span
         onPointerDown={onDragStart}
         onPointerMove={onDragMove}
         onPointerUp={onDragEnd}
         onPointerCancel={onDragEnd}
-        className="cursor-grab px-1 py-1 text-ink-muted/50 active:cursor-grabbing"
-        style={{ touchAction: "none" }}
+        onContextMenu={(e) => e.preventDefault()}
+        className="-my-1 cursor-grab px-2 py-2.5 text-ink-muted/50 active:cursor-grabbing"
+        style={{
+          touchAction: "none",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          WebkitTouchCallout: "none",
+        }}
         aria-label="Verschieben"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="9" cy="6" r="1.6" /><circle cx="15" cy="6" r="1.6" />
           <circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" />
           <circle cx="9" cy="18" r="1.6" /><circle cx="15" cy="18" r="1.6" />

@@ -5,11 +5,34 @@ import { Avatar } from "@/components/ui/Avatar";
 import { TabBar } from "@/components/app/TabBar";
 import type { Person } from "@/lib/auth/allowlist";
 import type { TodoGroup, TodoVM } from "@/lib/todos/group";
-import { createTodoAction, toggleTodoAction, deleteTodoAction } from "./actions";
+import Link from "next/link";
+import {
+  createTodoAction,
+  toggleTodoAction,
+  deleteTodoAction,
+  setTodoAssigneeAction,
+  togglePrepItemAction,
+} from "./actions";
+
+export type EventTasks = {
+  eventUid: string;
+  title: string;
+  dayLabel: string;
+  sort: number;
+  items: { idx: number; text: string; done: boolean }[];
+};
 
 type Filter = "alle" | Person;
 
-export function AufgabenClient({ groups, me }: { groups: TodoGroup[]; me: Person }) {
+export function AufgabenClient({
+  groups,
+  me,
+  eventTasks = [],
+}: {
+  groups: TodoGroup[];
+  me: Person;
+  eventTasks?: EventTasks[];
+}) {
   const [filter, setFilter] = useState<Filter>("alle");
   const [showForm, setShowForm] = useState(false);
 
@@ -83,16 +106,36 @@ export function AufgabenClient({ groups, me }: { groups: TodoGroup[]; me: Person
             ))}
           </div>
         )}
+
+        {eventTasks.length > 0 && (
+          <section className="mt-8">
+            <h2 className="eyebrow mb-2 text-ink-muted">Aus Terminen</h2>
+            <div className="flex flex-col gap-3">
+              {eventTasks.map((e) => (
+                <EventTaskCard key={e.eventUid} e={e} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
       <TabBar />
     </div>
   );
 }
 
+const CYCLE: (Person | null)[] = ["constanze", "dirk", null];
+
 function TodoRow({ todo }: { todo: TodoVM }) {
   const [pending, start] = useTransition();
   const [gone, setGone] = useState(false);
+  const [assignee, setAssignee] = useState<Person | null>(todo.assignee);
   if (gone) return null;
+
+  function cycleAssignee() {
+    const next = CYCLE[(CYCLE.indexOf(assignee) + 1) % CYCLE.length];
+    setAssignee(next);
+    start(() => setTodoAssigneeAction(todo.id, next));
+  }
 
   return (
     <div className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
@@ -123,7 +166,15 @@ function TodoRow({ todo }: { todo: TodoVM }) {
           </p>
         )}
       </div>
-      {todo.assignee && <Avatar person={todo.assignee} size={24} />}
+      <button onClick={cycleAssignee} aria-label="Zuständigkeit wechseln" className="shrink-0">
+        {assignee ? (
+          <Avatar person={assignee} size={24} />
+        ) : (
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-ink-muted/40 text-[10px] text-ink-muted/60">
+            ?
+          </span>
+        )}
+      </button>
       <button
         onClick={() => start(async () => { await deleteTodoAction(todo.id); setGone(true); })}
         className="pl-1 text-sm text-ink-muted/50"
@@ -194,5 +245,47 @@ function CreateForm({ me, onDone }: { me: Person; onDone: () => void }) {
       </button>
       {state?.error && <p className="text-sm text-signal">{state.error}</p>}
     </form>
+  );
+}
+
+
+function EventTaskCard({ e }: { e: EventTasks }) {
+  const [, start] = useTransition();
+  const [override, setOverride] = useState<Record<number, boolean>>({});
+  return (
+    <div className="rounded-card bg-surface p-4 shadow-card">
+      <Link href={`/termin/${encodeURIComponent(e.eventUid)}`} className="flex items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate font-medium">{e.title}</span>
+        <span className="tnum shrink-0 text-xs text-ink-muted">{e.dayLabel}</span>
+      </Link>
+      <div className="mt-2 flex flex-col gap-1">
+        {e.items.map((it) => {
+          const done = override[it.idx] ?? it.done;
+          return (
+            <button
+              key={it.idx}
+              onClick={() => {
+                setOverride((o) => ({ ...o, [it.idx]: !done }));
+                start(() => togglePrepItemAction(e.eventUid, it.idx));
+              }}
+              className="flex items-center gap-2.5 py-1 text-left"
+            >
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                  done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"
+                }`}
+              >
+                {done && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+              <span className={`text-[15px] ${done ? "text-ink-muted line-through" : ""}`}>{it.text}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

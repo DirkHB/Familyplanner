@@ -56,11 +56,11 @@ export function formatDateHeader(d: Date = new Date()): string {
   return `${weekdayFmt.format(d)}, ${monthDayFmt.format(d)}`;
 }
 
-const hourFmt = new Intl.DateTimeFormat("de-DE", { hour: "numeric", hour12: false, timeZone: TZ });
-
-/** Tageszeitabhängige Begrüßung (Berliner Zeit). */
+/** Tageszeitabhängige Begrüßung (Berliner Zeit).
+ *  Stunde robust über das HH:MM-Format ermitteln — `hour: "numeric"` liefert
+ *  auf manchen ICU-Versionen "17 Uhr", was Number() zu NaN macht. */
 export function greetingFor(d: Date = new Date()): string {
-  const h = Number(hourFmt.format(d));
+  const h = Number(timeFmt.format(d).split(":")[0]);
   if (h >= 5 && h < 11) return "Guten Morgen";
   if (h >= 11 && h < 17) return "Hallo";
   if (h >= 17 && h < 22) return "Guten Abend";

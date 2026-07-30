@@ -1,5 +1,5 @@
 import type { Occurrence } from "./types";
-import { formatTime, groupByDay, formatDateHeader } from "./format";
+import { formatTime, groupByDay, formatDateHeader, dayKey } from "./format";
 import { categoryOf, guessCategory } from "./categories";
 
 /** Serialisierbare View-Models für die Client-Komponenten (Server formatiert, Client rendert). */
@@ -15,9 +15,10 @@ export type EventVM = {
   title: string;
   categoryLabel: string;
   dotColor: string;
-  care: { status: "geklaert" | "offen" | "da"; label: string } | null;
+  care: { status: "geklaert" | "offen" | "da"; label: string; person?: Person | null } | null;
   people: Person[];
   openCount: number;
+  notesPreview: string | null;
 };
 
 export type DayVM = {
@@ -30,10 +31,14 @@ export type DayVM = {
 
 export type EventMeta = {
   category?: string | null;
+  notes?: string | null;
   care?: { status: "geklaert" | "offen" | "da"; responsible?: Person[] } | null;
   people?: Person[];
   openCount?: number;
 };
+
+/** Betreuungsstatus je Vorkommen, Schlüssel `${uid}:${YYYY-MM-DD}` (Berlin). */
+export type CareByOcc = Map<string, { status: string; person: Person | null }>;
 
 const CARE_LABEL = {
   geklaert: "Betreuung geklärt",
@@ -41,11 +46,13 @@ const CARE_LABEL = {
   da: "ist da",
 } as const;
 
-/** Baut die Tagesgruppen für die Wochenansicht. metaByUid liefert App-Zusatzdaten (an der UID). */
+/** Baut die Tagesgruppen für die Wochenansicht. metaByUid liefert App-Zusatzdaten (an der UID),
+ *  careByOcc den Betreuungsstatus je Vorkommen (nur nicht-ganztägige Termine). */
 export function buildWeek(
   occurrences: Occurrence[],
   metaByUid: Map<string, EventMeta> = new Map(),
   now: Date = new Date(),
+  careByOcc?: CareByOcc,
 ): DayVM[] {
   const groups = groupByDay(occurrences, now);
   return groups.map((g) => ({
@@ -56,15 +63,34 @@ export function buildWeek(
     events: g.occurrences.map((o): EventVM => {
       const meta = metaByUid.get(o.uid) ?? {};
       const cat = meta.category ? categoryOf(meta.category) : categoryOf(guessCategory(o.summary));
-      const care = meta.care
-        ? {
-            status: meta.care.status,
-            label:
-              meta.care.status === "da" && meta.care.responsible?.length
-                ? `${meta.care.responsible[0] === "constanze" ? "Constanze" : "Dirk"} ist da`
-                : CARE_LABEL[meta.care.status],
-          }
+
+      let care: EventVM["care"] = null;
+      if (meta.care) {
+        care = {
+          status: meta.care.status,
+          label:
+            meta.care.status === "da" && meta.care.responsible?.length
+              ? `${meta.care.responsible[0] === "constanze" ? "Constanze" : "Dirk"} ist da`
+              : CARE_LABEL[meta.care.status],
+          person: meta.care.responsible?.[0] ?? null,
+        };
+      } else if (!o.allDay && careByOcc) {
+        const c = careByOcc.get(`${o.uid}:${dayKey(o.start)}`);
+        if (c && c.status !== "keine") {
+          if (c.status === "offen") care = { status: "offen", label: "Betreuung offen", person: null };
+          else if (c.person)
+            care = {
+              status: "da",
+              label: `${c.person === "constanze" ? "Constanze" : "Dirk"} ist da`,
+              person: c.person,
+            };
+        }
+      }
+
+      const notesPreview = meta.notes
+        ? meta.notes.split("\n")[0].trim().slice(0, 70) || null
         : null;
+
       return {
         key: `${o.uid}:${o.recurrenceId}`,
         uid: o.uid,
@@ -77,6 +103,7 @@ export function buildWeek(
         care,
         people: meta.people ?? [],
         openCount: meta.openCount ?? 0,
+        notesPreview,
       };
     }),
   }));
@@ -85,7 +112,7 @@ export function buildWeek(
 /* ------------------------------ Termin-Detail ------------------------------ */
 
 export type CareVM = {
-  status: "offen" | "zugesagt" | "geklaert";
+  status: "offen" | "zugesagt" | "geklaert" | "keine";
   responsibleName: string | null;
   responsiblePerson: Person | null;
 } | null;
@@ -97,6 +124,7 @@ export type DetailVM = {
   timeLabel: string;
   endLabel: string;
   allDay: boolean;
+  isSeries: boolean;
   location: string | null;
   categoryLabel: string;
   dotColor: string;
@@ -114,6 +142,7 @@ export type DetailInput = {
   start: Date | null;
   end: Date | null;
   allDay: boolean;
+  isSeries?: boolean;
   category: string;
   notes: string;
   prepChecklist: { text: string; done: boolean }[];
@@ -130,6 +159,7 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
     timeLabel: v.start ? formatTime(v.start) : "",
     endLabel: v.end ? formatTime(v.end) : "",
     allDay: v.allDay,
+    isSeries: v.isSeries ?? false,
     location: v.location,
     categoryLabel: cat.label,
     dotColor: cat.dotColor,

@@ -4,7 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { motion } from "motion/react";
 import { TabBar } from "@/components/app/TabBar";
 import type { IdeaVM } from "@/lib/ideas/repository";
-import { createIdeaAction, voteAction, deleteIdeaAction, convertIdeaAction } from "./actions";
+import { createIdeaAction, voteAction, deleteIdeaAction, convertIdeaAction, updateIdeaAction } from "./actions";
 
 const TYPE_LABEL: Record<string, string> = {
   urlaub: "Urlaub",
@@ -60,7 +60,47 @@ function IdeaCard({ idea }: { idea: IdeaVM }) {
   const [note, setNote] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [showDate, setShowDate] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [eTitle, setETitle] = useState(idea.title);
+  const [eDesc, setEDesc] = useState(idea.description ?? "");
+  const [ePeriod, setEPeriod] = useState(idea.targetPeriod ?? "");
+  const [eImage, setEImage] = useState(idea.imageUrl ?? "");
   if (gone) return null;
+
+  if (editing) {
+    return (
+      <div className="rounded-card bg-surface p-5 shadow-card">
+        <p className="eyebrow mb-3 text-ink-muted">Idee bearbeiten</p>
+        <div className="flex flex-col gap-3">
+          <input value={eTitle} onChange={(e) => setETitle(e.target.value)}
+            className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent" />
+          <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="Beschreibung"
+            className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent" />
+          <input value={ePeriod} onChange={(e) => setEPeriod(e.target.value)} placeholder="Passt gut: (z. B. Ende Oktober)"
+            className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent" />
+          <input value={eImage} onChange={(e) => setEImage(e.target.value)} placeholder="Bild-URL (optional)"
+            className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent" />
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              disabled={pending || !eTitle.trim()}
+              onClick={() =>
+                start(async () => {
+                  await updateIdeaAction(idea.id, { title: eTitle, description: eDesc, targetPeriod: ePeriod, imageUrl: eImage });
+                  setEditing(false);
+                })
+              }
+              className="rounded-pill bg-accent px-4 py-3 font-medium text-surface disabled:opacity-60"
+            >
+              Speichern
+            </button>
+            <button onClick={() => setEditing(false)} className="rounded-pill bg-surface-muted px-4 py-3 font-medium text-ink">
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-card bg-surface shadow-card">
@@ -83,6 +123,11 @@ function IdeaCard({ idea }: { idea: IdeaVM }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <button onClick={() => setEditing(true)} aria-label="Bearbeiten" className="p-1 text-ink-muted/60">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M4 20h4L18.5 9.5a2 2 0 0 0-2.8-2.8L5 17.2 4 20Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              </svg>
+            </button>
             <VoteHeart person="constanze" active={idea.votes.constanze} pending={pending} onClick={() => start(() => voteAction(idea.id))} />
             <VoteHeart person="dirk" active={idea.votes.dirk} pending={pending} onClick={() => start(() => voteAction(idea.id))} />
           </div>

@@ -111,3 +111,8 @@ export async function runTodoReminders(now: Date = new Date()): Promise<{ sent: 
   }
   return { sent, considered: due.length };
 }
+
+/** Zuständigkeit wechseln (Avatar-Tap: Constanze → Dirk → offen). */
+export async function setTodoAssignee(id: string, assignee: Person | null) {
+  await prisma.todo.update({ where: { id }, data: { assignee } }).catch(() => null);
+}

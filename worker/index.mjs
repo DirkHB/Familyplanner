@@ -75,12 +75,21 @@ async function triggerReminders() {
 
 cron.schedule("*/5 * * * *", triggerReminders, { timezone: TZ });
 
-// --- Wochenreview: Sonntag 19:00 (Abschnitt 6.5) ---
+// --- Wochenreview: Sonntag 19:00 — Push "Eure Woche" an beide ---
 cron.schedule(
   "0 19 * * 0",
   async () => {
-    log("weekly-review", "Tick — Phase 4 erzeugt den KI-Wochenblick.");
-    // TODO(Phase 4): await runWeeklyReview()
+    if (!process.env.WORKER_SECRET) return;
+    try {
+      const res = await fetch(`${APP_URL}/api/internal/weekly`, {
+        method: "POST",
+        headers: { "x-worker-secret": process.env.WORKER_SECRET },
+      });
+      const body = await res.json().catch(() => ({}));
+      log("weekly-review", `Status ${res.status} · ${JSON.stringify(body)}`);
+    } catch (err) {
+      log("weekly-review", `Fehler: ${err?.message ?? err}`);
+    }
   },
   { timezone: TZ },
 );

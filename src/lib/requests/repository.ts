@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, displayNameForEmail } from "@/lib/auth/allowlist";
+import { parseAllowlist, displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
+import { notifyUserId } from "@/lib/push/notify";
 
 export type RequestType = "yes_no" | "choice" | "free_text" | "date";
 
@@ -49,11 +50,105 @@ export async function createRequest(input: {
 }
 
 export async function answerRequest(id: string, userId: string, answer: string) {
-  const req = await prisma.request.findUnique({ where: { id } });
+  const req = await prisma.request.findUnique({
+    where: { id },
+    include: { toUser: true },
+  });
   if (!req || req.toUserId !== userId) return null;
-  return prisma.request.update({
+  const updated = await prisma.request.update({
     where: { id },
     data: { answer, status: "answered" },
+  });
+
+  // Antwort hat Konsequenzen: Betreuung setzen, Aufgabe anlegen, Fragesteller informieren.
+  try {
+    await applyAnswerEffects(req, answer);
+  } catch {
+    /* Effekte sind best effort — die Antwort selbst ist gespeichert. */
+  }
+  return updated;
+}
+
+type AnsweredRequest = {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  eventUid: string | null;
+  type: string;
+  question: string;
+  toUser: { email: string; name: string | null };
+};
+
+/** Verdrahtung Antwort → Wirkung (Abschnitt 6.2): „Ja" auf eine Betreuungsanfrage
+ *  klärt die Betreuung, legt dem Übernehmenden eine Aufgabe an und pusht den anderen. */
+async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
+  const answererName = req.toUser.name ?? displayNameForEmail(req.toUser.email);
+  const yes = answer.trim().toLowerCase() === "ja";
+
+  if (req.eventUid && req.type === "yes_no") {
+    const assignment = await prisma.careAssignment.findFirst({
+      where: { eventUid: req.eventUid, status: "offen" },
+      orderBy: { occurrenceDate: "asc" },
+    });
+    const event = await prisma.event.findFirst({
+      where: { uid: req.eventUid },
+      select: { title: true },
+    });
+    const title = event?.title ?? "dem Termin";
+
+    if (yes) {
+      if (assignment) {
+        await prisma.careAssignment.update({
+          where: { id: assignment.id },
+          data: { responsibleUserId: req.toUserId, status: "geklaert" },
+        });
+      }
+      await ensureCareTodo(
+        req.eventUid,
+        title,
+        personForEmail(req.toUser.email),
+        assignment?.occurrenceDate ?? null,
+      );
+      await notifyUserId(req.fromUserId, {
+        title: `✓ ${answererName} übernimmt die Betreuung`,
+        body: title,
+        url: `/termin/${encodeURIComponent(req.eventUid)}`,
+        tag: `care-${req.id}`,
+      });
+    } else {
+      await notifyUserId(req.fromUserId, {
+        title: `${answererName} kann leider nicht`,
+        body: `${title} — Betreuung ist weiter offen.`,
+        url: `/termin/${encodeURIComponent(req.eventUid)}`,
+        tag: `care-${req.id}`,
+      });
+    }
+    return;
+  }
+
+  // Generische Anfrage: Fragesteller bekommt die Antwort als Push.
+  await notifyUserId(req.fromUserId, {
+    title: `${answererName} hat geantwortet`,
+    body: `${req.question} → ${answer}`,
+    url: "/anfragen",
+    tag: `answer-${req.id}`,
+  });
+}
+
+/** Aufgabe „Baby betreuen · <Termin>" einmalig anlegen (für Übernehmende). */
+export async function ensureCareTodo(
+  eventUid: string,
+  eventTitle: string,
+  person: "dirk" | "constanze",
+  due: Date | null,
+) {
+  const title = `Baby betreuen · ${eventTitle}`;
+  const existing = await prisma.todo.findFirst({
+    where: { eventUid, assignee: person, status: "offen", title },
+  });
+  if (existing) return existing;
+  return prisma.todo.create({
+    data: { title, eventUid, assignee: person, createdBy: person, dueDate: due },
   });
 }
 

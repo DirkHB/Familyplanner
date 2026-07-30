@@ -60,7 +60,7 @@ export async function getMainListGroups(): Promise<{ groups: GroupVM[]; openCoun
 
 export async function addItem(text: string, addedBy: Person, store?: Store) {
   const list = await getOrCreateMainList();
-  return prisma.shoppingItem.create({
+  const item = await prisma.shoppingItem.create({
     data: {
       listId: list.id,
       text: text.trim(),
@@ -68,6 +68,47 @@ export async function addItem(text: string, addedBy: Person, store?: Store) {
       addedBy,
     },
   });
+  // Kaufhistorie fürs Vorschlags-Feature (Items selbst verschwinden nach dem Abhaken).
+  await prisma.activityLog
+    .create({
+      data: { entityType: "shopping", entityId: list.id, action: "add", actor: addedBy, detail: { text: item.text } },
+    })
+    .catch(() => null);
+  return item;
+}
+
+/** „Übliche Verdächtige": meistgekaufte Artikel, die gerade nicht offen auf der Liste stehen. */
+export async function getFrequentSuggestions(limit = 8): Promise<string[]> {
+  const list = await getOrCreateMainList();
+  const [logs, open] = await Promise.all([
+    prisma.activityLog.findMany({
+      where: { entityType: "shopping", action: "add" },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+      select: { detail: true },
+    }),
+    prisma.shoppingItem.findMany({
+      where: { listId: list.id, checkedAt: null },
+      select: { text: true },
+    }),
+  ]);
+
+  const onList = new Set(open.map((i) => i.text.trim().toLowerCase()));
+  const counts = new Map<string, { text: string; n: number }>();
+  for (const l of logs) {
+    const text = String((l.detail as { text?: string })?.text ?? "").trim();
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (onList.has(key)) continue;
+    const cur = counts.get(key);
+    if (cur) cur.n++;
+    else counts.set(key, { text, n: 1 });
+  }
+  return [...counts.values()]
+    .filter((c) => c.n >= 2)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, limit)
+    .map((c) => c.text);
 }
 
 /** Artikel per Drag-and-drop einem anderen Laden zuordnen. */

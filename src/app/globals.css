@@ -106,3 +106,12 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Horizontale Chip-Leisten ohne sichtbare Scrollbar */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

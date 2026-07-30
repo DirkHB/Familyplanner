@@ -51,3 +51,27 @@ export async function deleteTodoAction(id: string) {
   await deleteTodo(id);
   revalidatePath("/aufgaben");
 }
+
+/** Avatar-Tap: Zuständigkeit durchwechseln (constanze → dirk → offen). */
+export async function setTodoAssigneeAction(id: string, assignee: Person | null) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const { setTodoAssignee } = await import("@/lib/todos/repository");
+  await setTodoAssignee(id, assignee);
+  revalidatePath("/aufgaben");
+}
+
+/** Vorbereitungs-Punkt eines Termins aus der Aufgabenliste abhaken. */
+export async function togglePrepItemAction(eventUid: string, index: number) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const { prisma } = await import("@/lib/prisma");
+  const detail = await prisma.eventDetail.findUnique({ where: { eventUid } });
+  if (!detail || !Array.isArray(detail.prepChecklist)) return;
+  const prep = (detail.prepChecklist as { text: string; done: boolean }[]).map((it, i) =>
+    i === index ? { ...it, done: !it.done } : it,
+  );
+  await prisma.eventDetail.update({ where: { eventUid }, data: { prepChecklist: prep } });
+  revalidatePath("/aufgaben");
+  revalidatePath(`/termin/${encodeURIComponent(eventUid)}`);
+}

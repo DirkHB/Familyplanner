@@ -50,3 +50,18 @@ describe("groupByDay", () => {
     expect(groups[1].occurrences.map((o) => o.summary)).toEqual(["C", "B"]);
   });
 });
+
+describe("greetingFor", () => {
+  // 17:55 Berlin im Sommer = 15:55 UTC — der gemeldete Bug-Fall.
+  it("sagt um 17:55 Guten Abend (nicht Gute Nacht)", async () => {
+    const { greetingFor } = await import("./format");
+    expect(greetingFor(new Date("2026-07-30T15:55:00Z"))).toBe("Guten Abend");
+  });
+  it("deckt alle Zeitfenster ab", async () => {
+    const { greetingFor } = await import("./format");
+    expect(greetingFor(new Date("2026-07-30T06:00:00Z"))).toBe("Guten Morgen"); // 08:00
+    expect(greetingFor(new Date("2026-07-30T10:00:00Z"))).toBe("Hallo"); // 12:00
+    expect(greetingFor(new Date("2026-07-30T20:30:00Z"))).toBe("Gute Nacht"); // 22:30
+    expect(greetingFor(new Date("2026-07-30T01:00:00Z"))).toBe("Gute Nacht"); // 03:00
+  });
+});

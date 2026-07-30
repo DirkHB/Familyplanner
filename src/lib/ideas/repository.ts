@@ -80,3 +80,15 @@ export async function deleteIdea(id: string) {
 export async function markIdeaPlanned(id: string) {
   await prisma.idea.update({ where: { id }, data: { status: "geplant" } }).catch(() => null);
 }
+
+export async function updateIdea(
+  id: string,
+  input: { title?: string; description?: string; targetPeriod?: string; imageUrl?: string },
+) {
+  const data: Record<string, unknown> = {};
+  if (input.title !== undefined) data.title = input.title.trim() || undefined;
+  if (input.description !== undefined) data.description = input.description.trim() || null;
+  if (input.targetPeriod !== undefined) data.targetPeriod = input.targetPeriod.trim() || null;
+  if (input.imageUrl !== undefined) data.images = input.imageUrl.trim() ? [input.imageUrl.trim()] : [];
+  await prisma.idea.update({ where: { id }, data }).catch(() => null);
+}

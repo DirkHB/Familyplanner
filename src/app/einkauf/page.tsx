@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { getMainListGroups } from "@/lib/shopping/repository";
+import { getMainListGroups, getFrequentSuggestions } from "@/lib/shopping/repository";
 import {
   parseAllowlist,
   displayNameForEmail,
@@ -16,11 +16,15 @@ export default async function EinkaufPage() {
     parseAllowlist(process.env.ALLOWED_EMAILS).find((e) => e !== myEmail) ??
     "constanzehiller@hotmail.com";
 
-  const { groups } = await getMainListGroups();
+  const [{ groups }, suggestions] = await Promise.all([
+    getMainListGroups(),
+    getFrequentSuggestions(),
+  ]);
 
   return (
     <EinkaufClient
       groups={groups}
+      suggestions={suggestions}
       partnerName={displayNameForEmail(partnerEmail)}
       partnerPerson={personForEmail(partnerEmail)}
     />

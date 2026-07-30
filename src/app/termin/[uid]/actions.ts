@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
-import { takeCare, requestCare } from "@/lib/care/repository";
+import { redirect } from "next/navigation";
+import { takeCare, requestCare, dismissCare } from "@/lib/care/repository";
+import { deleteEvent } from "@/lib/calendar/delete";
+import { updateEvent } from "@/lib/calendar/update";
+import { invalidateKalender } from "@/lib/calendar/range-data";
 import { aiConfigured, getAnthropic, AI_MODEL } from "@/lib/ai/client";
 import { suggestPrep } from "@/lib/ai/prep-suggest";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
@@ -72,6 +76,7 @@ export async function saveNotes(uid: string, notes: string): Promise<{ ok: boole
     create: { eventUid: uid, notes, createdBy: by },
     update: { notes },
   });
+  invalidateKalender(); // Notiz-Vorschau in der Woche
   return { ok: true };
 }
 
@@ -79,6 +84,7 @@ export async function takeCareAction(uid: string, occurrenceISO: string) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   await takeCare(uid, new Date(occurrenceISO), session.user.id);
+  invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
   return { ok: true };
@@ -88,8 +94,53 @@ export async function requestCareAction(uid: string, occurrenceISO: string, titl
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   await requestCare(uid, new Date(occurrenceISO), session.user.id, title);
+  invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
+  return { ok: true };
+}
+
+/** „Braucht keine Betreuung" — nimmt den Termin aus der Betreuungslogik. */
+export async function dismissCareAction(uid: string, occurrenceISO: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await dismissCare(uid, new Date(occurrenceISO));
+  invalidateKalender();
+  revalidatePath(`/termin/${encodeURIComponent(uid)}`);
+  revalidatePath("/woche");
+  return { ok: true };
+}
+
+/** Termin (bzw. Serie) löschen — auch in iCloud. */
+export async function deleteEventAction(uid: string): Promise<{ ok: boolean; reason?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "Nicht angemeldet." };
+  const res = await deleteEvent(session.user.id, uid);
+  if (!res.deleted) return { ok: false, reason: res.reason };
+  invalidateKalender();
+  revalidatePath("/woche");
+  revalidatePath("/termine");
+  redirect("/woche");
+}
+
+/** Titel/Zeit ändern — geht zurück nach iCloud. */
+export async function updateEventAction(
+  uid: string,
+  input: { title: string; startISO?: string; endISO?: string },
+): Promise<{ ok: boolean; reason?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, reason: "Nicht angemeldet." };
+  const title = input.title.trim();
+  if (!title) return { ok: false, reason: "Titel fehlt." };
+  const res = await updateEvent(session.user.id, uid, {
+    title,
+    start: input.startISO ? new Date(input.startISO) : undefined,
+    end: input.endISO ? new Date(input.endISO) : undefined,
+  });
+  if (!res.updated) return { ok: false, reason: res.reason };
+  revalidatePath(`/termin/${encodeURIComponent(uid)}`);
+  revalidatePath("/woche");
+  revalidatePath("/termine");
   return { ok: true };
 }
 

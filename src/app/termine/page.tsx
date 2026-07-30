@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { TabBar } from "@/components/app/TabBar";
+import { BabyIcon } from "@/components/ui/BabyIcon";
 import { buildWeek, type DayVM, type EventVM } from "@/lib/calendar/view-model";
-import { getOccurrencesForRange, getMetaByUid } from "@/lib/calendar/repository";
+import { getRangeData } from "@/lib/calendar/range-data";
+import { MonthShell } from "@/components/termine/MonthShell";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import { buildMonthMatrix, monthTitle, shiftMonth, isMonthKey } from "@/lib/calendar/month";
 import { shortLabel } from "@/lib/calendar/keyword";
@@ -26,10 +28,8 @@ export default async function TerminePage({
   const from = startOfDayBerlin(new Date(`${monthKey}-01T12:00:00Z`));
   const to = startOfDayBerlin(new Date(`${shiftMonth(monthKey, 1)}-01T12:00:00Z`));
 
-  const occurrences = await getOccurrencesForRange(from, to);
-  const uids = [...new Set(occurrences.map((o) => o.uid))];
-  const meta = await getMetaByUid(uids);
-  const days = buildWeek(occurrences, meta, now).filter((d) => d.key.startsWith(monthKey));
+  const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
+  const days = buildWeek(occurrences, metaByUid, now, careByOcc).filter((d) => d.key.startsWith(monthKey));
   const eventsByDay = new Map(days.map((d) => [d.key, d.events]));
 
   const weeks = buildMonthMatrix(monthKey);
@@ -37,11 +37,25 @@ export default async function TerminePage({
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-28 pt-8">
+        <MonthShell
+          prevHref={`/termine?m=${shiftMonth(monthKey, -1)}`}
+          nextHref={`/termine?m=${shiftMonth(monthKey, 1)}`}
+          todayId={monthKey === todayKey.slice(0, 7) ? todayKey : null}
+        >
         <div className="flex items-center justify-between">
           <h1 className="font-display text-3xl">{monthTitle(monthKey)}</h1>
           <div className="flex gap-2">
             <MonthNav href={`/termine?m=${shiftMonth(monthKey, -1)}`} label="Voriger Monat" dir="left" />
             <MonthNav href={`/termine?m=${shiftMonth(monthKey, 1)}`} label="Nächster Monat" dir="right" />
+            <Link
+              href="/erfassen"
+              aria-label="Schnell erfassen"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-surface shadow-card"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+            </Link>
           </div>
         </div>
 
@@ -99,6 +113,7 @@ export default async function TerminePage({
             </div>
           ))}
         </div>
+        </MonthShell>
 
         {/* Tagesliste des Monats */}
         {days.length === 0 ? (
@@ -160,6 +175,7 @@ function EventLine({ ev }: { ev: EventVM }) {
     >
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor }} />
       <span className="min-w-0 flex-1 truncate font-medium">{ev.title}</span>
+      {ev.care && <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />}
       <span className="tnum shrink-0 text-sm text-ink-muted">
         {ev.allDay ? "ganztägig" : ev.time}
       </span>
