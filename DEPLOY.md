@@ -98,18 +98,17 @@ Beide Services laufen auf **demselben Server** (kostet nichts extra) und deploye
 
 Die Migrationen liegen versioniert unter `prisma/migrations/`. **[CODE]**
 
-**Empfohlener Weg (einmal pro Deploy, sicher):** in den **App-Service** als Start-Command (CMD Override) setzen:
-```
-node node_modules/prisma/build/index.js migrate deploy && node server.js
-```
-Das spielt neue Migrationen ein und startet dann die App. Der Worker braucht das nicht.
-(Die echte CLI-Datei direkt aufrufen — der `.bin/prisma`-Wrapper kann in kopierten Images
-seine `.wasm`-Hilfsdateien nicht finden.)
+**Der Docker-`CMD` erledigt das automatisch** (`start.sh`: erst `prisma migrate deploy`,
+dann `node server.js`). **Wichtig: Beim App-Service den Start-Command (CMD Override) LEER
+lassen** — Sliplane führt Overrides nicht über eine Shell aus, ein `&&` darin funktioniert
+dort nicht.
 
-**Alternativ manuell** (z. B. beim ersten Mal), über die Service-Konsole:
+**Alternativ manuell** (z. B. zum Prüfen), über die Service-Konsole:
 ```
 node node_modules/prisma/build/index.js migrate deploy
 ```
+(Die echte CLI-Datei direkt aufrufen — der `.bin/prisma`-Wrapper findet in kopierten
+Images seine `.wasm`-Hilfsdateien nicht.)
 
 > `migrate deploy` ist idempotent: bereits angewandte Migrationen werden übersprungen.
 

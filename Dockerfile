@@ -60,10 +60,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/worker ./worker
 # robust.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
+# Startskript: Migration + Serverstart in einem (kein CMD-Override nötig).
+COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Default = App. Der Worker-Service überschreibt den CMD mit: node worker/index.mjs
-CMD ["node", "server.js"]
+# Default = App (Migration + Start). Der Worker-Service überschreibt den CMD
+# mit einem Einzelbefehl ohne "&&": node worker/index.mjs
+CMD ["sh", "start.sh"]
