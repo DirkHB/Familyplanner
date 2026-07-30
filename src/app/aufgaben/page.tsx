@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { personForEmail } from "@/lib/auth/allowlist";
-import { ensureCareTodo } from "@/lib/requests/repository";
 import { listTodos } from "@/lib/todos/repository";
 import { buildTodoVM, groupTodos } from "@/lib/todos/group";
 import { getRangeData } from "@/lib/calendar/range-data";
@@ -16,33 +15,9 @@ export default async function AufgabenPage() {
   const me = personForEmail(session?.user?.email ?? "");
 
   const now = new Date();
-
-  // Selbstheilung: für bereits geklärte, kommende Betreuungen fehlende
-  // „Baby betreuen"-Aufgaben nachziehen (idempotent, wenige Zeilen).
-  try {
-    const upcoming = await prisma.careAssignment.findMany({
-      where: {
-        occurrenceDate: { gte: startOfDayBerlin(now) },
-        status: { in: ["geklaert", "zugesagt"] },
-        responsibleUserId: { not: null },
-      },
-      include: { responsible: { select: { email: true } } },
-      take: 25,
-    });
-    for (const a of upcoming) {
-      if (!a.responsible) continue;
-      const event = await prisma.event.findFirst({
-        where: { uid: a.eventUid },
-        select: { title: true },
-      });
-      if (event) {
-        await ensureCareTodo(a.eventUid, event.title, personForEmail(a.responsible.email), a.occurrenceDate);
-      }
-    }
-  } catch {
-    /* Komfort, nie blockierend */
-  }
-
+  // Hinweis: Betreuungs-Aufgaben entstehen ausschließlich im Moment der Übernahme
+  // („Ich mache es" / „Ja"-Antwort). Ein Backfill beim Seitenaufruf stand hier kurz
+  // und wurde entfernt — er hat erledigte/gelöschte Aufgaben wieder neu angelegt.
   const rows = await listTodos();
   const groups = groupTodos(rows.map((r) => buildTodoVM(r, now)), now);
 

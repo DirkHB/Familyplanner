@@ -9,6 +9,7 @@ import {
   toggleCalendarAction,
   syncNowAction,
   disconnectAction,
+  sendTestPushAction,
 } from "./actions";
 
 type Cal = {
@@ -46,6 +47,7 @@ export function SettingsClient({ account }: { account: Account }) {
             Für Anfragen und Erinnerungen. Nachts ist Ruhe (21–7 Uhr).
           </p>
           <EnableNotifications />
+          <TestPush />
         </section>
       </div>
     </div>
@@ -197,5 +199,36 @@ function CalRow({
         />
       </button>
     </li>
+  );
+}
+
+function TestPush() {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<string | null>(null);
+  return (
+    <div className="mt-3 border-t border-surface-muted/60 pt-3">
+      <button
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const r = await sendTestPushAction();
+            if (r.devices === 0) {
+              setResult(
+                "Kein Gerät registriert. Erst oben Benachrichtigungen aktivieren — auf dem iPhone geht das nur in der installierten App (Teilen → Zum Home-Bildschirm).",
+              );
+            } else {
+              setResult(
+                `An ${r.sent} von ${r.devices} Gerät${r.devices === 1 ? "" : "en"} gesendet — kam sie an?` +
+                  (r.quiet ? " (Hinweis: Gerade sind Ruhezeiten — normale Pushes pausieren 21–7 Uhr, dieser Test nicht.)" : ""),
+              );
+            }
+          })
+        }
+        className="text-sm font-medium text-accent"
+      >
+        {pending ? "Sende …" : "Test-Benachrichtigung an mich senden"}
+      </button>
+      {result && <p className="mt-2 text-sm text-ink-muted">{result}</p>}
+    </div>
   );
 }

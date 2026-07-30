@@ -63,3 +63,22 @@ export async function disconnectAction(accountId: string) {
   await disconnectICloudAccount(accountId);
   revalidatePath("/einstellungen");
 }
+
+/** Test-Push an das eigene Konto — umgeht bewusst die Ruhezeiten (expliziter Wunsch). */
+export async function sendTestPushAction(): Promise<{ devices: number; sent: number; quiet: boolean }> {
+  const session = await auth();
+  if (!session?.user?.id) return { devices: 0, sent: 0, quiet: false };
+  const { prisma } = await import("@/lib/prisma");
+  const { sendPushToUser } = await import("@/lib/push/webpush");
+  const { isQuietHours } = await import("@/lib/push/quiet-hours");
+  const devices = await prisma.pushSubscription.count({ where: { userId: session.user.id } });
+  const sent = devices
+    ? await sendPushToUser(session.user.id, {
+        title: "Test ✓",
+        body: "Push funktioniert auf diesem Gerät.",
+        url: "/einstellungen",
+        tag: "test-push",
+      })
+    : 0;
+  return { devices, sent, quiet: isQuietHours(new Date()) };
+}

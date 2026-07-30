@@ -135,7 +135,9 @@ async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
   });
 }
 
-/** Aufgabe „Baby betreuen · <Termin>" einmalig anlegen (für Übernehmende). */
+/** Aufgabe „Baby betreuen · <Termin>" einmalig anlegen (für Übernehmende).
+ *  Dedupe bewusst über JEDEN Status — eine bereits erledigte Aufgabe darf
+ *  nie wieder als neue offene Kopie auftauchen. */
 export async function ensureCareTodo(
   eventUid: string,
   eventTitle: string,
@@ -144,7 +146,7 @@ export async function ensureCareTodo(
 ) {
   const title = `Baby betreuen · ${eventTitle}`;
   const existing = await prisma.todo.findFirst({
-    where: { eventUid, assignee: person, status: "offen", title },
+    where: { eventUid, assignee: person, title },
   });
   if (existing) return existing;
   return prisma.todo.create({
