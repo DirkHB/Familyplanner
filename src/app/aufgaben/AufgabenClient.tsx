@@ -217,21 +217,21 @@ function CreateForm({ me, onDone }: { me: Person; onDone: () => void }) {
         placeholder="Notiz (optional)"
         className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent"
       />
-      <div className="flex gap-3">
-        <label className="flex-1 text-sm text-ink-muted">
+      <div className="flex flex-col gap-3">
+        <label className="block text-sm text-ink-muted">
           Bis wann?
           <input
             name="dueDate"
             type="date"
-            className="mt-1 w-full rounded-card border border-surface-muted bg-bg px-4 py-2.5 outline-none focus:border-accent"
+            className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base text-ink outline-none focus:border-accent"
           />
         </label>
-        <label className="flex-1 text-sm text-ink-muted">
-          Wer macht's?
+        <label className="block text-sm text-ink-muted">
+          Wer macht&apos;s?
           <select
             name="assignee"
             defaultValue={me}
-            className="mt-1 w-full rounded-card border border-surface-muted bg-bg px-4 py-2.5 outline-none focus:border-accent"
+            className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base text-ink outline-none focus:border-accent"
           >
             <option value={me}>{label(me)} (ich)</option>
             <option value={partner}>{label(partner)}</option>

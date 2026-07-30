@@ -115,3 +115,14 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+
+/* iOS macht native Date/Time/Select-Felder gern breiter als ihren Container —
+   das führte zu überlappenden Feldern. Hart begrenzen. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+select {
+  max-width: 100%;
+  min-width: 0;
+}

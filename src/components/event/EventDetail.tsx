@@ -129,14 +129,16 @@ function ManageBlock({ vm }: { vm: DetailVM }) {
               className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent"
             />
             {!vm.allDay && (
-              <div className="flex gap-2">
+              <>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                  className="min-w-0 flex-1 rounded-card border border-surface-muted bg-bg px-3 py-2.5 text-sm outline-none focus:border-accent" />
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
-                  className="w-24 rounded-card border border-surface-muted bg-bg px-2 py-2.5 text-sm outline-none focus:border-accent" />
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-                  className="w-24 rounded-card border border-surface-muted bg-bg px-2 py-2.5 text-sm outline-none focus:border-accent" />
-              </div>
+                  className="block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base outline-none focus:border-accent" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
+                    className="block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-3 py-2.5 text-base outline-none focus:border-accent" />
+                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
+                    className="block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-3 py-2.5 text-base outline-none focus:border-accent" />
+                </div>
+              </>
             )}
             <div className="grid grid-cols-2 gap-3">
               <button onClick={save} disabled={pending}
