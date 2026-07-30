@@ -22,7 +22,7 @@ export function isAllowedEmail(
 /** Anzeigename aus fester Zuordnung (Mockup-Sprache: Constanze zuerst). */
 export function displayNameForEmail(email: string | null | undefined): string {
   const e = (email ?? "").trim().toLowerCase();
-  if (e === "c.brederecke@gmail.com") return "Constanze";
+  if (e === "constanzehiller@hotmail.com" || e === "c.brederecke@gmail.com") return "Constanze";
   if (e === "dirkbrederecke@gmail.com") return "Dirk";
   return e.split("@")[0] || "Du";
 }

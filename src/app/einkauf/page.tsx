@@ -14,7 +14,7 @@ export default async function EinkaufPage() {
   const myEmail = (session?.user?.email ?? "").toLowerCase();
   const partnerEmail =
     parseAllowlist(process.env.ALLOWED_EMAILS).find((e) => e !== myEmail) ??
-    "c.brederecke@gmail.com";
+    "constanzehiller@hotmail.com";
 
   const { groups } = await getMainListGroups();
 
