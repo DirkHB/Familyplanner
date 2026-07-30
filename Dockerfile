@@ -30,6 +30,21 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV AUTH_SECRET="build-only-not-a-real-secret"
 RUN npm run build
 
+# Aufräumen VOR dem Kopieren in den Runner — der bekommt diese node_modules 1:1.
+# Ohne das lag ein komplettes Entwickler-Werkzeugkasten im Image (891 MB): TypeScript,
+# Vitest, Playwright, Tailwind — und vor allem @next/swc, der Rust-Compiler von Next.js
+# mit je einem ~130-MB-Binary für glibc und musl. Genau daran ist das Ausrollen
+# gescheitert: "no space left on device" beim Schreiben von next-swc.linux-x64-gnu.node.
+#   1. Dev-Abhängigkeiten raus (prisma steht bewusst unter "dependencies",
+#      weil `migrate deploy` beim Containerstart läuft).
+#   2. Prisma-Client neu erzeugen — npm prune räumt node_modules/.prisma mit weg.
+#   3. @next (nur SWC-Compiler, reine Bauzeit) und next löschen: Die standalone-
+#      Ausgabe bringt ihr eigenes, getracktes `next` mit, das im Runner zuerst
+#      kopiert wird und stehen bleibt (COPY überschreibt, löscht aber nie).
+RUN npm prune --omit=dev \
+  && npx prisma generate \
+  && rm -rf node_modules/@next node_modules/next node_modules/.cache
+
 # ---------- Runner ----------
 FROM base AS runner
 ENV NODE_ENV=production
@@ -52,12 +67,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prompts ./prompts
 # Worker-Quelle.
 COPY --from=builder --chown=nextjs:nodejs /app/worker ./worker
 
-# Vollständige node_modules übernehmen: Die Prisma-CLI (`migrate deploy`) hat viele
-# Transitiv-Abhängigkeiten (z. B. effect, @prisma/config), die das schlanke standalone-
-# Bundle nicht mitbringt. Statt sie einzeln nachzuziehen (fehleranfällig), nehmen wir die
-# kompletten node_modules — überschreibt die minimalen aus dem standalone-Copy. Enthält
-# damit auch node-cron (Worker) und den Prisma-Client. Kostet etwas Image-Größe, ist dafür
-# robust.
+# Produktions-node_modules darüberlegen (im builder schon entrümpelt). Nötig, weil das
+# standalone-Bundle zwei Dinge nicht kennt: die Prisma-CLI für `migrate deploy` samt
+# ihrer Transitiv-Abhängigkeiten (effect, @prisma/config) und node-cron für den Worker.
+# COPY legt darüber, ohne zu löschen — das getrackte `next` aus dem standalone-Copy
+# oben bleibt also erhalten.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Startskript: Migration + Serverstart in einem (kein CMD-Override nötig).
