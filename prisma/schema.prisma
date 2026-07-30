@@ -286,3 +286,23 @@ model ActivityLog {
   @@index([entityType, entityId])
   @@map("activity_log")
 }
+
+/* ------------------------------ Aufgaben ------------------------------ */
+
+model Todo {
+  id           String    @id @default(cuid())
+  title        String
+  notes        String?
+  dueDate      DateTime? // ETA (Fälligkeit)
+  assignee     String? // "dirk" | "constanze"
+  createdBy    String? // Person, die die Aufgabe angelegt hat
+  status       String    @default("offen") // offen | erledigt
+  eventUid     String? // optionaler Terminbezug
+  remindAt     DateTime? // wann erinnert werden soll
+  remindedAt   DateTime? // wann tatsächlich erinnert wurde (einmalig)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, dueDate])
+  @@map("todos")
+}

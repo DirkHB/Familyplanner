@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/woche", label: "Woche", icon: CalendarIcon },
   { href: "/termine", label: "Termine", icon: ClockIcon },
+  { href: "/aufgaben", label: "Aufgaben", icon: CheckIcon },
   { href: "/einkauf", label: "Einkauf", icon: BasketIcon },
   { href: "/ideen", label: "Ideen", icon: HeartIcon },
 ];
@@ -61,6 +62,14 @@ function BasketIcon() {
     <svg viewBox="0 0 24 24" {...S}>
       <path d="M4 9h16l-1.4 9.2a2 2 0 0 1-2 1.8H7.4a2 2 0 0 1-2-1.8L4 9Z" strokeLinejoin="round" />
       <path d="M8.5 9 12 3.5 15.5 9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" {...S}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <path d="M8 12.5l2.8 2.8L16.5 9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

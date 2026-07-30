@@ -11,11 +11,13 @@ import type { RequestVM } from "@/lib/requests/view-model";
 
 export function WeekView({
   greetingName,
+  greeting = "Guten Morgen",
   dateLabel,
   days,
   requests = [],
 }: {
   greetingName: string;
+  greeting?: string;
   dateLabel: string;
   days: DayVM[];
   requests?: RequestVM[];
@@ -28,7 +30,7 @@ export function WeekView({
           <div>
             <p className="eyebrow text-ink-muted">{dateLabel}</p>
             <h1 className="mt-1 font-display text-4xl leading-tight">
-              Guten Morgen, {greetingName}
+              {greeting}, {greetingName}
             </h1>
           </div>
           <div className="mt-1 flex shrink-0 items-center gap-2">

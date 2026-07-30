@@ -2,54 +2,96 @@ import Link from "next/link";
 import { TabBar } from "@/components/app/TabBar";
 import { buildWeek, type DayVM, type EventVM } from "@/lib/calendar/view-model";
 import { getOccurrencesForRange, getMetaByUid } from "@/lib/calendar/repository";
-import { startOfDayBerlin } from "@/lib/calendar/format";
+import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
+import { buildMonthMatrix, monthTitle, shiftMonth, isMonthKey } from "@/lib/calendar/month";
 
 export const dynamic = "force-dynamic";
 
-const monthFmt = new Intl.DateTimeFormat("de-DE", { month: "long", timeZone: "Europe/Berlin" });
-
-/** Termine: Agenda der nächsten 6 Wochen — der Blick weiter voraus als die Woche. */
-export default async function TerminePage() {
+/**
+ * Termine: schnelle Monatsansicht (Raster) + Tagesliste des Monats darunter.
+ * Tag antippen springt zur Tagesgruppe (Anker — kein Server-Roundtrip).
+ */
+export default async function TerminePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ m?: string }>;
+}) {
+  const { m } = await searchParams;
   const now = new Date();
-  const from = startOfDayBerlin(now);
-  const to = new Date(from.getTime() + 42 * 86_400_000);
+  const todayKey = dayKey(now);
+  const monthKey = isMonthKey(m) ? m : todayKey.slice(0, 7);
+
+  // Monatsfenster in Berliner Zeit (DST-sicher über Mittags-Anker).
+  const from = startOfDayBerlin(new Date(`${monthKey}-01T12:00:00Z`));
+  const to = startOfDayBerlin(new Date(`${shiftMonth(monthKey, 1)}-01T12:00:00Z`));
 
   const occurrences = await getOccurrencesForRange(from, to);
   const uids = [...new Set(occurrences.map((o) => o.uid))];
   const meta = await getMetaByUid(uids);
-  const days = buildWeek(occurrences, meta, now);
+  const days = buildWeek(occurrences, meta, now).filter((d) => d.key.startsWith(monthKey));
+  const countByDay = new Map(days.map((d) => [d.key, d.events.length]));
 
-  // Nach Monat gruppieren (Tages-Key ist YYYY-MM-DD in Berliner Zeit).
-  const months: { label: string; days: DayVM[] }[] = [];
-  for (const day of days) {
-    const label = monthFmt.format(new Date(`${day.key}T12:00:00Z`));
-    const last = months[months.length - 1];
-    if (last && last.label === label) last.days.push(day);
-    else months.push({ label, days: [day] });
-  }
+  const weeks = buildMonthMatrix(monthKey);
 
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-28 pt-8">
-        <h1 className="font-display text-4xl">Termine</h1>
-        <p className="mt-2 text-ink-muted">Die nächsten sechs Wochen im Überblick</p>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-3xl">{monthTitle(monthKey)}</h1>
+          <div className="flex gap-2">
+            <MonthNav href={`/termine?m=${shiftMonth(monthKey, -1)}`} label="Voriger Monat" dir="left" />
+            <MonthNav href={`/termine?m=${shiftMonth(monthKey, 1)}`} label="Nächster Monat" dir="right" />
+          </div>
+        </div>
 
+        {/* Monatsraster */}
+        <div className="mt-5 rounded-card bg-surface p-4 shadow-card">
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => (
+              <span key={w} className="pb-1 text-xs text-ink-muted">{w}</span>
+            ))}
+            {weeks.flat().map((cell) => {
+              const count = cell.inMonth ? (countByDay.get(cell.key) ?? 0) : 0;
+              const isToday = cell.key === todayKey;
+              const inner = (
+                <span
+                  className={`relative flex h-9 w-9 items-center justify-center rounded-full text-sm tnum ${
+                    isToday
+                      ? "bg-accent font-semibold text-surface"
+                      : cell.inMonth
+                        ? count > 0
+                          ? "font-medium text-ink"
+                          : "text-ink-muted"
+                        : "text-ink-muted/30"
+                  }`}
+                >
+                  {cell.day}
+                  {count > 0 && !isToday && (
+                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-accent" />
+                  )}
+                </span>
+              );
+              return count > 0 ? (
+                <a key={cell.key} href={`#${cell.key}`} className="flex justify-center">
+                  {inner}
+                </a>
+              ) : (
+                <span key={cell.key} className="flex justify-center">{inner}</span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tagesliste des Monats */}
         {days.length === 0 ? (
-          <div className="mt-10 rounded-card bg-surface p-6 text-center shadow-card">
+          <div className="mt-8 rounded-card bg-surface p-6 text-center shadow-card">
             <p className="font-display text-xl">Nichts geplant</p>
-            <p className="mt-2 text-ink-muted">In den nächsten sechs Wochen ist alles frei.</p>
+            <p className="mt-2 text-ink-muted">In diesem Monat ist bisher alles frei.</p>
           </div>
         ) : (
-          <div className="mt-6 flex flex-col gap-8">
-            {months.map((m) => (
-              <section key={m.label}>
-                <h2 className="eyebrow mb-4 text-accent">{m.label}</h2>
-                <div className="flex flex-col gap-5">
-                  {m.days.map((day) => (
-                    <DayBlock key={day.key} day={day} />
-                  ))}
-                </div>
-              </section>
+          <div className="mt-8 flex flex-col gap-5">
+            {days.map((day) => (
+              <DayBlock key={day.key} day={day} />
             ))}
           </div>
         )}
@@ -59,9 +101,23 @@ export default async function TerminePage() {
   );
 }
 
+function MonthNav({ href, label, dir }: { href: string; label: string; dir: "left" | "right" }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={dir === "right" ? { transform: "scaleX(-1)" } : undefined}>
+        <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </Link>
+  );
+}
+
 function DayBlock({ day }: { day: DayVM }) {
   return (
-    <div className="flex gap-4">
+    <div id={day.key} className="flex scroll-mt-4 gap-4">
       <div className="w-12 shrink-0 pt-1 text-center">
         <p className={`tnum font-display text-2xl leading-none ${day.isToday ? "text-accent" : ""}`}>
           {day.dayNumber}

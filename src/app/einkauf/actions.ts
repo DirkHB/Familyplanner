@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { personForEmail } from "@/lib/auth/allowlist";
-import { addItem, toggleItem, deleteItem } from "@/lib/shopping/repository";
+import { addItem, toggleItem, deleteItem, moveItemToStore, clearChecked } from "@/lib/shopping/repository";
+import { normalizeStore } from "@/lib/shopping/stores";
 
 async function person() {
   const session = await auth();
@@ -31,6 +32,24 @@ export async function deleteItemAction(id: string) {
   const p = await person();
   if (!p) return { ok: false };
   await deleteItem(id);
+  revalidatePath("/einkauf");
+  return { ok: true };
+}
+
+/** Drag-and-drop: Artikel einem anderen Laden zuordnen. */
+export async function moveItemAction(id: string, store: string) {
+  const p = await person();
+  if (!p) return { ok: false };
+  await moveItemToStore(id, normalizeStore(store));
+  revalidatePath("/einkauf");
+  return { ok: true };
+}
+
+/** „Alles erledigt": abgehakte Artikel sofort entfernen. */
+export async function clearCheckedAction() {
+  const p = await person();
+  if (!p) return { ok: false };
+  await clearChecked();
   revalidatePath("/einkauf");
   return { ok: true };
 }

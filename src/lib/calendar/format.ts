@@ -56,6 +56,17 @@ export function formatDateHeader(d: Date = new Date()): string {
   return `${weekdayFmt.format(d)}, ${monthDayFmt.format(d)}`;
 }
 
+const hourFmt = new Intl.DateTimeFormat("de-DE", { hour: "numeric", hour12: false, timeZone: TZ });
+
+/** Tageszeitabhängige Begrüßung (Berliner Zeit). */
+export function greetingFor(d: Date = new Date()): string {
+  const h = Number(hourFmt.format(d));
+  if (h >= 5 && h < 11) return "Guten Morgen";
+  if (h >= 11 && h < 17) return "Hallo";
+  if (h >= 17 && h < 22) return "Guten Abend";
+  return "Gute Nacht";
+}
+
 export type DayGroup = {
   key: string; // YYYY-MM-DD (Berlin)
   date: Date; // Instant zum Tagesbeginn (repräsentativ)

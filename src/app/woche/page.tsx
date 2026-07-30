@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { WeekView } from "@/components/week/WeekView";
 import { buildWeek } from "@/lib/calendar/view-model";
 import { getOccurrencesForRange, getMetaByUid } from "@/lib/calendar/repository";
-import { startOfDayBerlin, formatDateHeader } from "@/lib/calendar/format";
+import { startOfDayBerlin, formatDateHeader, greetingFor } from "@/lib/calendar/format";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { buildRequestVM } from "@/lib/requests/view-model";
@@ -28,6 +28,12 @@ export default async function WochePage() {
     : [];
 
   return (
-    <WeekView greetingName={name} dateLabel={formatDateHeader(now)} days={days} requests={requests} />
+    <WeekView
+      greetingName={name}
+      greeting={greetingFor(now)}
+      dateLabel={formatDateHeader(now)}
+      days={days}
+      requests={requests}
+    />
   );
 }

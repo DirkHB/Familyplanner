@@ -58,6 +58,23 @@ async function triggerNudge() {
 
 cron.schedule("0 9 * * *", triggerNudge, { timezone: TZ });
 
+// --- Aufgaben-Erinnerungen: alle 5 Minuten (verschickt fällige remindAt) ---
+async function triggerReminders() {
+  if (!process.env.WORKER_SECRET) return;
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/reminders`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (body?.sent > 0 || !res.ok) log("todo-reminders", `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log("todo-reminders", `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("*/5 * * * *", triggerReminders, { timezone: TZ });
+
 // --- Wochenreview: Sonntag 19:00 (Abschnitt 6.5) ---
 cron.schedule(
   "0 19 * * 0",

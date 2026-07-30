@@ -1,31 +1,35 @@
 import { EinkaufClient } from "@/app/einkauf/EinkaufClient";
+import type { Store } from "@/lib/shopping/stores";
 
 export const dynamic = "force-dynamic";
 
 /** Öffentliche Vorschau der Einkaufsliste (Beispieldaten), ohne Login/DB. */
 export default function VorschauEinkauf() {
-  const groups = [
+  const groups: { category: Store; label: string; items: { id: string; text: string; checked: boolean; addedByPerson: "dirk" | "constanze" }[] }[] = [
     {
-      category: "frisches",
-      label: "Frisches",
+      category: "lidl",
+      label: "Lidl",
       items: [
-        { id: "1", text: "Bananen", checked: true, addedByPerson: "dirk" as const },
-        { id: "2", text: "Haferdrink", checked: true, addedByPerson: "dirk" as const },
+        { id: "1", text: "Bananen", checked: true, addedByPerson: "dirk" },
+        { id: "2", text: "Haferdrink", checked: false, addedByPerson: "dirk" },
       ],
     },
     {
-      category: "baby",
-      label: "Baby",
-      items: [{ id: "3", text: "Windeln Größe 2", checked: false, addedByPerson: "constanze" as const }],
+      category: "ali",
+      label: "Ali",
+      items: [{ id: "3", text: "Fladenbrot", checked: false, addedByPerson: "constanze" }],
     },
     {
-      category: "haushalt",
-      label: "Haushalt",
-      items: [
-        { id: "4", text: "Spülmaschinentabs", checked: false, addedByPerson: "dirk" as const },
-        { id: "5", text: "Kaffeebohnen", checked: false, addedByPerson: "dirk" as const },
-      ],
+      category: "edeka",
+      label: "Edeka",
+      items: [{ id: "4", text: "Windeln Größe 2", checked: false, addedByPerson: "constanze" }],
+    },
+    { category: "kaefer", label: "Käfer", items: [] },
+    {
+      category: "sonstiges",
+      label: "Sonstiges",
+      items: [{ id: "5", text: "Spülmaschinentabs", checked: false, addedByPerson: "dirk" }],
     },
   ];
-  return <EinkaufClient groups={groups} partnerName="Constanze" partnerPerson="constanze" />;
+  return <EinkaufClient groups={groups} partnerName="Constanze" />;
 }

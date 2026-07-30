@@ -1,14 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import {
-  guessShoppingCategory,
-  SHOPPING_CATEGORY_ORDER,
-  SHOPPING_CATEGORY_LABEL,
-  type ShoppingCategory,
-} from "./categories";
+import { STORE_ORDER, STORE_LABEL, normalizeStore, type Store } from "./stores";
 import type { Person } from "@/lib/auth/allowlist";
 
-/** Gemeinsame Haupt-Einkaufsliste (Singleton) + terminbezogene Listen (später). */
+/** Gemeinsame Haupt-Einkaufsliste (Singleton), gruppiert nach Läden. */
+
+const CHECKED_TTL_MS = 60 * 60_000; // abgehakte Artikel verschwinden nach ~1 h
 
 export async function getOrCreateMainList() {
   const existing = await prisma.shoppingList.findFirst({ where: { kind: "haupt" } });
@@ -22,19 +19,25 @@ export type ItemVM = {
   checked: boolean;
   addedByPerson: Person | null;
 };
-export type GroupVM = { category: ShoppingCategory; label: string; items: ItemVM[] };
+export type GroupVM = { category: Store; label: string; items: ItemVM[] };
 
 export async function getMainListGroups(): Promise<{ groups: GroupVM[]; openCount: number }> {
   const list = await getOrCreateMainList();
+
+  // Aufräumen: länger als 1 h abgehakte Artikel still entfernen.
+  await prisma.shoppingItem.deleteMany({
+    where: { listId: list.id, checkedAt: { lt: new Date(Date.now() - CHECKED_TTL_MS) } },
+  });
+
   const items = await prisma.shoppingItem.findMany({
     where: { listId: list.id },
     orderBy: [{ checkedAt: "asc" }, { createdAt: "asc" }],
   });
 
-  const byCat = new Map<ShoppingCategory, ItemVM[]>();
+  const byStore = new Map<Store, ItemVM[]>(STORE_ORDER.map((s) => [s, []]));
   let openCount = 0;
   for (const it of items) {
-    const cat = (it.category as ShoppingCategory) ?? "sonstiges";
+    const store = normalizeStore(it.category);
     const vm: ItemVM = {
       id: it.id,
       text: it.text,
@@ -42,29 +45,43 @@ export async function getMainListGroups(): Promise<{ groups: GroupVM[]; openCoun
       addedByPerson: (it.addedBy as Person) ?? null,
     };
     if (!vm.checked) openCount++;
-    const arr = byCat.get(cat) ?? [];
-    arr.push(vm);
-    byCat.set(cat, arr);
+    byStore.get(store)!.push(vm);
   }
 
-  const groups: GroupVM[] = SHOPPING_CATEGORY_ORDER.filter((c) => byCat.get(c)?.length).map((c) => ({
-    category: c,
-    label: SHOPPING_CATEGORY_LABEL[c],
-    items: byCat.get(c)!,
+  // Alle 5 Läden immer liefern (auch leer) — sie sind zugleich Drop-Ziele.
+  const groups: GroupVM[] = STORE_ORDER.map((s) => ({
+    category: s,
+    label: STORE_LABEL[s],
+    items: byStore.get(s)!,
   }));
 
   return { groups, openCount };
 }
 
-export async function addItem(text: string, addedBy: Person, category?: ShoppingCategory) {
+export async function addItem(text: string, addedBy: Person, store?: Store) {
   const list = await getOrCreateMainList();
   return prisma.shoppingItem.create({
     data: {
       listId: list.id,
       text: text.trim(),
-      category: category ?? guessShoppingCategory(text),
+      category: store ?? "sonstiges",
       addedBy,
     },
+  });
+}
+
+/** Artikel per Drag-and-drop einem anderen Laden zuordnen. */
+export async function moveItemToStore(id: string, store: Store) {
+  return prisma.shoppingItem
+    .update({ where: { id }, data: { category: normalizeStore(store) } })
+    .catch(() => null);
+}
+
+/** „Alles erledigt": alle abgehakten Artikel sofort entfernen. */
+export async function clearChecked() {
+  const list = await getOrCreateMainList();
+  return prisma.shoppingItem.deleteMany({
+    where: { listId: list.id, checkedAt: { not: null } },
   });
 }
 
@@ -128,7 +145,7 @@ export async function addItemToEvent(text: string, eventUid: string, addedBy: Pe
       listId: list.id,
       eventUid,
       text: text.trim(),
-      category: guessShoppingCategory(text),
+      category: "sonstiges",
       addedBy,
     },
   });
