@@ -9,8 +9,10 @@ export default middleware(() => {
 });
 
 export const config = {
-  // Alles schützen außer: Auth-API, Next-Assets, PWA-Dateien, Bilder.
+  // Alles schützen außer: Auth-API, Healthcheck, Next-Assets, PWA-Dateien, Bilder.
+  // Der Healthcheck muss ohne Session durchkommen, sonst antwortet Sliplane
+  // ein Redirect statt 200 und der Service gilt als ungesund.
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/).*)",
+    "/((?!api/auth|api/health|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/).*)",
   ],
 };
