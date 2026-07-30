@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   saveNotes,
@@ -26,20 +26,35 @@ export type EventShoppingData = {
   linkable: { id: string; text: string }[];
 };
 
+/**
+ * Zurück heißt zurück — dorthin, wo der Termin angetippt wurde, und an die
+ * Stelle der Liste. Ein fester Link auf /woche hätte immer oben angefangen
+ * und einen aus der Monatsansicht auf der falschen Seite abgesetzt.
+ * Kein Verlauf da (Termin direkt aus einer Push-Nachricht geöffnet)?
+ * Dann bleibt die Woche der sinnvolle Anlaufpunkt.
+ */
+function BackButton() {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => (window.history.length > 1 ? router.back() : router.push("/woche"))}
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
+      aria-label="Zurück"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
 export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventShoppingData | null }) {
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-28 pt-6">
         <header className="mb-5 flex items-center justify-between">
-          <Link
-            href="/woche"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
-            aria-label="Zurück"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
+          <BackButton />
           <span className="eyebrow text-ink-muted">{vm.categoryLabel}</span>
           <span className="w-10" />
         </header>

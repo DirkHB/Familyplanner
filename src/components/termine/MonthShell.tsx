@@ -33,6 +33,9 @@ export function MonthShell({
     const scroller = shell?.closest(".overflow-y-auto") as HTMLElement | null;
     const offset = (shell?.offsetHeight ?? 0) + 12;
     if (scroller) {
+      // Steht schon eine Position (Zurückgehen hat sie wiederhergestellt),
+      // dann nicht darüberbügeln — sonst landet man doch wieder beim heutigen Tag.
+      if (scroller.scrollTop > 0) return;
       const y = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - offset;
       if (y > 10) scroller.scrollTo({ top: y });
     } else {

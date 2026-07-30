@@ -1,6 +1,19 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { TabBar } from "./TabBar";
+import {
+  rememberScroll,
+  resumeScrollMemory,
+  takeScrollToRestore,
+  viewKey,
+} from "@/lib/ui/scroll-memory";
+
+// Beim Server-Rendern gibt es kein Layout, useLayoutEffect würde nur warnen.
+// Im Browser brauchen wir es aber: Die Position muss vor dem ersten Bild
+// stehen, sonst sieht man den Sprung von oben nach unten.
+const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**
  * App-Hülle: Die Seite selbst scrollt nie — nur der Inhaltsbereich.
@@ -10,6 +23,9 @@ import { TabBar } from "./TabBar";
  * rutschen dann mitten ins Bild. Mit einer fixen Hülle plus eigenem
  * Scrollcontainer liegen beide außerhalb des scrollenden Bereichs und
  * können sich nicht mehr bewegen — so machen es native Apps auch.
+ *
+ * Weil hier der Inhaltsbereich scrollt und nicht das Dokument, führt die Hülle
+ * auch selbst Buch über die Scrollposition (siehe scroll-memory).
  */
 export function AppShell({
   children,
@@ -24,9 +40,49 @@ export function AppShell({
   bottomBar?: React.ReactNode;
   contentClassName?: string;
 }) {
+  const pathname = usePathname();
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  useBrowserLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const key = viewKey(pathname);
+    resumeScrollMemory();
+
+    const target = takeScrollToRestore(key);
+    if (target != null) {
+      // Der Inhalt kann nach dem ersten Bild noch wachsen (Schriften, Bilder).
+      // Deshalb ein paar Anläufe, bis die Position wirklich sitzt.
+      let tries = 0;
+      const apply = () => {
+        const node = scrollerRef.current;
+        if (!node) return;
+        node.scrollTop = target;
+        if (++tries < 5 && Math.abs(node.scrollTop - target) > 2) requestAnimationFrame(apply);
+      };
+      apply();
+    }
+
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const node = scrollerRef.current;
+        if (node) rememberScroll(key, node.scrollTop);
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
+
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg text-ink">
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         <div className={`mx-auto max-w-md px-5 pb-24 pt-8 ${contentClassName}`}>{children}</div>
       </div>
 
