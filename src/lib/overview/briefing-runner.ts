@@ -15,7 +15,7 @@ export async function runBriefing(
   kind: "morgen" | "woche",
   now: Date = new Date(),
 ): Promise<{ pushed: number; summary: string }> {
-  const overview = await getOverview(kind === "morgen" ? "heute-bis-sonntag" : "naechste-woche", now);
+  const overview = await getOverview(kind === "morgen" ? "bis-sonntag" : "naechste-woche", now);
   const summary = briefingText(overview, kind === "morgen" ? "morgen" : "woche");
 
   await saveBriefing(kind, dayKey(now), summary).catch(() => null);

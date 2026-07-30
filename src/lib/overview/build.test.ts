@@ -91,3 +91,48 @@ describe("briefingText", () => {
     expect(briefingText(o, "woche")).toMatch(/2 Termine/);
   });
 });
+
+describe("horizonRange / defaultHorizon", () => {
+  it("bis-sonntag beginnt jetzt und endet Sonntag 24 Uhr", async () => {
+    const { horizonRange } = await import("./horizon");
+    // Dienstag, 28.07.2026, 14:00 Berlin = 12:00 UTC
+    const now = new Date("2026-07-28T12:00:00Z");
+    const { from, to } = horizonRange("bis-sonntag", now);
+    expect(from.getTime()).toBe(now.getTime()); // ab jetzt, nicht ab heute früh
+    // Ende = Montag 00:00 Berlin = Sonntag 22:00 UTC (Sommerzeit)
+    expect(to.toISOString()).toBe("2026-08-02T22:00:00.000Z");
+  });
+
+  it("nächste Woche läuft Mo–So nach dem laufenden Sonntag", async () => {
+    const { horizonRange } = await import("./horizon");
+    const now = new Date("2026-07-28T12:00:00Z"); // Dienstag
+    const { from, to } = horizonRange("naechste-woche", now);
+    expect(from.toISOString()).toBe("2026-08-02T22:00:00.000Z"); // Mo 03.08. 00:00 Berlin
+    expect(to.toISOString()).toBe("2026-08-09T22:00:00.000Z"); // Mo 10.08. 00:00 Berlin
+  });
+
+  it("zeigt sonntags nach dem Umschalten noch den Rest des Sonntags", async () => {
+    const { horizonRange } = await import("./horizon");
+    // Sonntag, 02.08.2026, 14:00 Berlin = 12:00 UTC
+    const sonntagNachmittag = new Date("2026-08-02T12:00:00Z");
+    const { from, to } = horizonRange("naechste-woche", sonntagNachmittag);
+    expect(from.getTime()).toBe(sonntagNachmittag.getTime()); // Rest des Sonntags bleibt drin
+    expect(to.toISOString()).toBe("2026-08-09T22:00:00.000Z"); // bis Ende nächster Sonntag
+  });
+
+  it("schaltet sonntags ab 12 Uhr auf die nächste Woche um", async () => {
+    const { defaultHorizon } = await import("./horizon");
+    // Sonntag, 02.08.2026
+    expect(defaultHorizon(new Date("2026-08-02T09:00:00Z"))).toBe("bis-sonntag"); // 11:00 Berlin
+    expect(defaultHorizon(new Date("2026-08-02T10:00:00Z"))).toBe("naechste-woche"); // 12:00 Berlin
+    expect(defaultHorizon(new Date("2026-07-28T12:00:00Z"))).toBe("bis-sonntag"); // Dienstag
+  });
+
+  it("berlinWeekday stimmt auch in der Sommerzeit", async () => {
+    const { berlinWeekday } = await import("./horizon");
+    expect(berlinWeekday(new Date("2026-07-30T12:00:00Z"))).toBe(3); // Donnerstag
+    expect(berlinWeekday(new Date("2026-08-02T12:00:00Z"))).toBe(6); // Sonntag
+    // 23:30 Berlin am Donnerstag (= 21:30 UTC) ist immer noch Donnerstag
+    expect(berlinWeekday(new Date("2026-07-30T21:30:00Z"))).toBe(3);
+  });
+});

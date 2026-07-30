@@ -48,13 +48,20 @@ export function WeekView({
           <div className="mt-1 flex shrink-0 items-center gap-2">
             <Link
               href="/einstellungen"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
+              className="flex items-center gap-1.5 rounded-pill bg-surface py-2 pl-2.5 pr-3.5 shadow-card"
               aria-label="Einstellungen"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-                <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              {/* Klassisches Zahnrad — die frühere Strahlen-Variante wurde als Sonne gelesen. */}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+                <path
+                  d="M19.1 13.6a7.6 7.6 0 0 0 0-3.2l1.9-1.4-1.9-3.3-2.2.9a7.6 7.6 0 0 0-2.8-1.6L13.7 2h-3.4l-.4 2.4a7.6 7.6 0 0 0-2.8 1.6l-2.2-.9L3 8.4l1.9 1.4a7.6 7.6 0 0 0 0 3.2L3 14.4l1.9 3.3 2.2-.9a7.6 7.6 0 0 0 2.8 1.6l.4 2.4h3.4l.4-2.4a7.6 7.6 0 0 0 2.8-1.6l2.2.9 1.9-3.3-1.9-1.4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinejoin="round"
+                />
               </svg>
+              <span className="text-sm font-medium">Einstellungen</span>
             </Link>
           </div>
         </div>

@@ -1,27 +1,44 @@
 import { getOverview, getLatestBriefing } from "@/lib/overview/repository";
+import { defaultHorizon, horizonRange, type Horizon } from "@/lib/overview/horizon";
+import { formatMonthDay } from "@/lib/calendar/format";
 import { UeberblickClient } from "./UeberblickClient";
 
 export const dynamic = "force-dynamic";
 
-/** Überblick: die drei Fragen — Woche, Offenes, Verteilung. */
+/**
+ * Überblick: zeigt nur, was noch kommt — ab jetzt bis Sonntagabend.
+ * Ab Sonntag 12:00 automatisch die komplette nächste Woche.
+ */
 export default async function UeberblickPage({
   searchParams,
 }: {
   searchParams: Promise<{ n?: string }>;
 }) {
   const { n } = await searchParams;
-  const next = n === "1";
+  const now = new Date();
+  const auto = defaultHorizon(now);
+  // ?n=1 blättert bewusst auf die nächste Woche (sonst gilt die Automatik).
+  const kind: Horizon = n === "1" ? "naechste-woche" : auto;
+  const showingNext = kind === "naechste-woche";
 
-  const overview = await getOverview(next ? "naechste-woche" : "heute-bis-sonntag");
-  const briefing = await getLatestBriefing(next ? "woche" : "morgen").catch(() => null);
+  const overview = await getOverview(kind, now);
+  const briefing = await getLatestBriefing(showingNext ? "woche" : "morgen").catch(() => null);
+
+  const { from, to } = horizonRange(kind, now);
+  const lastDay = new Date(to.getTime() - 86_400_000);
+  const scopeLabel = showingNext
+    ? `Nächste Woche · ${formatMonthDay(from)} – ${formatMonthDay(lastDay)}`
+    : `Ab jetzt bis Sonntag, ${formatMonthDay(lastDay)}`;
 
   return (
     <UeberblickClient
       overview={overview}
-      scopeLabel={next ? "Nächste Woche · Mo–So" : "Heute bis Sonntag"}
+      scopeLabel={scopeLabel}
       briefing={briefing?.summary ?? null}
-      otherHref={next ? "/ueberblick" : "/ueberblick?n=1"}
-      otherLabel={next ? "Diese Woche" : "Nächste Woche"}
+      // Wenn die Automatik schon auf „nächste Woche" steht, gibt es nichts umzuschalten.
+      otherHref={showingNext ? "/ueberblick" : "/ueberblick?n=1"}
+      otherLabel={showingNext ? "Aktuell" : "Nächste Woche"}
+      showToggle={!(auto === "naechste-woche" && showingNext)}
     />
   );
 }

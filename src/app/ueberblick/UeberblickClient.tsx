@@ -22,12 +22,14 @@ export function UeberblickClient({
   briefing,
   otherHref,
   otherLabel,
+  showToggle = true,
 }: {
   overview: Overview;
   scopeLabel: string;
   briefing: string | null;
   otherHref: string;
   otherLabel: string;
+  showToggle?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("woche");
   const openCare = overview.open.filter((o) => o.kind === "care").length;
@@ -41,12 +43,14 @@ export function UeberblickClient({
             <h1 className="font-display text-4xl">Überblick</h1>
             <p className="mt-1 text-ink-muted">{scopeLabel}</p>
           </div>
-          <Link
-            href={otherHref}
-            className="mt-2 shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm font-medium text-ink shadow-card"
-          >
-            {otherLabel}
-          </Link>
+          {showToggle && (
+            <Link
+              href={otherHref}
+              className="mt-2 shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm font-medium text-ink shadow-card"
+            >
+              {otherLabel}
+            </Link>
+          )}
         </div>
 
         {briefing && (

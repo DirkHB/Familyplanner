@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey, formatTime, formatWeekday, formatMonthDay } from "@/lib/calendar/format";
 import { buildOverview, type Overview, type OverviewEvent, type OverviewTodo } from "./build";
+import { horizonRange, type Horizon } from "./horizon";
+
+export { horizonRange, defaultHorizon, berlinWeekday, type Horizon } from "./horizon";
 
 /** Datenbeschaffung für den Überblick: Termine + Betreuung + offene Aufgaben. */
 
@@ -13,24 +16,13 @@ const dueFmt = new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin",
 });
 
-export type Horizon = "heute-bis-sonntag" | "naechste-woche";
-
-/** Zeitfenster: bis Sonntag (Morgen-Briefing) bzw. Mo–So der Folgewoche. */
-export function horizonRange(kind: Horizon, now: Date): { from: Date; to: Date } {
-  const today = startOfDayBerlin(now);
-  const dow = (new Date(today).getUTCDay() + 6) % 7; // 0 = Montag
-  if (kind === "heute-bis-sonntag") {
-    return { from: today, to: new Date(today.getTime() + (7 - dow) * 86_400_000) };
-  }
-  const nextMonday = new Date(today.getTime() + (7 - dow) * 86_400_000);
-  return { from: nextMonday, to: new Date(nextMonday.getTime() + 7 * 86_400_000) };
-}
-
 export async function getOverview(kind: Horizon, now: Date = new Date()): Promise<Overview> {
   const { from, to } = horizonRange(kind, now);
   const { occurrences, careByOcc } = await getRangeData(from, to);
 
   const events: OverviewEvent[] = occurrences
+    // Nur was noch kommt; ein gerade laufender Termin bleibt sichtbar.
+    .filter((o) => o.end > from)
     .sort((a, b) => a.start.getTime() - b.start.getTime())
     .map((o) => {
       const k = dayKey(o.start);
