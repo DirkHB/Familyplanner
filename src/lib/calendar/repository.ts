@@ -9,7 +9,17 @@ import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
 
 export async function getOccurrencesForRange(from: Date, to: Date): Promise<Occurrence[]> {
   const events = await prisma.event.findMany({
-    where: { calendar: { isSynced: true } },
+    where: {
+      calendar: { isSynced: true },
+      // Nur was das Fenster treffen kann: Serien (rrule) immer — ihr start liegt oft
+      // weit zurück; Einzeltermine/Overrides nur, wenn sie das Fenster schneiden.
+      // Hält Payload und ICS-Parsing klein (sonst wird jede Ansicht mit dem
+      // Kalenderbestand langsamer).
+      OR: [
+        { rrule: { not: null } },
+        { AND: [{ start: { lt: to } }, { end: { gt: from } }] },
+      ],
+    },
     select: { rawIcs: true },
   });
   const all: Occurrence[] = [];
