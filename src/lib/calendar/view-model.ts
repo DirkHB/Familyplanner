@@ -19,6 +19,8 @@ export type EventVM = {
   people: Person[];
   openCount: number;
   notesPreview: string | null;
+  /** ISO des konkreten Vorkommens — für Direktaktionen aus der Liste. */
+  occurrenceISO: string;
 };
 
 export type DayVM = {
@@ -104,6 +106,7 @@ export function buildWeek(
         people: meta.people ?? [],
         openCount: meta.openCount ?? 0,
         notesPreview,
+        occurrenceISO: o.start.toISOString(),
       };
     }),
   }));

@@ -75,24 +75,23 @@ async function triggerReminders() {
 
 cron.schedule("*/5 * * * *", triggerReminders, { timezone: TZ });
 
-// --- Wochenreview: Sonntag 19:00 — Push "Eure Woche" an beide ---
-cron.schedule(
-  "0 19 * * 0",
-  async () => {
-    if (!process.env.WORKER_SECRET) return;
-    try {
-      const res = await fetch(`${APP_URL}/api/internal/weekly`, {
-        method: "POST",
-        headers: { "x-worker-secret": process.env.WORKER_SECRET },
-      });
-      const body = await res.json().catch(() => ({}));
-      log("weekly-review", `Status ${res.status} · ${JSON.stringify(body)}`);
-    } catch (err) {
-      log("weekly-review", `Fehler: ${err?.message ?? err}`);
-    }
-  },
-  { timezone: TZ },
-);
+// --- Briefings: taeglich 7:00 "Guten Morgen", sonntags 12:00 "Neue Woche" ---
+async function triggerBriefing(kind) {
+  if (!process.env.WORKER_SECRET) return;
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/briefing?kind=${kind}`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    log(`briefing-${kind}`, `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log(`briefing-${kind}`, `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("0 7 * * *", () => triggerBriefing("morgen"), { timezone: TZ });
+cron.schedule("0 12 * * 0", () => triggerBriefing("woche"), { timezone: TZ });
 
 // Mini-HTTP-Server nur für den Sliplane-Healthcheck: Sliplane verlangt von jedem
 // Service eine HTTP-Antwort auf "/", sonst landet er in einer Redeploy-Schleife

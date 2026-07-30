@@ -3,36 +3,43 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
-import { Badge } from "@/components/ui/Badge";
 import { captureAction, acceptSuggestionAction, rejectSuggestionAction } from "./actions";
-import type { CaptureEvent } from "@/lib/ai/schemas";
+import type { SmartItem } from "@/lib/ai/smart-capture";
 
 const timeFmt = new Intl.DateTimeFormat("de-DE", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
+  weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
   timeZone: "Europe/Berlin",
 });
 const dateFmt = new Intl.DateTimeFormat("de-DE", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/Berlin",
+  weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Berlin",
 });
+
+const KIND_META: Record<string, { label: string; icon: string; tone: string }> = {
+  termin: { label: "Termin", icon: "📅", tone: "var(--color-accent)" },
+  aufgabe: { label: "Aufgabe", icon: "✓", tone: "var(--color-ink)" },
+  einkauf: { label: "Einkauf", icon: "🛒", tone: "var(--color-counter)" },
+};
+
+const EXAMPLES = [
+  "Donnerstag 15 Uhr Kinderarzt U3",
+  "Windeln und Haferdrink kaufen",
+  "Constanze soll die Kita anrufen",
+];
 
 export function ErfassenClient({ configured }: { configured: boolean }) {
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
-  const [events, setEvents] = useState<CaptureEvent[] | null>(null);
+  const [items, setItems] = useState<SmartItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function analyze() {
+  function analyze(value?: string) {
+    const input = (value ?? text).trim();
+    if (!input) return;
+    setText(input);
     setError(null);
     start(async () => {
-      const res = await captureAction(text);
-      if (res.ok) setEvents(res.result.events);
+      const res = await captureAction(input);
+      if (res.ok) setItems(res.result.items);
       else setError(res.error);
     });
   }
@@ -46,11 +53,11 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
               <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>
-          <h1 className="font-display text-3xl">Schnell erfassen</h1>
+          <h1 className="font-display text-3xl">Erfassen</h1>
         </header>
 
         <p className="mb-3 text-ink-muted">
-          Schreib einfach los — z. B. „Donnerstag 15 Uhr Kinderarzt U3, danach einkaufen".
+          Schreib einfach los — Termin, Aufgabe oder Einkauf. Ich sortiere es ein.
         </p>
 
         <textarea
@@ -60,33 +67,42 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
           placeholder="Was steht an?"
           className="w-full resize-none rounded-card border border-surface-muted bg-surface p-4 outline-none focus:border-accent"
         />
+
+        {!items && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {EXAMPLES.map((ex) => (
+              <button
+                key={ex}
+                onClick={() => analyze(ex)}
+                className="rounded-pill bg-surface px-3 py-1.5 text-xs text-ink-muted shadow-card"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
+
         <button
-          onClick={analyze}
+          onClick={() => analyze()}
           disabled={pending || !configured}
           className="mt-3 w-full rounded-pill bg-accent px-5 py-3.5 font-medium text-surface disabled:opacity-60"
         >
           {pending ? "Denke nach …" : "Vorschlag erstellen"}
         </button>
-        {!configured && (
-          <p className="mt-2 text-sm text-ink-muted">KI ist noch nicht konfiguriert (API-Key fehlt).</p>
-        )}
+        {!configured && <p className="mt-2 text-sm text-ink-muted">KI ist noch nicht konfiguriert (API-Key fehlt).</p>}
         {error && <p className="mt-2 text-sm text-signal">{error}</p>}
 
         <AnimatePresence>
-          {events && events.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 flex flex-col gap-3"
-            >
+          {items && items.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6 flex flex-col gap-3">
               <p className="eyebrow text-ink-muted">Vorschau · übernehmen oder verwerfen</p>
-              {events.map((ev, i) => (
-                <SuggestionCard key={i} ev={ev} />
+              {items.map((it, i) => (
+                <SuggestionCard key={i} item={it} />
               ))}
             </motion.div>
           )}
-          {events && events.length === 0 && (
-            <p className="mt-6 text-ink-muted">Daraus konnte ich keinen Termin ableiten.</p>
+          {items && items.length === 0 && (
+            <p className="mt-6 text-ink-muted">Daraus konnte ich nichts ableiten.</p>
           )}
         </AnimatePresence>
       </div>
@@ -94,56 +110,58 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
   );
 }
 
-function SuggestionCard({ ev }: { ev: CaptureEvent }) {
+function SuggestionCard({ item }: { item: SmartItem }) {
   const [pending, start] = useTransition();
   const [state, setState] = useState<"open" | "accepted" | "rejected">("open");
   const [note, setNote] = useState("");
-
   if (state === "rejected") return null;
 
-  const when = ev.allDay
-    ? `${dateFmt.format(new Date(ev.start))} · ganztägig`
-    : timeFmt.format(new Date(ev.start));
+  const meta = KIND_META[item.kind] ?? KIND_META.aufgabe;
+  const when =
+    item.kind === "termin" && item.start
+      ? item.allDay
+        ? `${dateFmt.format(new Date(item.start))} · ganztägig`
+        : timeFmt.format(new Date(item.start))
+      : item.kind === "aufgabe" && item.dueDate
+        ? `bis ${dateFmt.format(new Date(`${item.dueDate}T12:00:00`))}`
+        : item.kind === "einkauf"
+          ? item.store.charAt(0).toUpperCase() + item.store.slice(1)
+          : "ohne Termin";
 
   return (
     <div className="rounded-card bg-surface p-4 shadow-card">
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-display text-lg">{ev.title}</p>
+        <div className="min-w-0">
+          <p className="font-display text-lg">{item.title}</p>
           <p className="tnum text-sm text-ink-muted">{when}</p>
         </div>
-        <Badge tone="neutral">{ev.category}</Badge>
+        <span
+          className="shrink-0 rounded-pill px-2.5 py-1 text-xs font-medium"
+          style={{ background: "var(--color-surface-muted)", color: meta.tone }}
+        >
+          {meta.icon} {meta.label}
+        </span>
       </div>
 
-      {ev.checklist.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-1.5">
-          {ev.checklist.map((c, i) => (
-            <li key={i} className="rounded-pill bg-surface-muted px-2.5 py-1 text-xs text-ink-muted">
-              {c}
-            </li>
-          ))}
-        </ul>
+      {item.assignee && (
+        <p className="mt-1.5 text-sm text-ink-muted">
+          für {item.assignee === "constanze" ? "Constanze" : "Dirk"}
+        </p>
       )}
-      {ev.careNeeded && (
-        <p className="mt-2 text-sm text-signal">Baby-Betreuung klären</p>
+      {item.careNeeded && item.kind === "termin" && (
+        <p className="mt-1.5 text-sm text-signal">Baby-Betreuung klären</p>
       )}
 
       {state === "accepted" ? (
-        <p className="mt-3 rounded-card bg-accent-light px-4 py-2 text-center text-sm font-medium text-ink">
-          {note}
-        </p>
+        <p className="mt-3 rounded-card bg-accent-light px-4 py-2 text-center text-sm font-medium text-ink">{note}</p>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             disabled={pending}
             onClick={() =>
               start(async () => {
-                const r = await acceptSuggestionAction(ev);
-                setNote(
-                  r.created
-                    ? "Im Kalender angelegt ✓"
-                    : `Übernommen — ${r.reason ?? "Kalender noch nicht verbunden."}`,
-                );
+                const r = await acceptSuggestionAction(item);
+                setNote(r.created ? `In ${r.where} angelegt ✓` : `Übernommen — ${r.reason ?? "nicht angelegt."}`);
                 setState("accepted");
               })
             }
@@ -153,7 +171,7 @@ function SuggestionCard({ ev }: { ev: CaptureEvent }) {
           </button>
           <button
             disabled={pending}
-            onClick={() => start(async () => { await rejectSuggestionAction(ev); setState("rejected"); })}
+            onClick={() => start(async () => { await rejectSuggestionAction(item); setState("rejected"); })}
             className="rounded-pill bg-surface-muted px-4 py-3 font-medium text-ink disabled:opacity-60"
           >
             Verwerfen

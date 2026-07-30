@@ -306,3 +306,17 @@ model Todo {
   @@index([status, dueDate])
   @@map("todos")
 }
+
+/* ------------------------------ Briefings ------------------------------ */
+
+model Briefing {
+  id        String   @id @default(cuid())
+  kind      String // morgen | woche
+  dayKey    String // YYYY-MM-DD (Berlin) — ein Briefing je Art und Tag
+  summary   String   @db.Text
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@unique([kind, dayKey])
+  @@map("briefings")
+}

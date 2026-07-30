@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { Avatar } from "@/components/ui/Avatar";
+import { SwipeRow } from "@/components/ui/SwipeRow";
 import { TabBar } from "@/components/app/TabBar";
 import type { Person } from "@/lib/auth/allowlist";
 import type { TodoGroup, TodoVM } from "@/lib/todos/group";
@@ -138,6 +139,11 @@ function TodoRow({ todo }: { todo: TodoVM }) {
   }
 
   return (
+    <SwipeRow
+      onSwipeRight={() => start(() => toggleTodoAction(todo.id))}
+      onSwipeLeft={() => start(async () => { await deleteTodoAction(todo.id); setGone(true); })}
+      rightLabel={todo.done ? "Öffnen" : "Erledigt"}
+    >
     <div className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
       <button
         onClick={() => start(() => toggleTodoAction(todo.id))}
@@ -183,6 +189,7 @@ function TodoRow({ todo }: { todo: TodoVM }) {
         ✕
       </button>
     </div>
+    </SwipeRow>
   );
 }
 

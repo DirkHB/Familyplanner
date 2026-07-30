@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useTransition } from "react";
 import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
@@ -8,6 +9,7 @@ import { TabBar } from "@/components/app/TabBar";
 import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
 import type { RequestVM } from "@/lib/requests/view-model";
+import { takeCareAction, requestCareAction } from "@/app/termin/[uid]/actions";
 
 export type TodayFocus = {
   nextTitle: string | null;
@@ -51,15 +53,6 @@ export function WeekView({
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
-            </Link>
-            <Link
-              href="/planung"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
-              aria-label="Wochenplanung"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 3l2.09 4.26L19 8l-3.5 3.4.8 4.8L12 14l-4.3 2.2.8-4.8L5 8l4.91-.74L12 3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
               </svg>
             </Link>
             <Link
@@ -164,7 +157,11 @@ function EventRow({ ev, index }: { ev: EventVM; index: number }) {
             <span className="truncate text-lg font-semibold">{ev.title}</span>
             {ev.care && (
               <span className="ml-auto flex shrink-0 items-center gap-1">
-                <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />
+                {ev.care.status === "offen" && ev.occurrenceISO ? (
+                  <CareQuickAction uid={ev.uid} occurrenceISO={ev.occurrenceISO} title={ev.title} />
+                ) : (
+                  <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />
+                )}
                 {ev.care.person && <Avatar person={ev.care.person} size={20} />}
               </span>
             )}
@@ -208,5 +205,55 @@ function EmptyState() {
         Kalender verbinden
       </Link>
     </div>
+  );
+}
+
+
+/** Betreuung direkt aus der Liste klären — ohne Umweg über das Termin-Detail. */
+function CareQuickAction({
+  uid,
+  occurrenceISO,
+  title,
+}: {
+  uid: string;
+  occurrenceISO: string;
+  title: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (done) return <span className="text-xs font-medium text-accent">{done}</span>;
+
+  return (
+    <span className="relative">
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}
+        aria-label="Betreuung klären"
+      >
+        <BabyIcon tone="offen" />
+      </button>
+      {open && (
+        <span
+          className="absolute right-0 top-8 z-20 flex w-44 flex-col overflow-hidden rounded-card bg-surface shadow-hero"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        >
+          <button
+            disabled={pending}
+            onClick={() => start(async () => { await takeCareAction(uid, occurrenceISO); setDone("Du machst es ✓"); })}
+            className="px-4 py-2.5 text-left text-sm font-medium text-ink"
+          >
+            Ich mache es
+          </button>
+          <button
+            disabled={pending}
+            onClick={() => start(async () => { await requestCareAction(uid, occurrenceISO, title); setDone("Gefragt ✓"); })}
+            className="border-t border-surface-muted/60 px-4 py-2.5 text-left text-sm text-ink"
+          >
+            Den anderen fragen
+          </button>
+        </span>
+      )}
+    </span>
   );
 }

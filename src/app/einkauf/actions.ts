@@ -12,10 +12,10 @@ async function person() {
   return personForEmail(session.user.email);
 }
 
-export async function addItemAction(text: string) {
+export async function addItemAction(text: string, store?: string) {
   const p = await person();
   if (!p || !text.trim()) return { ok: false };
-  await addItem(text, p);
+  await addItem(text, p, store ? normalizeStore(store) : undefined);
   revalidatePath("/einkauf");
   return { ok: true };
 }

@@ -1,16 +1,18 @@
-import { runWeeklySummaryPush } from "@/lib/ai/weekly-plan-runner";
+import { runBriefing } from "@/lib/overview/briefing-runner";
 
 export const dynamic = "force-dynamic";
 
-/** Sonntags-Wochenblick — vom Worker-Cron (So 19:00) per Shared-Secret aufgerufen. */
+/** Briefings — vom Worker: täglich 7:00 (morgen), sonntags 12:00 (woche). */
 export async function POST(req: Request) {
   const secret = req.headers.get("x-worker-secret");
   if (!process.env.WORKER_SECRET || secret !== process.env.WORKER_SECRET) {
     return new Response("Unauthorized", { status: 401 });
   }
+  const url = new URL(req.url);
+  const kind = url.searchParams.get("kind") === "woche" ? "woche" : "morgen";
   try {
-    const summary = await runWeeklySummaryPush();
-    return Response.json({ ok: true, ...summary });
+    const res = await runBriefing(kind);
+    return Response.json({ ok: true, kind, ...res });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return Response.json({ ok: false, message }, { status: 500 });

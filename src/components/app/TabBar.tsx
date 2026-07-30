@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/woche", label: "Woche", icon: CalendarIcon },
+  { href: "/ueberblick", label: "Überblick", icon: CompassIcon },
   { href: "/termine", label: "Termine", icon: ClockIcon },
   { href: "/aufgaben", label: "Aufgaben", icon: CheckIcon },
   { href: "/einkauf", label: "Einkauf", icon: BasketIcon },
-  { href: "/ideen", label: "Ideen", icon: HeartIcon },
 ];
 
 export function TabBar() {
@@ -65,21 +65,19 @@ function BasketIcon() {
     </svg>
   );
 }
+function CompassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" {...S}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" {...S}>
       <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
       <path d="M8 12.5l2.8 2.8L16.5 9" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function HeartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" {...S}>
-      <path
-        d="M12 20s-7-4.4-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7 2.7C19 15.6 12 20 12 20Z"
-        strokeLinejoin="round"
-      />
     </svg>
   );
 }

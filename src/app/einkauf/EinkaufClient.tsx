@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
+import { SwipeRow } from "@/components/ui/SwipeRow";
 import { TabBar } from "@/components/app/TabBar";
 import type { Person } from "@/lib/auth/allowlist";
 import type { Store } from "@/lib/shopping/stores";
@@ -41,6 +42,8 @@ export function EinkaufClient({
   suggestions?: string[];
 }) {
   const [usedSuggestions, setUsedSuggestions] = useState<string[]>([]);
+  const [addTo, setAddTo] = useState<Store | null>(null);
+  const [storeText, setStoreText] = useState("");
   const router = useRouter();
   const [, start] = useTransition();
   const [override, setOverride] = useState<Record<string, boolean>>({});
@@ -116,12 +119,12 @@ export function EinkaufClient({
       catch { enqueue(localQueueStore, op); setQueued((n) => n + 1); }
     });
   }
-  function addText(t: string) {
+  function addText(t: string, store?: Store) {
     if (!t) return;
     const op: QueuedOp = { kind: "add", text: t, ts: Date.now() };
     start(async () => {
       if (isOffline()) { enqueue(localQueueStore, op); setPendingAdds((p) => [...p, t]); setQueued((n) => n + 1); return; }
-      try { await addItemAction(t); router.refresh(); }
+      try { await addItemAction(t, store); router.refresh(); }
       catch { enqueue(localQueueStore, op); setPendingAdds((p) => [...p, t]); setQueued((n) => n + 1); }
     });
   }
@@ -211,7 +214,41 @@ export function EinkaufClient({
                   : ""
               }`}
             >
-              <p className="eyebrow mb-1 px-1 text-accent">{s.label}</p>
+              <div className="mb-1 flex items-center justify-between px-1">
+                <p className="eyebrow text-accent">{s.label}</p>
+                <button
+                  onClick={() => { setAddTo(addTo === s.store ? null : s.store); setStoreText(""); }}
+                  aria-label={`Zu ${s.label} hinzufügen`}
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-muted text-ink-muted"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+              {addTo === s.store && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const t = storeText.trim();
+                    setStoreText("");
+                    setAddTo(null);
+                    addText(t, s.store);
+                  }}
+                  className="mb-2 flex gap-2 px-1"
+                >
+                  <input
+                    autoFocus
+                    value={storeText}
+                    onChange={(e) => setStoreText(e.target.value)}
+                    placeholder={`Was fehlt bei ${s.label}?`}
+                    className="min-w-0 flex-1 rounded-pill border border-surface-muted bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                  <button type="submit" className="rounded-pill bg-accent px-3 py-2 text-sm font-medium text-surface">
+                    Add
+                  </button>
+                </form>
+              )}
               {s.open.length + s.done.length === 0 && pendingAddsFor(s.store, pendingAdds).length === 0 ? (
                 <p className="px-1 py-1.5 text-xs text-ink-muted/60">
                   {drag ? "Hierher ziehen" : "Leer"}
@@ -350,6 +387,7 @@ function Row({
   onDragEnd: () => void;
 }) {
   return (
+    <SwipeRow onSwipeRight={onToggle} onSwipeLeft={onRemove} rightLabel={checked ? "Öffnen" : "Abgehakt"}>
     <div
       className={`flex items-center gap-2.5 border-b border-surface-muted/50 py-1.5 last:border-0 ${
         dragging ? "opacity-40" : ""
@@ -404,5 +442,6 @@ function Row({
         </svg>
       </span>
     </div>
+    </SwipeRow>
   );
 }
