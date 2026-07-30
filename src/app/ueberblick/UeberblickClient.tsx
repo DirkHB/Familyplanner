@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
-import { TabBar } from "@/components/app/TabBar";
+import { AppShell } from "@/components/app/AppShell";
 import type { Overview } from "@/lib/overview/build";
 
 type Tab = "woche" | "offen" | "wer";
@@ -36,8 +36,8 @@ export function UeberblickClient({
   const openTodos = overview.open.filter((o) => o.kind === "todo").length;
 
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <div className="mx-auto max-w-md px-5 pb-28 pt-8">
+    <AppShell>
+      <>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-4xl">Überblick</h1>
@@ -119,9 +119,8 @@ export function UeberblickClient({
             {tab === "wer" && <WhoAnswer overview={overview} />}
           </motion.div>
         </AnimatePresence>
-      </div>
-      <TabBar />
-    </div>
+      </>
+    </AppShell>
   );
 }
 

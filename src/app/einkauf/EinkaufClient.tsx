@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
-import { TabBar } from "@/components/app/TabBar";
+import { AppShell } from "@/components/app/AppShell";
 import type { Person } from "@/lib/auth/allowlist";
 import type { Store } from "@/lib/shopping/stores";
 import {
@@ -182,9 +182,48 @@ export function EinkaufClient({
     setHoverStore(null);
   }
 
+  const addBar = (
+    <form
+      onSubmit={add}
+      className="relative z-30 mx-auto w-full max-w-md px-5 pb-3"
+    >
+      {suggestions.filter((x) => !usedSuggestions.includes(x)).length > 0 && (
+        <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-0.5">
+          {suggestions.filter((x) => !usedSuggestions.includes(x)).map((x) => (
+            <button
+              key={x}
+              type="button"
+              onClick={() => addSuggestion(x)}
+              className="shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm text-ink shadow-card"
+            >
+              + {x}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-hero">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Was fehlt noch?"
+          className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-ink-muted/70"
+        />
+        <button
+          type="submit"
+          aria-label="Hinzufügen"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-surface"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+    </form>
+  );
+
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <div className="mx-auto max-w-md px-5 pb-40 pt-8">
+    <AppShell bottomBar={addBar} floating={drag ? <DragGhost drag={drag} /> : null}>
+      <>
         <h1 className="font-display text-4xl">Einkaufsliste</h1>
         <p className="mt-2 flex items-center gap-2 text-ink-muted">
           <span className="flex -space-x-1.5">
@@ -308,57 +347,19 @@ export function EinkaufClient({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </>
+    </AppShell>
+  );
+}
 
-      {/* Drag-Geist unterm Finger */}
-      {drag && (
-        <div
-          className="pointer-events-none fixed z-50 rounded-pill bg-ink px-3 py-1.5 text-sm text-surface shadow-hero"
-          style={{ left: drag.x, top: drag.y, transform: "translate(-50%, -130%)" }}
-        >
-          {drag.text}
-        </div>
-      )}
-
-      <form
-        onSubmit={add}
-        className="fixed inset-x-0 z-30 mx-auto max-w-md px-5"
-        style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
-      >
-        {suggestions.filter((s) => !usedSuggestions.includes(s)).length > 0 && (
-          <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-0.5">
-            {suggestions.filter((s) => !usedSuggestions.includes(s)).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => addSuggestion(s)}
-                className="shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm text-ink shadow-card"
-              >
-                + {s}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-hero">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Was fehlt noch?"
-            className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-ink-muted/70"
-          />
-          <button
-            type="submit"
-            aria-label="Hinzufügen"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-surface"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-      </form>
-
-      <TabBar />
+/** Zieh-Vorschau unterm Finger — liegt in der App-Huelle, nicht im Scrollbereich. */
+function DragGhost({ drag }: { drag: Drag }) {
+  return (
+    <div
+      className="pointer-events-none fixed z-50 rounded-pill bg-ink px-3 py-1.5 text-sm text-surface shadow-hero"
+      style={{ left: drag.x, top: drag.y, transform: "translate(-50%, -130%)" }}
+    >
+      {drag.text}
     </div>
   );
 }

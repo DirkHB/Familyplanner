@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { motion } from "motion/react";
-import { TabBar } from "@/components/app/TabBar";
+import { AppShell } from "@/components/app/AppShell";
 import type { IdeaVM } from "@/lib/ideas/repository";
 import { createIdeaAction, voteAction, deleteIdeaAction, convertIdeaAction, updateIdeaAction } from "./actions";
 
@@ -16,8 +16,8 @@ const TYPE_LABEL: Record<string, string> = {
 export function IdeenClient({ ideas }: { ideas: IdeaVM[] }) {
   const [showForm, setShowForm] = useState(false);
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <div className="mx-auto max-w-md px-5 pb-28 pt-8">
+    <AppShell>
+      <>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-4xl">Ideen &amp; Urlaub</h1>
@@ -48,9 +48,8 @@ export function IdeenClient({ ideas }: { ideas: IdeaVM[] }) {
             ))}
           </div>
         )}
-      </div>
-      <TabBar />
-    </div>
+      </>
+    </AppShell>
   );
 }
 

@@ -24,14 +24,21 @@ export function MonthShell({
   const touch = useRef<{ x: number; y: number } | null>(null);
 
   // Einmalig zum heutigen Tag scrollen (unter dem sticky Kopf positioniert).
+  // Gescrollt wird der Container der App-Hülle, nicht das Fenster.
   useEffect(() => {
     if (!todayId) return;
     const el = document.getElementById(todayId);
     const shell = shellRef.current;
     if (!el) return;
+    const scroller = shell?.closest(".overflow-y-auto") as HTMLElement | null;
     const offset = (shell?.offsetHeight ?? 0) + 12;
-    const y = el.getBoundingClientRect().top + window.scrollY - offset;
-    if (y > 10) window.scrollTo({ top: y });
+    if (scroller) {
+      const y = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - offset;
+      if (y > 10) scroller.scrollTo({ top: y });
+    } else {
+      const y = el.getBoundingClientRect().top + window.scrollY - offset;
+      if (y > 10) window.scrollTo({ top: y });
+    }
   }, [todayId]);
 
   function onTouchStart(e: React.TouchEvent) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TabBar } from "@/components/app/TabBar";
+import { AppShell } from "@/components/app/AppShell";
 import { BabyIcon } from "@/components/ui/BabyIcon";
 import { buildWeek, type DayVM, type EventVM } from "@/lib/calendar/view-model";
 import { getRangeData } from "@/lib/calendar/range-data";
@@ -35,8 +35,8 @@ export default async function TerminePage({
   const weeks = buildMonthMatrix(monthKey);
 
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <div className="mx-auto max-w-md px-5 pb-28 pt-8">
+    <AppShell>
+      <>
         <MonthShell
           prevHref={`/termine?m=${shiftMonth(monthKey, -1)}`}
           nextHref={`/termine?m=${shiftMonth(monthKey, 1)}`}
@@ -128,9 +128,8 @@ export default async function TerminePage({
             ))}
           </div>
         )}
-      </div>
-      <TabBar />
-    </div>
+      </>
+    </AppShell>
   );
 }
 

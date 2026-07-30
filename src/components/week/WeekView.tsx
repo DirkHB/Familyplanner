@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
-import { TabBar } from "@/components/app/TabBar";
+import { AppShell } from "@/components/app/AppShell";
 import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
 import type { RequestVM } from "@/lib/requests/view-model";
@@ -36,8 +36,8 @@ export function WeekView({
 }) {
   const empty = days.length === 0;
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <div className="mx-auto max-w-md px-5 pb-28 pt-8">
+    <AppShell floating={<FabErfassen />}>
+      <>
         <div className="flex items-start justify-between">
           <div>
             <p className="eyebrow text-ink-muted">{dateLabel}</p>
@@ -79,25 +79,27 @@ export function WeekView({
             ))}
           </div>
         )}
-      </div>
+      </>
+    </AppShell>
+  );
+}
 
-      {/* Schwebender Erfassen-Knopf — Daumenzone unten rechts, ueber der Tab-Bar */}
-      <Link
-        href="/erfassen"
-        aria-label="Schnell erfassen"
-        className="fixed right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-surface shadow-hero active:scale-95"
-        style={{
-          bottom: "calc(5.25rem + env(safe-area-inset-bottom))",
-          transition: "transform 120ms cubic-bezier(0.16,1,0.3,1)",
-        }}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
-      </Link>
-
-      <TabBar />
-    </div>
+/** Schwebender Erfassen-Knopf — liegt in der App-Huelle, scrollt nie mit. */
+function FabErfassen() {
+  return (
+    <Link
+      href="/erfassen"
+      aria-label="Schnell erfassen"
+      className="absolute right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-surface shadow-hero active:scale-95"
+      style={{
+        bottom: "calc(5.25rem + env(safe-area-inset-bottom))",
+        transition: "transform 120ms cubic-bezier(0.16,1,0.3,1)",
+      }}
+    >
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    </Link>
   );
 }
 

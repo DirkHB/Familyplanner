@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
-import { TabBar } from "@/components/app/TabBar";
+import { AppShell } from "@/components/app/AppShell";
 import type { Person } from "@/lib/auth/allowlist";
 import type { TodoGroup, TodoVM } from "@/lib/todos/group";
 import Link from "next/link";
@@ -45,8 +45,8 @@ export function AufgabenClient({
     .filter((g) => g.todos.length > 0);
 
   return (
-    <div className="min-h-dvh bg-bg text-ink">
-      <div className="mx-auto max-w-md px-5 pb-28 pt-8">
+    <AppShell>
+      <>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-4xl">Aufgaben</h1>
@@ -118,9 +118,8 @@ export function AufgabenClient({
             </div>
           </section>
         )}
-      </div>
-      <TabBar />
-    </div>
+      </>
+    </AppShell>
   );
 }
 
