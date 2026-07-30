@@ -68,6 +68,21 @@ cron.schedule(
   { timezone: TZ },
 );
 
+// Mini-HTTP-Server nur für den Sliplane-Healthcheck: Sliplane verlangt von jedem
+// Service eine HTTP-Antwort auf "/", sonst landet er in einer Redeploy-Schleife
+// (gelernt am Postgres-Container). Antwortet 200 mit Status der Jobs.
+import http from "node:http";
+
+const healthPort = Number(process.env.PORT || 3000);
+http
+  .createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, service: "worker", tz: TZ }));
+  })
+  .listen(healthPort, "0.0.0.0", () => {
+    log("health", `Healthcheck-Server auf Port ${healthPort}`);
+  });
+
 // Sauberes Herunterfahren.
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => {
