@@ -8,6 +8,13 @@ committen/pushen, Secrets für morgen sammeln (→ `SECRETS_NEEDED.md`).
 > `next build` grün, Prisma-Migration deckt alle 17 Tabellen. Alles committet & gepusht.
 > Zum Live-Schalten fehlen nur noch die Secrets → **`SECRETS_NEEDED.md`** (+ `DEPLOY.md`).
 
+> **🚀 LIVE seit 30.07.** — planyourweek.app läuft in Produktion: Login per Magic-Link ✓,
+> DB auf **Neon** (Frankfurt, Free Tier — die Sliplane-Container-Postgres scheiterte an
+> Sliplanes Pflicht-HTTP-Healthcheck), Migration angewandt ✓, Worker (Sync/Nudge) ✓,
+> **iCloud verbunden, echte Termine syncen** ✓. Deploy-Learnings sind in `DEPLOY.md`
+> eingearbeitet (Dockerfile-Path setzen, CMD-Override leer lassen, start.sh macht
+> Migration+Start, Worker hat Healthcheck-Server).
+
 **Grundregeln, die ich einhalte:** immer „Constanze und Dirk"; keine Secrets im Code; Sync/
 Wiederholungen/Erinnerungen bekommen Tests; jeder Commit lässt `next build` grün; Design nach
 `design/DESIGN.md`.
