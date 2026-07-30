@@ -4,6 +4,7 @@ import { buildWeek, type DayVM, type EventVM } from "@/lib/calendar/view-model";
 import { getOccurrencesForRange, getMetaByUid } from "@/lib/calendar/repository";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import { buildMonthMatrix, monthTitle, shiftMonth, isMonthKey } from "@/lib/calendar/month";
+import { shortLabel } from "@/lib/calendar/keyword";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function TerminePage({
   const uids = [...new Set(occurrences.map((o) => o.uid))];
   const meta = await getMetaByUid(uids);
   const days = buildWeek(occurrences, meta, now).filter((d) => d.key.startsWith(monthKey));
-  const countByDay = new Map(days.map((d) => [d.key, d.events.length]));
+  const eventsByDay = new Map(days.map((d) => [d.key, d.events]));
 
   const weeks = buildMonthMatrix(monthKey);
 
@@ -44,42 +45,59 @@ export default async function TerminePage({
           </div>
         </div>
 
-        {/* Monatsraster */}
-        <div className="mt-5 rounded-card bg-surface p-4 shadow-card">
-          <div className="grid grid-cols-7 gap-1 text-center">
+        {/* Monatsraster: ganzer Monat in Kacheln, Termine als Mini-Stichworte */}
+        <div className="mt-4 overflow-hidden rounded-card bg-surface shadow-card">
+          <div className="grid grid-cols-7 border-b border-surface-muted/60 text-center">
             {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => (
-              <span key={w} className="pb-1 text-xs text-ink-muted">{w}</span>
+              <span key={w} className="py-1.5 text-[10px] font-medium text-ink-muted">{w}</span>
             ))}
-            {weeks.flat().map((cell) => {
-              const count = cell.inMonth ? (countByDay.get(cell.key) ?? 0) : 0;
-              const isToday = cell.key === todayKey;
-              const inner = (
-                <span
-                  className={`relative flex h-9 w-9 items-center justify-center rounded-full text-sm tnum ${
-                    isToday
-                      ? "bg-accent font-semibold text-surface"
-                      : cell.inMonth
-                        ? count > 0
-                          ? "font-medium text-ink"
-                          : "text-ink-muted"
-                        : "text-ink-muted/30"
-                  }`}
-                >
-                  {cell.day}
-                  {count > 0 && !isToday && (
-                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-accent" />
-                  )}
-                </span>
-              );
-              return count > 0 ? (
-                <a key={cell.key} href={`#${cell.key}`} className="flex justify-center">
-                  {inner}
-                </a>
-              ) : (
-                <span key={cell.key} className="flex justify-center">{inner}</span>
-              );
-            })}
           </div>
+          {weeks.map((week, wi) => (
+            <div key={wi} className="grid grid-cols-7 border-b border-surface-muted/40 last:border-0">
+              {week.map((cell) => {
+                const events = cell.inMonth ? (eventsByDay.get(cell.key) ?? []) : [];
+                const isToday = cell.key === todayKey;
+                const shown = events.slice(0, 3);
+                const more = events.length - shown.length;
+                const content = (
+                  <div
+                    className={`flex min-h-[68px] flex-col gap-0.5 px-0.5 pb-1 pt-0.5 ${
+                      cell.inMonth ? "" : "opacity-30"
+                    } ${isToday ? "bg-accent-light/60" : ""}`}
+                  >
+                    <span
+                      className={`tnum self-end px-0.5 text-[10px] leading-tight ${
+                        isToday
+                          ? "flex h-4 w-4 items-center justify-center self-end rounded-full bg-accent font-semibold text-surface"
+                          : "text-ink-muted"
+                      }`}
+                    >
+                      {cell.day}
+                    </span>
+                    {shown.map((ev) => (
+                      <span
+                        key={ev.key}
+                        className="block truncate rounded-[3px] pl-0.5 text-left text-[8px] font-medium leading-[1.35] text-ink"
+                        style={{ borderLeft: `2px solid ${ev.dotColor}`, background: "var(--color-bg)" }}
+                      >
+                        {shortLabel(ev.title)}
+                      </span>
+                    ))}
+                    {more > 0 && (
+                      <span className="pl-1 text-left text-[8px] leading-none text-ink-muted">+{more}</span>
+                    )}
+                  </div>
+                );
+                return events.length > 0 ? (
+                  <a key={cell.key} href={`#${cell.key}`} className="min-w-0 border-r border-surface-muted/40 last:border-r-0">
+                    {content}
+                  </a>
+                ) : (
+                  <div key={cell.key} className="min-w-0 border-r border-surface-muted/40 last:border-r-0">{content}</div>
+                );
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Tagesliste des Monats */}
