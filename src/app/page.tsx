@@ -1,7 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { InstallHint } from "@/components/pwa/InstallHint";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+/** Eingang: eingeloggt → direkt in die Woche, sonst klarer Weg zur Anmeldung. */
+export default async function Home() {
+  const session = await auth();
+  if (session?.user) redirect("/woche");
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6">
       <InstallHint />
@@ -12,31 +20,19 @@ export default function Home() {
         Für Constanze &amp; Dirk.
       </h1>
       <p className="mt-4 text-ink-muted">
-        Ein Blick voraus: Wochenansicht und Termin-Detail als Vorschau mit Beispieldaten.
-        Der echte Kalender kommt, sobald wir ihn verbinden.
+        Kalender, Baby-Betreuung, Einkauf und Ideen — an einem Ort, für euch zwei.
       </p>
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-8">
         <Link
-          href="/vorschau/woche"
-          className="inline-flex w-fit rounded-pill bg-accent px-6 py-3.5 font-medium text-surface transition-transform duration-150 ease-out active:scale-[0.97]"
+          href="/anmelden"
+          className="inline-flex w-fit rounded-pill bg-accent px-8 py-4 font-medium text-surface transition-transform duration-150 ease-out active:scale-[0.97]"
         >
-          Wochenansicht ansehen
+          Anmelden
         </Link>
-        <div className="flex gap-3">
-          <Link
-            href="/vorschau/termin"
-            className="inline-flex w-fit rounded-pill bg-ink px-5 py-3 font-medium text-surface transition-transform duration-150 ease-out active:scale-[0.97]"
-          >
-            Termin-Detail
-          </Link>
-          <Link
-            href="/style"
-            className="inline-flex w-fit rounded-pill border border-ink/15 px-5 py-3 font-medium text-ink transition-transform duration-150 ease-out active:scale-[0.97]"
-          >
-            Design-System
-          </Link>
-        </div>
       </div>
+      <p className="mt-6 text-sm text-ink-muted/70">
+        Nur für Constanze und Dirk — Anmeldung per E-Mail-Link, ohne Passwort.
+      </p>
     </main>
   );
 }
