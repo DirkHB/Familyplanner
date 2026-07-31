@@ -36,6 +36,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Wie bei nativen Apps: kein Hineinzoomen. Sonst wird der ganze Bildschirm
+  // nach einem versehentlichen Doppeltipp seitlich verschiebbar.
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

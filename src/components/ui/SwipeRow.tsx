@@ -78,6 +78,9 @@ export function SwipeRow({
           transform: `translateX(${dx}px)`,
           transition: dx === 0 ? "transform 180ms cubic-bezier(0.16,1,0.3,1)" : "none",
           opacity: active ? 0.85 : 1,
+          // Senkrechtes Scrollen macht der Browser, waagerecht machen wir.
+          // Ohne das schiebt er beim Wischen die Seite nebenher mit.
+          touchAction: "pan-y",
         }}
       >
         {children}

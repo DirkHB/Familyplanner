@@ -62,6 +62,8 @@ export function MonthShell({
       ref={shellRef}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      // Waagerecht blättern wir selbst — der Browser soll nicht mitschieben.
+      style={{ touchAction: "pan-y" }}
       className="sticky top-0 z-20 -mx-5 bg-bg px-5 pb-3 pt-2"
     >
       {children}

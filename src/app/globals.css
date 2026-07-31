@@ -59,6 +59,16 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Nichts darf sich quer verschieben. In der installierten PWA liess sich der
+     Bildschirm sonst seitlich ziehen und wackelte — mal durch das Gummiband
+     von iOS, mal weil eine Wisch-Geste nebenbei die Seite mitgeschoben hat. */
+  html,
+  body {
+    overscroll-behavior: none;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
   body {
     background-color: var(--color-bg);
     color: var(--color-ink);

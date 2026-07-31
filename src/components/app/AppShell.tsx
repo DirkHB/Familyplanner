@@ -82,7 +82,14 @@ export function AppShell({
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg text-ink">
-      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+      {/* touch-action: pan-y — der Browser darf nur senkrecht schieben. Waagerechte
+          Gesten gehören den Wisch-Zeilen und dem Monatsblättern; ohne diese Ansage
+          hat der Browser nebenher die ganze Seite mitgezogen. */}
+      <div
+        ref={scrollerRef}
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+        style={{ touchAction: "pan-y" }}
+      >
         <div className={`mx-auto max-w-md px-5 pb-24 pt-8 ${contentClassName}`}>{children}</div>
       </div>
 
