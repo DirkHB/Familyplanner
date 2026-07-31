@@ -16,6 +16,20 @@ import {
   togglePrepItemAction,
 } from "./actions";
 
+export type CareDay = {
+  key: string;
+  label: string;
+  past: boolean;
+  slots: {
+    id: string;
+    title: string;
+    /** „09:00–10:30" — oder null, wenn der Termin keine Uhrzeit hat. */
+    timeLabel: string | null;
+    sort: number;
+    person: Person | null;
+  }[];
+};
+
 export type EventTasks = {
   eventUid: string;
   title: string;
@@ -30,10 +44,12 @@ export function AufgabenClient({
   groups,
   me,
   eventTasks = [],
+  careDays = [],
 }: {
   groups: TodoGroup[];
   me: Person;
   eventTasks?: EventTasks[];
+  careDays?: CareDay[];
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
   const [showForm, setShowForm] = useState(false);
@@ -87,6 +103,27 @@ export function AufgabenClient({
 
         {showForm && <CreateForm me={me} onDone={() => setShowForm(false)} />}
 
+        {careDays.length > 0 && filter === "alle" && (
+          <section className="mt-6">
+            <h2 className="eyebrow mb-2 text-ink-muted">Wer ist bei Nicolas?</h2>
+            <div className="flex flex-col gap-4">
+              {careDays.map((d) => (
+                <div key={d.key}>
+                  <p className={`mb-1.5 text-xs font-medium ${d.past ? "text-signal" : "text-ink-muted"}`}>
+                    {d.label}
+                    {d.past ? " · vorbei" : ""}
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {d.slots.map((s) => (
+                      <CareSlotRow key={s.id} slot={s} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {filtered.length === 0 && !showForm ? (
           <div className="mt-10 rounded-card bg-surface p-6 text-center shadow-card">
             <p className="font-display text-xl">Nichts offen</p>
@@ -125,6 +162,38 @@ export function AufgabenClient({
 }
 
 const CYCLE: (Person | null)[] = ["constanze", "dirk", null];
+
+/**
+ * Eine übernommene Betreuung: Zeitraum, Anlass, Person — auf einen Blick.
+ * Rechts wischen = erledigt, links = entfernen (wie überall in der App).
+ */
+function CareSlotRow({ slot }: { slot: CareDay["slots"][number] }) {
+  const [, start] = useTransition();
+  const [gone, setGone] = useState(false);
+  if (gone) return null;
+  return (
+    <SwipeRow
+      onSwipeRight={() => start(async () => { await toggleTodoAction(slot.id); setGone(true); })}
+      onSwipeLeft={() => start(async () => { await deleteTodoAction(slot.id); setGone(true); })}
+      rightLabel="Erledigt"
+    >
+      <div className="rounded-card bg-surface px-4 py-3 shadow-card">
+        <div className="flex items-center justify-between gap-3">
+          <span className="tnum font-medium">{slot.timeLabel ?? "ganztägig"}</span>
+          {slot.person ? (
+            <span className="flex shrink-0 items-center gap-1.5">
+              <Avatar person={slot.person} size={24} />
+              <span className="text-sm font-medium">{slot.person === "constanze" ? "Constanze" : "Dirk"}</span>
+            </span>
+          ) : (
+            <span className="text-sm text-ink-muted/60">offen</span>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-sm text-ink-muted">{slot.title}</p>
+      </div>
+    </SwipeRow>
+  );
+}
 
 function TodoRow({ todo }: { todo: TodoVM }) {
   const [pending, start] = useTransition();
