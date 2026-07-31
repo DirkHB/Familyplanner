@@ -75,3 +75,58 @@ export async function togglePrepItemAction(eventUid: string, index: number) {
   revalidatePath("/aufgaben");
   revalidatePath(`/termin/${encodeURIComponent(eventUid)}`);
 }
+
+/**
+ * Fälligkeit ändern. Rutscht sie um mehr als einen Tag nach hinten, erfährt
+ * es der andere per Push — aber nur, wenn die Aufgabe ihn betrifft (er ist
+ * zuständig oder hat sie angelegt). Sonst wäre es Rauschen.
+ */
+export async function setTodoDueAction(id: string, dueRaw: string | null) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) return { ok: false };
+
+  const { prisma } = await import("@/lib/prisma");
+  const todo = await prisma.todo.findUnique({ where: { id } });
+  if (!todo) return { ok: false };
+
+  const neu = dueRaw ? new Date(`${dueRaw}T09:00:00+02:00`) : null;
+  const spaeter =
+    !!todo.dueDate && !!neu && neu.getTime() - todo.dueDate.getTime() > 86_400_000;
+
+  await prisma.todo.update({
+    where: { id },
+    data: {
+      dueDate: neu,
+      // Auch hier zählt das Schieben mit — sichtbar wird es ab dem 3. Mal.
+      ...(spaeter ? { shiftCount: { increment: 1 } } : {}),
+      // Erinnerung wandert mit der Fälligkeit, falls eine gesetzt war.
+      ...(todo.remindAt && neu ? { remindAt: neu, remindedAt: null } : {}),
+    },
+  });
+
+  if (spaeter) {
+    const me = personForEmail(session.user.email);
+    const { resolvePartner } = await import("@/lib/requests/repository");
+    const partner = await resolvePartner(session.user.id);
+    const partnerPerson = partner ? personForEmail(partner.email) : null;
+    const betroffen =
+      partnerPerson !== null && (todo.assignee === partnerPerson || todo.createdBy === partnerPerson);
+    if (partner && betroffen) {
+      const { notifyUserId } = await import("@/lib/push/notify");
+      const wann = new Intl.DateTimeFormat("de-DE", {
+        weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Berlin",
+      }).format(neu!);
+      const wer = me === "constanze" ? "Constanze" : "Dirk";
+      await notifyUserId(partner.id, {
+        title: `${wer} hat „${todo.title}" verschoben`,
+        body: `Jetzt bis ${wann}.`,
+        url: "/aufgaben",
+        tag: `todo-shift-${id}`,
+      });
+    }
+  }
+
+  revalidatePath("/aufgaben");
+  revalidatePath("/woche");
+  return { ok: true };
+}

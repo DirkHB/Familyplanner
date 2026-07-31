@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const TABS = [
   { href: "/woche", label: "Woche", icon: CalendarIcon },
@@ -13,6 +14,17 @@ const TABS = [
 
 export function TabBar() {
   const path = usePathname();
+  // Rote Zahl am Aufgaben-Tab: heute fällig oder überfällig. Wird bei jedem
+  // Seitenwechsel aufgefrischt — eine erledigte Aufgabe soll sofort verschwinden.
+  const [faellig, setFaellig] = useState(0);
+  useEffect(() => {
+    let weg = false;
+    fetch("/api/heute")
+      .then((r) => (r.ok ? r.json() : { aufgaben: 0 }))
+      .then((d) => { if (!weg) setFaellig(Number(d.aufgaben) || 0); })
+      .catch(() => {});
+    return () => { weg = true; };
+  }, [path]);
   return (
     <nav className="shrink-0 border-t border-surface-muted bg-bg">
       <div
@@ -25,10 +37,15 @@ export function TabBar() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-1 text-xs ${
+              className={`relative flex flex-col items-center gap-1 text-xs ${
                 active ? "text-accent" : "text-ink-muted"
               }`}
             >
+              {href === "/aufgaben" && faellig > 0 && (
+                <span className="absolute -top-1 left-1/2 ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-signal px-1 text-[10px] font-semibold leading-none text-surface">
+                  {faellig > 9 ? "9+" : faellig}
+                </span>
+              )}
               <Icon />
               {label}
             </Link>

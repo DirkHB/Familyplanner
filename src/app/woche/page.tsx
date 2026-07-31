@@ -6,6 +6,8 @@ import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatDateHeader, greetingFor, formatTime, dayKey } from "@/lib/calendar/format";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
+import { getKlaerungStack } from "@/lib/klaerung/repository";
+import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
 
 export const dynamic = "force-dynamic";
@@ -50,14 +52,20 @@ export default async function WochePage() {
     todosDue,
   };
 
+  // Klärungs-Stapel: nur hier auf der Woche, nie über einem Direkteinstieg.
+  const stack = session?.user?.id ? await getKlaerungStack(session.user.id, now) : [];
+
   return (
-    <WeekView
-      greetingName={name}
-      greeting={greetingFor(now)}
-      dateLabel={formatDateHeader(now)}
-      days={days}
-      requests={requests}
-      focus={focus}
-    />
+    <>
+      <WeekView
+        greetingName={name}
+        greeting={greetingFor(now)}
+        dateLabel={formatDateHeader(now)}
+        days={days}
+        requests={requests}
+        focus={focus}
+      />
+      <KlaerungGate cards={stack} todayKey={todayKey} />
+    </>
   );
 }

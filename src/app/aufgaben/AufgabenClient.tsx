@@ -12,6 +12,7 @@ import {
   toggleTodoAction,
   deleteTodoAction,
   setTodoAssigneeAction,
+  setTodoDueAction,
   togglePrepItemAction,
 } from "./actions";
 
@@ -129,6 +130,8 @@ function TodoRow({ todo }: { todo: TodoVM }) {
   const [pending, start] = useTransition();
   const [gone, setGone] = useState(false);
   const [assignee, setAssignee] = useState<Person | null>(todo.assignee);
+  const [editDue, setEditDue] = useState(false);
+  const [due, setDue] = useState(todo.dueKey ?? "");
   if (gone) return null;
 
   function cycleAssignee() {
@@ -158,7 +161,7 @@ function TodoRow({ todo }: { todo: TodoVM }) {
           </svg>
         )}
       </button>
-      <div className="min-w-0 flex-1">
+      <button onClick={() => setEditDue((e) => !e)} className="min-w-0 flex-1 text-left">
         <p className={`truncate font-medium ${todo.done ? "text-ink-muted line-through" : ""}`}>{todo.title}</p>
         {(todo.dueLabel || todo.notes) && (
           <p className="truncate text-xs text-ink-muted">
@@ -170,7 +173,7 @@ function TodoRow({ todo }: { todo: TodoVM }) {
             {todo.hasReminder ? " · 🔔" : ""}
           </p>
         )}
-      </div>
+      </button>
       <button onClick={cycleAssignee} aria-label="Zuständigkeit wechseln" className="shrink-0">
         {assignee ? (
           <Avatar person={assignee} size={24} />
@@ -188,6 +191,31 @@ function TodoRow({ todo }: { todo: TodoVM }) {
         ✕
       </button>
     </div>
+    {editDue && (
+      <div className="mt-1 flex items-center gap-2 rounded-card bg-surface px-4 py-3 shadow-card">
+        <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-ink-muted">
+          Bis wann?
+          <input
+            type="date"
+            value={due}
+            onChange={(e) => setDue(e.target.value)}
+            className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-bg px-3 py-2 text-base text-ink outline-none focus:border-accent"
+          />
+        </label>
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              await setTodoDueAction(todo.id, due || null);
+              setEditDue(false);
+            })
+          }
+          className="shrink-0 rounded-pill bg-accent px-4 py-2 text-sm font-medium text-surface disabled:opacity-60"
+        >
+          Sichern
+        </button>
+      </div>
+    )}
     </SwipeRow>
   );
 }

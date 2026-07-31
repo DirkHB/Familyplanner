@@ -318,6 +318,7 @@ model Todo {
   createdBy   String? // Person, die die Aufgabe angelegt hat
   status      String    @default("offen") // offen | erledigt
   eventUid    String? // optionaler Terminbezug
+  shiftCount  Int       @default(0) @map("shift_count") // wie oft "auf morgen" geschoben
   remindAt    DateTime? // wann erinnert werden soll
   remindedAt  DateTime? // wann tatsächlich erinnert wurde (einmalig)
   completedAt DateTime?
