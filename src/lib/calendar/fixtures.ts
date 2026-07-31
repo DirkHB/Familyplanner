@@ -61,3 +61,18 @@ DTEND:20260714T203000Z
 SUMMARY:Tennis (verschoben)
 END:VEVENT
 END:VCALENDAR`;
+
+/** Geteilter Kalender: iCloud legt hier Ersteller und Teilnehmer ab. */
+export const ICS_SHARED_WITH_ORGANIZER = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:shared-1@planyourweek.app
+DTSTAMP:20260701T120000Z
+DTSTART:20260730T120000Z
+DTEND:20260730T130000Z
+SUMMARY:Yoga
+ORGANIZER;CN=Constanze:mailto:Constanzehiller@hotmail.com
+ATTENDEE;CN=Dirk:mailto:dirkbrederecke@gmail.com
+END:VEVENT
+END:VCALENDAR`;

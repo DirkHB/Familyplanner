@@ -13,8 +13,16 @@ export type OverviewEvent = {
   title: string;
   uid: string;
   allDay: boolean;
-  care: "offen" | "da" | null;
+  /**
+   *  "offen"  — jemand wurde gefragt, es fehlt die Antwort
+   *  "da"     — jemand hat die Betreuung übernommen
+   *  "luecke" — noch nie besprochen, fällt aber in Nicolas' Wachzeit
+   *  null     — keine Betreuungsfrage
+   */
+  care: "offen" | "da" | "luecke" | null;
   carePerson: Person | null;
+  /** Für die Schnellaktionen im Überblick (Betreuung übernehmen / abwinken). */
+  occurrenceISO?: string;
 };
 
 export type OverviewTodo = {
@@ -27,6 +35,7 @@ export type OverviewTodo = {
 
 export type OpenItem =
   | { kind: "care"; uid: string; label: string; when: string }
+  | { kind: "luecke"; uid: string; label: string; when: string; occurrenceISO: string | null }
   | { kind: "todo"; id: string; label: string; when: string | null; overdue: boolean };
 
 export type Split = {
@@ -69,11 +78,18 @@ export function buildOverview(input: {
   }
   const days = [...dayMap.values()].sort((a, b) => a.key.localeCompare(b.key));
 
-  // 2. Offen — Betreuungslücken zuerst, dann überfällige, dann restliche Aufgaben.
+  // 2. Offen — erst was schon gefragt wurde, dann die noch gar nicht besprochenen
+  // Termine, dann überfällige und restliche Aufgaben.
   const open: OpenItem[] = [];
+  const wann = (e: OverviewEvent) => `${e.dayLabel}${e.time ? `, ${e.time}` : ""}`;
   for (const e of input.events) {
     if (e.care === "offen") {
-      open.push({ kind: "care", uid: e.uid, label: e.title, when: `${e.dayLabel}${e.time ? `, ${e.time}` : ""}` });
+      open.push({ kind: "care", uid: e.uid, label: e.title, when: wann(e) });
+    }
+  }
+  for (const e of input.events) {
+    if (e.care === "luecke") {
+      open.push({ kind: "luecke", uid: e.uid, label: e.title, when: wann(e), occurrenceISO: e.occurrenceISO ?? null });
     }
   }
   const overdue = input.todos.filter((t) => t.overdue);
@@ -87,7 +103,7 @@ export function buildOverview(input: {
   for (const e of input.events) {
     if (e.care === "da" && e.carePerson === "constanze") cC++;
     else if (e.care === "da" && e.carePerson === "dirk") cD++;
-    else if (e.care === "offen") cO++;
+    else if (e.care === "offen" || e.care === "luecke") cO++;
   }
   let tC = 0, tD = 0, tO = 0;
   for (const t of input.todos) {
@@ -114,7 +130,7 @@ export function briefingText(o: Overview, kind: "morgen" | "woche"): string {
   } else {
     parts.push(o.eventCount ? `${o.eventCount} Termine diese Woche` : "Kaum Termine diese Woche");
   }
-  const careOpen = o.open.filter((x) => x.kind === "care").length;
+  const careOpen = o.open.filter((x) => x.kind === "care" || x.kind === "luecke").length;
   if (careOpen) parts.push(`${careOpen}× Betreuung offen`);
   const todos = o.open.filter((x) => x.kind === "todo").length;
   if (todos) parts.push(`${todos} Aufgabe${todos === 1 ? "" : "n"} offen`);

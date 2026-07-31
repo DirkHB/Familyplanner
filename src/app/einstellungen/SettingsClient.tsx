@@ -22,7 +22,25 @@ type Cal = {
 };
 type Account = { id: string; username: string; calendars: Cal[] } | null;
 
-export function SettingsClient({ account }: { account: Account }) {
+export type Diagnose = {
+  name: string;
+  isSynced: boolean;
+  termine: number;
+  mitOrganizer: number;
+  mitAttendee: number;
+  ersteller: { mail: string; anzahl: number }[];
+  titelMitName: number;
+};
+
+export function SettingsClient({
+  account,
+  diagnose = [],
+  abgewinkt = [],
+}: {
+  account: Account;
+  diagnose?: Diagnose[];
+  abgewinkt?: string[];
+}) {
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-16 pt-6">
@@ -49,8 +67,80 @@ export function SettingsClient({ account }: { account: Account }) {
           <EnableNotifications />
           <TestPush />
         </section>
+
+        {diagnose.length > 0 && <DiagnoseBlock diagnose={diagnose} />}
+        {abgewinkt.length > 0 && <AbgewinktBlock titel={abgewinkt} />}
       </div>
     </div>
+  );
+}
+
+/**
+ * Was steht in unseren Terminen? Grundlage für die Frage, ob wir „wer ist
+ * gebunden?" von Hand pflegen müssen — oder ob iCloud es uns schon verrät.
+ */
+function DiagnoseBlock({ diagnose }: { diagnose: Diagnose[] }) {
+  const [offen, setOffen] = useState(false);
+  const gesamt = diagnose.reduce((n, d) => n + d.termine, 0);
+  const mitErsteller = diagnose.reduce((n, d) => n + d.mitOrganizer, 0);
+  const mitName = diagnose.reduce((n, d) => n + d.titelMitName, 0);
+
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <button onClick={() => setOffen((o) => !o)} className="flex w-full items-center justify-between text-left">
+        <h2 className="font-display text-lg">Was steht in euren Terminen?</h2>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          style={{ transform: offen ? "rotate(90deg)" : "none", transition: "transform 160ms" }}>
+          <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <p className="mt-1 text-sm text-ink-muted">
+        {gesamt} Termine · bei {mitErsteller} steht, wer sie angelegt hat · {mitName} tragen einen Namen im Titel
+      </p>
+
+      {offen && (
+        <div className="mt-4 flex flex-col gap-3">
+          {diagnose.map((d) => (
+            <div key={d.name} className="rounded-card bg-bg p-3">
+              <p className="font-medium">
+                {d.name}
+                {!d.isSynced && <span className="ml-2 text-xs text-ink-muted">(aus)</span>}
+              </p>
+              <p className="mt-0.5 text-sm text-ink-muted">
+                {d.termine} Termine · {d.mitOrganizer} mit Ersteller · {d.mitAttendee} mit Teilnehmern ·{" "}
+                {d.titelMitName} mit Namen im Titel
+              </p>
+              {d.ersteller.length > 0 && (
+                <ul className="mt-1.5 flex flex-col gap-0.5">
+                  {d.ersteller.map((e) => (
+                    <li key={e.mail} className="truncate text-xs text-ink-muted">
+                      {e.mail} — {e.anzahl}×
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+          <p className="text-xs text-ink-muted/80">
+            Steht bei vielen Terminen ein Ersteller, kann die App von allein erkennen, wen ein Termin
+            bindet. Sonst fragt sie einmal je Termin-Art nach.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Termine, für die „nie eine Betreuung nötig" gilt — zum Nachsehen. */
+function AbgewinktBlock({ titel }: { titel: string[] }) {
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <h2 className="font-display text-lg">Ohne Betreuungsfrage</h2>
+      <p className="mt-1 mb-2 text-sm text-ink-muted">
+        Bei diesen Terminen fragt die App nicht mehr, wer bei Nicolas ist.
+      </p>
+      <p className="text-sm text-ink">{titel.join(" · ")}</p>
+    </section>
   );
 }
 

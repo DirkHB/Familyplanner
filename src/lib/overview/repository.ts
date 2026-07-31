@@ -4,6 +4,8 @@ import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey, formatTime, formatWeekday, formatMonthDay } from "@/lib/calendar/format";
 import { buildOverview, type Overview, type OverviewEvent, type OverviewTodo } from "./build";
 import { horizonRange, type Horizon } from "./horizon";
+import { isCareGap } from "@/lib/care/gaps";
+import { getDismissedTitleKeys } from "@/lib/care/rules";
 
 export { horizonRange, defaultHorizon, berlinWeekday, type Horizon } from "./horizon";
 
@@ -18,7 +20,10 @@ const dueFmt = new Intl.DateTimeFormat("de-DE", {
 
 export async function getOverview(kind: Horizon, now: Date = new Date()): Promise<Overview> {
   const { from, to } = horizonRange(kind, now);
-  const { occurrences, careByOcc } = await getRangeData(from, to);
+  const [{ occurrences, careByOcc }, abgewinkt] = await Promise.all([
+    getRangeData(from, to),
+    getDismissedTitleKeys(),
+  ]);
 
   const events: OverviewEvent[] = occurrences
     // Nur was noch kommt; ein gerade laufender Termin bleibt sichtbar.
@@ -27,6 +32,15 @@ export async function getOverview(kind: Horizon, now: Date = new Date()): Promis
     .map((o) => {
       const k = dayKey(o.start);
       const c = o.allDay ? undefined : careByOcc.get(`${o.uid}:${k}`);
+      // Noch nie besprochen, fällt aber in Nicolas' Wachzeit → offene Frage.
+      // Ohne das blieben genau die Termine unsichtbar, über die noch niemand
+      // nachgedacht hat — und das sind die, die im Alltag wehtun.
+      const luecke =
+        !c &&
+        isCareGap(
+          { uid: o.uid, title: o.summary, start: o.start, end: o.end, allDay: o.allDay, hasCareDecision: false },
+          abgewinkt,
+        );
       return {
         dayKey: k,
         dayLabel: `${formatWeekday(o.start).slice(0, 2)}, ${formatMonthDay(o.start)}`,
@@ -34,8 +48,9 @@ export async function getOverview(kind: Horizon, now: Date = new Date()): Promis
         title: o.summary,
         uid: o.uid,
         allDay: o.allDay,
-        care: c && c.status !== "keine" ? (c.status === "offen" ? "offen" : "da") : null,
+        care: c && c.status !== "keine" ? (c.status === "offen" ? "offen" : "da") : luecke ? "luecke" : null,
         carePerson: c?.person ?? null,
+        occurrenceISO: o.start.toISOString(),
       };
     });
 

@@ -33,6 +33,51 @@ describe("buildOverview", () => {
     expect(o.eventCount).toBe(3);
   });
 
+  it("nimmt noch gar nicht besprochene Termine als Betreuungsluecke auf", () => {
+    const o = buildOverview({
+      events: [
+        ev({ uid: "a", dayKey: "2026-07-30", title: "Zahnarzt", care: "luecke", occurrenceISO: "2026-07-30T08:00:00.000Z" }),
+      ],
+      todos: [],
+    });
+    expect(o.open).toHaveLength(1);
+    expect(o.open[0]).toMatchObject({
+      kind: "luecke",
+      label: "Zahnarzt",
+      occurrenceISO: "2026-07-30T08:00:00.000Z",
+    });
+  });
+
+  it("stellt schon gefragte Betreuung vor die noch unbesprochene", () => {
+    const o = buildOverview({
+      events: [
+        ev({ uid: "a", dayKey: "2026-07-30", title: "Noch nie besprochen", care: "luecke" }),
+        ev({ uid: "b", dayKey: "2026-07-30", title: "Schon gefragt", care: "offen" }),
+      ],
+      todos: [],
+    });
+    expect(o.open.map((x) => x.kind)).toEqual(["care", "luecke"]);
+  });
+
+  it("zaehlt Luecken als offene Betreuung", () => {
+    const o = buildOverview({
+      events: [
+        ev({ uid: "a", dayKey: "2026-07-30", care: "luecke" }),
+        ev({ uid: "b", dayKey: "2026-07-30", care: "da", carePerson: "constanze" }),
+      ],
+      todos: [],
+    });
+    expect(o.careSplit).toMatchObject({ constanze: 1, dirk: 0, offen: 1 });
+  });
+
+  it("meldet Luecken auch im Briefing-Text", () => {
+    const o = buildOverview({
+      events: [ev({ uid: "a", dayKey: "2026-07-30", title: "Zahnarzt", care: "luecke" })],
+      todos: [],
+    });
+    expect(briefingText(o, "morgen")).toContain("1× Betreuung offen");
+  });
+
   it("sammelt offene Betreuung und Aufgaben, überfällige zuerst", () => {
     const o = buildOverview({
       events: [ev({ uid: "a", dayKey: "2026-07-30", title: "Arzt", care: "offen" })],

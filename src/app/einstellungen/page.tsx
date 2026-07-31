@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SettingsClient } from "./SettingsClient";
+import { diagnoseCalendars } from "@/lib/calendar/diagnose";
+import { listDismissed } from "@/lib/care/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -38,5 +40,17 @@ export default async function EinstellungenPage() {
       }
     : null;
 
-  return <SettingsClient account={vm} />;
+  // Was steht in den Terminen? Entscheidet, ob wir die Zuordnung „wer ist
+  // gebunden?" von Hand pflegen müssen oder ob sie schon in den Daten steckt.
+  const [diagnose, abgewinkt] = userId
+    ? await Promise.all([diagnoseCalendars(), listDismissed()])
+    : [[], []];
+
+  return (
+    <SettingsClient
+      account={vm}
+      diagnose={diagnose}
+      abgewinkt={abgewinkt.map((r) => r.titleKey)}
+    />
+  );
 }

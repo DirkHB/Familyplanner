@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
 import { AppShell } from "@/components/app/AppShell";
-import type { Overview } from "@/lib/overview/build";
+import type { Overview, OpenItem } from "@/lib/overview/build";
+import { takeCareFromOverviewAction, dismissCareTitleAction } from "./actions";
 
 type Tab = "woche" | "offen" | "wer";
 
@@ -32,7 +33,7 @@ export function UeberblickClient({
   showToggle?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("woche");
-  const openCare = overview.open.filter((o) => o.kind === "care").length;
+  const openCare = overview.open.filter((o) => o.kind === "care" || o.kind === "luecke").length;
   const openTodos = overview.open.filter((o) => o.kind === "todo").length;
 
   return (
@@ -144,7 +145,7 @@ function WeekAnswer({ overview }: { overview: Overview }) {
                   {e.allDay ? "ganztg." : e.time}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-medium">{e.title}</span>
-                {e.care && <BabyIcon tone={e.care === "offen" ? "offen" : "da"} />}
+                {e.care && <BabyIcon tone={e.care === "da" ? "da" : "offen"} />}
                 {e.carePerson && <Avatar person={e.carePerson} size={20} />}
               </Link>
             ))}
@@ -175,6 +176,8 @@ function OpenAnswer({ overview }: { overview: Overview }) {
             </span>
             <span className="text-sm font-medium text-accent">klären</span>
           </Link>
+        ) : o.kind === "luecke" ? (
+          <LueckeRow key={`l-${o.uid}-${o.when}`} item={o} />
         ) : (
           <Link
             key={`t-${o.id}`}
@@ -194,6 +197,65 @@ function OpenAnswer({ overview }: { overview: Overview }) {
           </Link>
         ),
       )}
+    </div>
+  );
+}
+
+/**
+ * Eine noch gar nicht besprochene Betreuung. Zwei Wege raus, beide ein Tipp:
+ * „Ich" übernimmt sie, „nicht nötig" gilt ab dann für alle Termine dieses
+ * Titels — sonst müsste man die wöchentliche Müllabfuhr jede Woche abwinken.
+ */
+function LueckeRow({ item }: { item: Extract<OpenItem, { kind: "luecke" }> }) {
+  const [pending, start] = useTransition();
+  const [weg, setWeg] = useState(false);
+  if (weg) return null;
+
+  return (
+    <div className="rounded-card bg-surface px-4 py-3 shadow-card">
+      <div className="flex items-center gap-3">
+        <BabyIcon tone="offen" />
+        <span className="min-w-0 flex-1">
+          <Link href={`/termin/${encodeURIComponent(item.uid)}`} className="block truncate font-medium">
+            {item.label}
+          </Link>
+          <span className="text-xs text-ink-muted">{item.when} · wer ist bei Nicolas?</span>
+        </span>
+      </div>
+      <div className="mt-2.5 flex gap-2">
+        {item.occurrenceISO && (
+          <button
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                await takeCareFromOverviewAction(item.uid, item.occurrenceISO!);
+                setWeg(true);
+              })
+            }
+            className="rounded-pill bg-accent px-4 py-2 text-sm font-medium text-surface disabled:opacity-60"
+          >
+            Ich mach das
+          </button>
+        )}
+        <Link
+          href={`/termin/${encodeURIComponent(item.uid)}`}
+          className="rounded-pill bg-surface-muted px-4 py-2 text-sm font-medium text-ink"
+        >
+          Fragen
+        </Link>
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              await dismissCareTitleAction(item.label);
+              setWeg(true);
+            })
+          }
+          className="ml-auto px-2 py-2 text-sm text-ink-muted/70 disabled:opacity-60"
+        >
+          nicht nötig
+        </button>
+      </div>
     </div>
   );
 }
