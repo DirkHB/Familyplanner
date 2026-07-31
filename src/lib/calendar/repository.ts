@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { expandOccurrences } from "./ical";
+import { headForOccurrence, pickOccurrence } from "./occurrence-pick";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
 import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
@@ -75,10 +76,9 @@ export async function getEventView(
 ): Promise<EventDetailView | null> {
   const event = await prisma.event.findFirst({
     where: { uid },
-    // Zu einer UID kann es mehrere Zeilen geben (Serie plus einzelne Ausnahmen).
-    // Ohne feste Reihenfolge entschied der Zufall, welcher Titel oben steht.
-    // Der Haupttermin hat recurrenceId "" und sortiert damit zuerst.
-    orderBy: { recurrenceId: "asc" },
+    // Dieselbe UID kann in mehreren Kalendern liegen — feste Reihenfolge, damit
+    // nicht der Zufall entscheidet, welcher Eintrag gewinnt.
+    orderBy: { calendarId: "asc" },
     select: { rawIcs: true, title: true, location: true, rrule: true },
   });
   if (!event) return null;
@@ -86,14 +86,17 @@ export async function getEventView(
   let start: Date | null = null;
   let end: Date | null = null;
   let allDay = false;
+  // Vorbelegung aus der Serie; ein einzeln geändertes Vorkommen überschreibt sie gleich.
+  let { title, location } = { title: event.title, location: event.location };
   try {
     const horizon = new Date(now.getTime() + 365 * 86_400_000);
     const occ = expandOccurrences(event.rawIcs, new Date(now.getTime() - 86_400_000), horizon);
-    const next = occ.find((o) => o.end >= now) ?? occ[occ.length - 1];
+    const next = pickOccurrence(occ, now);
     if (next) {
       start = next.start;
       end = next.end;
       allDay = next.allDay;
+      ({ title, location } = headForOccurrence(next, { title: event.title, location: event.location }));
     }
   } catch {
     /* defektes .ics → nur Kopfdaten zeigen */
@@ -125,8 +128,8 @@ export async function getEventView(
 
   return {
     uid,
-    title: event.title,
-    location: event.location,
+    title,
+    location,
     start,
     end,
     allDay,
