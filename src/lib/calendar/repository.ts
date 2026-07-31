@@ -75,6 +75,10 @@ export async function getEventView(
 ): Promise<EventDetailView | null> {
   const event = await prisma.event.findFirst({
     where: { uid },
+    // Zu einer UID kann es mehrere Zeilen geben (Serie plus einzelne Ausnahmen).
+    // Ohne feste Reihenfolge entschied der Zufall, welcher Titel oben steht.
+    // Der Haupttermin hat recurrenceId "" und sortiert damit zuerst.
+    orderBy: { recurrenceId: "asc" },
     select: { rawIcs: true, title: true, location: true, rrule: true },
   });
   if (!event) return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useEffect, useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -50,6 +50,14 @@ function BackButton() {
 }
 
 export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventShoppingData | null }) {
+  // Der Titel wird hier gespiegelt, damit die Überschrift sofort nach dem
+  // Speichern stimmt und nicht erst nach dem nächsten Laden. Sobald der Server
+  // einen neuen Wert liefert (Bearbeiten, Sync mit iCloud), gewinnt der Server.
+  const [title, setTitle] = useState(vm.title);
+  useEffect(() => {
+    setTitle(vm.title);
+  }, [vm.title]);
+
   return (
     <div className="min-h-dvh bg-bg text-ink">
       <div className="mx-auto max-w-md px-5 pb-28 pt-6">
@@ -62,7 +70,7 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
         {/* Hero — dunkelblauer Anker */}
         <div className="rounded-card bg-ink p-6 text-surface shadow-hero">
           <p className="eyebrow text-accent-light">{vm.dateLabel}</p>
-          <h1 className="mt-2 font-display text-3xl leading-tight">{vm.title}</h1>
+          <h1 className="mt-2 font-display text-3xl leading-tight">{title}</h1>
           <div className="mt-4 flex items-end gap-5">
             <p className="tnum font-display text-5xl leading-none">
               {vm.allDay ? "ganztägig" : vm.timeLabel}
@@ -82,7 +90,7 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
         <PrepChecklist
           uid={vm.uid}
           initial={vm.prep}
-          title={vm.title}
+          title={title}
           category={vm.categoryLabel}
           readOnly={vm.readOnly}
         />
@@ -91,14 +99,15 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
 
         <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
 
-        {!vm.readOnly && <ManageBlock vm={vm} />}
+        {!vm.readOnly && <ManageBlock vm={vm} onTitleChanged={setTitle} />}
       </div>
     </div>
   );
 }
 
 /** Bearbeiten (Titel/Zeit → iCloud) und Löschen (auch in iCloud). */
-function ManageBlock({ vm }: { vm: DetailVM }) {
+function ManageBlock({ vm, onTitleChanged }: { vm: DetailVM; onTitleChanged: (t: string) => void }) {
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"idle" | "edit" | "confirmDelete">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -120,8 +129,15 @@ function ManageBlock({ vm }: { vm: DetailVM }) {
         payload.endISO = new Date(`${date}T${endTime}:00`).toISOString();
       }
       const r = await updateEventAction(vm.uid, payload);
-      if (r.ok) setMode("idle");
-      else setError(r.reason ?? "Ändern fehlgeschlagen.");
+      if (r.ok) {
+        setMode("idle");
+        onTitleChanged(title);
+        // Datum/Uhrzeit und alles Übrige frisch vom Server holen — der
+        // Server-Aufruf allein aktualisiert die schon gerenderte Seite nicht.
+        router.refresh();
+      } else {
+        setError(r.reason ?? "Ändern fehlgeschlagen.");
+      }
     });
   }
   function doDelete() {
