@@ -67,14 +67,19 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
           <span className="w-10" />
         </header>
 
-        {/* Hero — dunkelblauer Anker */}
+        {/* Hero — dunkelblauer Anker. Das Datum stand früher als getracktes
+            Label über der Überschrift; dort war es ein Vorspann, der die
+            Überschrift kleiner wirken ließ und die Zeitangabe in zwei Hälften
+            riss. Jetzt steht es unten bei der Uhrzeit, wo es hingehört. */}
         <div className="rounded-card bg-ink p-6 text-surface shadow-hero">
-          <p className="eyebrow text-accent-light">{vm.dateLabel}</p>
-          <h1 className="mt-2 font-display text-3xl leading-tight">{title}</h1>
-          <div className="mt-4 flex items-end gap-5">
-            <p className="tnum font-display text-5xl leading-none">
-              {vm.allDay ? "ganztägig" : vm.timeLabel}
-            </p>
+          <h1 className="font-display text-3xl leading-tight">{title}</h1>
+          <div className="mt-5 flex items-end gap-5">
+            <div className="min-w-0">
+              <p className="tnum font-display text-5xl leading-none">
+                {vm.allDay ? "ganztägig" : vm.timeLabel}
+              </p>
+              <p className="mt-1.5 text-surface/70">{vm.dateLabel}</p>
+            </div>
             {vm.location && (
               <div className="min-w-0 flex-1 border-l border-white/15 pl-4 pb-1">
                 <p className="flex items-center gap-1.5 font-medium">

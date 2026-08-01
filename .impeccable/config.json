@@ -1,0 +1,8 @@
+{
+  "detector": {
+    "ignoreRules": ["cream-palette"],
+    "_begruendung": {
+      "cream-palette": "Warmes Beige ist hier kein Verlegenheitsgriff, sondern die im Briefing festgelegte Palette (Beige, Dunkelblau, Tuerkis) und seit dem ersten Entwurf die Identitaet der App. Die Regel warnt vor Beige als Reflex — das trifft hier nicht zu. Bewusst NICHT stillgelegt: layout-transition. Der Treffer war ein Regex-Ueberlauf ueber Inline-Styles; behoben, indem die Inline-Transitions durch Utility-Klassen ersetzt wurden. Die Regel bleibt scharf, damit ein echter Fall auffaellt."
+    }
+  }
+}

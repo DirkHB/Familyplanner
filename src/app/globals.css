@@ -16,14 +16,17 @@
   /* Tinte */
   --color-ink: oklch(23.49% 0.0447 259.61);
   --color-ink-muted: oklch(46.5% 0.045 260.52);
-  /* Akzent Türkis (sparsam!) */
-  --color-accent: oklch(64.91% 0.1136 181.96);
+  /* Akzent Türkis (sparsam!) — L auf 51 % gesenkt: trägt weiße Schrift mit
+     4.9:1 und steht als Text auf dem Hintergrund mit 4.6:1. Vorher 64.91 %,
+     das ergab 2.9:1 und fiel damit unter WCAG AA. */
+  --color-accent: oklch(51% 0.1136 181.96);
   --color-accent-light: oklch(83.29% 0.0917 185.08);
   /* Warmer Kontrapunkt (Feierliches, Herzchen, "Betreuung offen") */
   --color-counter: oklch(68.52% 0.0668 23.73);
   --color-counter-light: oklch(87.41% 0.0287 28.54);
-  /* Signal (nur wirklich Überfälliges) */
-  --color-signal: oklch(54.78% 0.1426 30.75);
+  /* Signal (nur wirklich Überfälliges) — L auf 49 %: auf der hellen
+     Kontrapunkt-Fläche („2 offen") jetzt 4.6:1 statt 3.5:1. */
+  --color-signal: oklch(49% 0.1426 30.75);
 
   /* Schriftrollen — gewählte Paarung: Fraunces (Display) + Geist (Body), beide OFL & selbst gehostet. */
   --font-fraunces: "Fraunces Variable", ui-serif, Georgia, serif;
@@ -47,7 +50,8 @@
   --color-accent: oklch(70% 0.115 183);
   --color-accent-light: oklch(45% 0.07 185);
   --color-counter: oklch(70% 0.06 24);
-  --color-counter-light: oklch(40% 0.045 28);
+  /* Dunkler als zuvor (40 %), damit die Signalfarbe darauf 4.5:1 erreicht. */
+  --color-counter-light: oklch(22% 0.045 28);
   --color-signal: oklch(62% 0.14 31);
 
   color-scheme: dark;

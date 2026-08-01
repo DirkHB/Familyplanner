@@ -185,7 +185,7 @@ function SwipeCard({ card, onDecide }: { card: KlaerungCard; onDecide: (r: "rech
         <motion.span style={{ opacity: rechtsOpacity }} className="absolute left-5 top-5 rounded-pill bg-accent px-3 py-1.5 text-sm font-semibold text-surface">
           {labels.rechts}
         </motion.span>
-        <motion.span style={{ opacity: linksOpacity }} className="absolute right-5 top-5 rounded-pill bg-counter px-3 py-1.5 text-sm font-semibold text-surface">
+        <motion.span style={{ opacity: linksOpacity }} className="absolute right-5 top-5 rounded-pill bg-counter px-3 py-1.5 text-sm font-semibold text-ink">
           {labels.links}
         </motion.span>
 

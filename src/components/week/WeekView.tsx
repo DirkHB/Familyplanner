@@ -82,11 +82,8 @@ function FabErfassen() {
     <Link
       href="/erfassen"
       aria-label="Schnell erfassen"
-      className="absolute right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-surface shadow-hero active:scale-95"
-      style={{
-        bottom: "calc(5.25rem + env(safe-area-inset-bottom))",
-        transition: "transform 120ms cubic-bezier(0.16,1,0.3,1)",
-      }}
+      className="absolute right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-surface shadow-hero transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
+      style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
         <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
@@ -125,8 +122,7 @@ function EventRow({ ev, index, isNext = false }: { ev: EventVM; index: number; i
     >
       <Link
         href={ev.href}
-        className="flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card active:scale-[0.99]"
-        style={{ transition: "transform 120ms cubic-bezier(0.16,1,0.3,1)" }}
+        className="flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
       >
         <div className={`tnum flex w-14 shrink-0 items-center font-display text-lg ${isNext ? "text-accent" : ""}`}>
           {ev.allDay ? <span className="text-sm text-ink-muted">ganztägig</span> : ev.time}

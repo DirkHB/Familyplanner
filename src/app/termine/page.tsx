@@ -169,8 +169,7 @@ function EventLine({ ev }: { ev: EventVM }) {
   return (
     <Link
       href={ev.href}
-      className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card active:scale-[0.99]"
-      style={{ transition: "transform 120ms cubic-bezier(0.16,1,0.3,1)" }}
+      className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
     >
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor }} />
       <span className="min-w-0 flex-1 truncate font-medium">{ev.title}</span>
