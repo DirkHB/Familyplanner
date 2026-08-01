@@ -1,9 +1,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { WeekView, type TodayFocus } from "@/components/week/WeekView";
+import { WeekView } from "@/components/week/WeekView";
 import { buildWeek } from "@/lib/calendar/view-model";
 import { getRangeData } from "@/lib/calendar/range-data";
-import { startOfDayBerlin, formatDateHeader, greetingFor, formatTime, dayKey } from "@/lib/calendar/format";
+import { startOfDayBerlin, formatDateHeader, greetingFor, dayKey } from "@/lib/calendar/format";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { getKlaerungStack } from "@/lib/klaerung/repository";
@@ -28,29 +28,15 @@ export default async function WochePage() {
     ? (await getOpenRequestsForUser(session.user.id)).map((r) => buildRequestVM(r, now))
     : [];
 
-  // Heute-Fokus: nächster Termin heute + Betreuung + fällige Aufgaben.
+  // Nächster noch anstehender Termin heute — wird in der Liste hervorgehoben.
+  // Eine eigene „Heute"-Karte gab es hier einmal; sie zeigte denselben Termin
+  // ein zweites Mal direkt über der Liste und ist ersatzlos entfallen.
   const todayKey = dayKey(now);
-  const todayOcc = occurrences
+  const nextToday = occurrences
     .filter((o) => dayKey(o.start) === todayKey && !o.allDay && o.end >= now)
-    .sort((a, b) => a.start.getTime() - b.start.getTime());
-  const next = todayOcc[0] ?? null;
-  const nextCare = next ? careByOcc.get(`${next.uid}:${todayKey}`) : undefined;
-  const todosDue = await prisma.todo
-    .count({ where: { status: "offen", dueDate: { gte: from, lt: new Date(from.getTime() + 86_400_000) } } })
-    .catch(() => 0);
-
-  const focus: TodayFocus = {
-    nextTitle: next?.summary ?? null,
-    nextTime: next ? formatTime(next.start) : null,
-    careStatus:
-      next && nextCare && nextCare.status !== "keine"
-        ? nextCare.status === "offen"
-          ? "offen"
-          : "da"
-        : null,
-    carePerson: nextCare?.person ?? null,
-    todosDue,
-  };
+    .sort((a, b) => a.start.getTime() - b.start.getTime())[0];
+  // Gleiche Bildung wie in buildWeek — sonst greift die Hervorhebung ins Leere.
+  const nextTodayKey = nextToday ? `${nextToday.uid}:${nextToday.recurrenceId}` : null;
 
   // Klärungs-Stapel: nur hier auf der Woche, nie über einem Direkteinstieg.
   const stack = session?.user?.id ? await getKlaerungStack(session.user.id, now) : [];
@@ -63,7 +49,7 @@ export default async function WochePage() {
         dateLabel={formatDateHeader(now)}
         days={days}
         requests={requests}
-        focus={focus}
+        nextTodayKey={nextTodayKey}
       />
       <KlaerungGate cards={stack} todayKey={todayKey} />
     </>

@@ -11,28 +11,21 @@ import type { DayVM, EventVM } from "@/lib/calendar/view-model";
 import type { RequestVM } from "@/lib/requests/view-model";
 import { takeCareAction, requestCareAction } from "@/app/termin/[uid]/actions";
 
-export type TodayFocus = {
-  nextTitle: string | null;
-  nextTime: string | null;
-  careStatus: "offen" | "da" | null;
-  carePerson: "dirk" | "constanze" | null;
-  todosDue: number;
-};
-
 export function WeekView({
   greetingName,
   greeting = "Guten Morgen",
   dateLabel,
   days,
   requests = [],
-  focus,
+  nextTodayKey = null,
 }: {
   greetingName: string;
   greeting?: string;
   dateLabel: string;
   days: DayVM[];
   requests?: RequestVM[];
-  focus?: TodayFocus;
+  /** Schlüssel des nächsten noch anstehenden Termins heute — wird hervorgehoben. */
+  nextTodayKey?: string | null;
 }) {
   const empty = days.length === 0;
   return (
@@ -67,8 +60,6 @@ export function WeekView({
           </div>
         </div>
 
-        {focus && (focus.nextTitle || focus.todosDue > 0) && <TodayCard focus={focus} />}
-
         <RequestHero requests={requests} />
 
         {empty ? (
@@ -76,7 +67,7 @@ export function WeekView({
         ) : (
           <div className="mt-8 flex flex-col gap-6">
             {days.map((day) => (
-              <DaySection key={day.key} day={day} />
+              <DaySection key={day.key} day={day} nextTodayKey={nextTodayKey} />
             ))}
           </div>
         )}
@@ -104,55 +95,28 @@ function FabErfassen() {
   );
 }
 
-function TodayCard({ focus }: { focus: TodayFocus }) {
-  return (
-    <div className="mt-6 flex items-center gap-4 rounded-card bg-surface p-4 shadow-card">
-      <div className="min-w-0 flex-1">
-        <p className="eyebrow text-ink-muted">Heute</p>
-        {focus.nextTitle ? (
-          <p className="mt-0.5 truncate font-medium">
-            <span className="tnum text-accent">{focus.nextTime}</span> · {focus.nextTitle}
-          </p>
-        ) : (
-          <p className="mt-0.5 text-ink-muted">Keine Termine mehr heute</p>
-        )}
-        {focus.todosDue > 0 && (
-          <Link href="/aufgaben" className="mt-0.5 block text-sm text-ink-muted">
-            {focus.todosDue} Aufgabe{focus.todosDue === 1 ? "" : "n"} fällig
-          </Link>
-        )}
-      </div>
-      {focus.careStatus && (
-        <div className="flex shrink-0 items-center gap-1.5">
-          <BabyIcon tone={focus.careStatus === "offen" ? "offen" : "da"} />
-          {focus.carePerson && <Avatar person={focus.carePerson} size={22} />}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function DaySection({ day }: { day: DayVM }) {
+function DaySection({ day, nextTodayKey }: { day: DayVM; nextTodayKey: string | null }) {
   return (
     <section>
       <div className="mb-3 flex items-baseline gap-3">
+        {/* Heute heißt „Heute" — die eigene Karte darüber zeigte bis eben
+            denselben Termin ein zweites Mal und ist ersatzlos entfallen. */}
         <h2 className={`font-display text-xl ${day.isToday ? "text-ink" : "text-ink-muted"}`}>
-          {day.weekday}
+          {day.isToday ? "Heute" : day.weekday}
         </h2>
         <span className="h-px flex-1 bg-surface-muted" />
         <span className="tnum text-ink-muted">{day.dayNumber}.</span>
       </div>
       <div className="flex flex-col gap-3">
         {day.events.map((ev, i) => (
-          <EventRow key={ev.key} ev={ev} index={i} />
+          <EventRow key={ev.key} ev={ev} index={i} isNext={ev.key === nextTodayKey} />
         ))}
       </div>
     </section>
   );
 }
 
-function EventRow({ ev, index }: { ev: EventVM; index: number }) {
+function EventRow({ ev, index, isNext = false }: { ev: EventVM; index: number; isNext?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -164,7 +128,7 @@ function EventRow({ ev, index }: { ev: EventVM; index: number }) {
         className="flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card active:scale-[0.99]"
         style={{ transition: "transform 120ms cubic-bezier(0.16,1,0.3,1)" }}
       >
-        <div className="tnum flex w-14 shrink-0 items-center font-display text-lg">
+        <div className={`tnum flex w-14 shrink-0 items-center font-display text-lg ${isNext ? "text-accent" : ""}`}>
           {ev.allDay ? <span className="text-sm text-ink-muted">ganztägig</span> : ev.time}
         </div>
         <div className="w-px shrink-0" style={{ background: ev.dotColor, opacity: 0.35 }} />
