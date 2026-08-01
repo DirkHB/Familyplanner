@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { normalizeTaskTitle } from "./title-template";
 
 /**
  * Smart-Erfassung: ein Eingabefeld für alles. Die KI entscheidet, ob aus dem
@@ -66,9 +67,13 @@ export function normalizeSmart(raw: unknown): SmartResult {
     if (!s.title) continue;
     const kind: SmartKind =
       s.kind === "aufgabe" || s.kind === "einkauf" || s.kind === "termin" ? s.kind : "aufgabe";
+    // Aufgabentitel in die Hausform bringen; Termine und Einkauf behalten
+    // ihren Wortlaut (ein Termin heißt, wie er im Kalender heißt).
+    const rohTitel = String(s.title).slice(0, 200);
+    const titel = kind === "aufgabe" ? normalizeTaskTitle(rohTitel) || rohTitel : rohTitel;
     items.push({
       kind,
-      title: String(s.title).slice(0, 200),
+      title: titel,
       start: String(s.start ?? ""),
       end: String(s.end ?? s.start ?? ""),
       allDay: !!s.allDay,
@@ -96,11 +101,26 @@ Ordne jede Sache genau einer Art zu:
 Regeln:
 - Mehrere Dinge in einem Satz → mehrere Items.
 - Zeiten immer als ISO-8601 mit Zeitzone (+02:00 im Sommer, +01:00 im Winter).
-- Bei Aufgaben "dueDate" (YYYY-MM-DD) setzen, wenn ein Termin genannt ist, sonst leer.
-- "assignee" nur setzen, wenn eine Person klar genannt ist ("Constanze soll…" → constanze).
 - careNeeded nur bei Terminen, zu denen offensichtlich jemand ohne Baby hin muss.
 - Bei Einkauf den Laden raten, wenn er genannt wird; sonst "sonstiges".
-- Titel kurz und konkret halten. Nichts erfinden, was nicht dasteht.`;
+
+Titel von Aufgaben — immer nach demselben Muster:
+- Das Verb steht am Ende, im Infinitiv: "Windeln bestellen", "Kinderarzt anrufen",
+  "Kinderwagen reparieren lassen".
+- Nie eine bloße Notiz. Aus "Kinderwagen kaputt" wird "Kinderwagen reparieren lassen",
+  aus "Passfoto" wird "Passfoto für Nicolas machen".
+- Höchstens sechs Wörter. Alles Weitere gehört in "notes", nicht in den Titel.
+- Keine Einleitungen ("ich muss", "nicht vergessen", "bitte") und kein Nachklapp
+  ("mal", "irgendwann", "noch").
+
+Nichts erfinden:
+- "assignee" nur setzen, wenn eine Person ausdrücklich genannt ist ("Constanze soll…"
+  → constanze). Sonst leer lassen — nicht raten, wer gemeint sein könnte.
+- "dueDate" (YYYY-MM-DD) nur bei einer konkreten Zeitangabe.
+- Bei vagen Angaben ("bald", "nächste Woche mal", "demnächst") ein konkretes Datum
+  vorschlagen und den Wortlaut in "notes" festhalten, damit die Schätzung erkennbar
+  bleibt und bestätigt werden kann.
+- Fehlt jede Zeitangabe, bleibt dueDate leer. Das ist ausdrücklich erlaubt.`;
 }
 
 export async function smartCapture(

@@ -57,7 +57,7 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
         </header>
 
         <p className="mb-3 text-ink-muted">
-          Schreib einfach los — Termin, Aufgabe oder Einkauf. Ich sortiere es ein.
+          Sprich oder schreib einfach los — Termin, Aufgabe oder Einkauf. Ich sortiere es ein.
         </p>
 
         <textarea
@@ -67,6 +67,18 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
           placeholder="Was steht an?"
           className="w-full resize-none rounded-card border border-surface-muted bg-surface p-4 outline-none focus:border-accent"
         />
+
+        {/* Diktieren geht über die Systemtastatur. Die Web-Spracherkennung
+            funktioniert in installierten iOS-PWAs nicht — die Taste auf der
+            Tastatur schon, und sie ist ohnehin die bessere: auf dem Gerät,
+            sofort, und sie kennt eure Namen. */}
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted/80">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden>
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
+          </svg>
+          Tipp: Antippen und über das Mikrofon der Tastatur diktieren — geht schneller als tippen.
+        </p>
 
         {!items && (
           <div className="mt-2 flex flex-wrap gap-1.5">
