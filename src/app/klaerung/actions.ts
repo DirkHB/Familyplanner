@@ -75,3 +75,25 @@ export async function stapelEskalationGeklaertAction(uid: string, occurrenceISO:
   reval();
   return { ok: true };
 }
+
+/** Sonntags-Aufräumen: „Diese Woche" — Faelligkeit auf den kommenden Sonntag. */
+export async function stapelParkenDieseWocheAction(todoId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const heute = startOfDayBerlin(new Date());
+  // Sonntagabend als Zielpunkt: konkret genug fuer einen Plan, weit genug,
+  // um die Woche nicht zu verstopfen.
+  const sonntag = new Date(heute.getTime() + 7 * 86_400_000 + 18 * 3_600_000);
+  await prisma.todo.update({ where: { id: todoId }, data: { dueDate: sonntag } });
+  reval();
+  return { ok: true };
+}
+
+/** „Bleibt liegen" — nichts aendern, nur diese Woche nicht mehr fragen. */
+export async function stapelParkenBleibtAction(todoId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await prisma.todo.update({ where: { id: todoId }, data: { shiftCount: { increment: 1 } } });
+  reval();
+  return { ok: true };
+}

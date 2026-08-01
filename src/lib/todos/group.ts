@@ -14,6 +14,8 @@ export type TodoVM = {
   done: boolean;
   overdue: boolean;
   hasReminder: boolean;
+  /** Nur für Undatiertes: hebt die Aufgabe im Fach „Irgendwann" nach oben. */
+  important: boolean;
 };
 
 export type TodoGroup = { key: string; label: string; todos: TodoVM[] };
@@ -35,6 +37,7 @@ export function buildTodoVM(
     createdBy: string | null;
     status: string;
     remindAt: Date | null;
+    important?: boolean;
   },
   now: Date = new Date(),
 ): TodoVM {
@@ -51,12 +54,22 @@ export function buildTodoVM(
     done,
     overdue: !done && !!dueKey && dueKey < dayKey(now),
     hasReminder: !!row.remindAt,
+    important: !!row.important,
   };
 }
 
 /**
- * Gruppen in fester Reihenfolge: Überfällig, Heute, Diese Woche (nächste 7 Tage),
- * Später, Ohne Termin, Erledigt. Leere Gruppen entfallen.
+ * Fächer nach „wann", nicht nach „ob".
+ *
+ * Masicampo und Baumeister (2011): Unerledigtes drängt sich ins Bewusstsein,
+ * bis ein konkreter Plan existiert — erledigen muss man es dafür nicht. Eine
+ * Aufgabe ohne „wann" kostet also weiter Kopf. Deshalb heißt das Fach für
+ * Undatiertes „Irgendwann" statt „Ohne Termin": Es ist ein bewusster Parkplatz,
+ * kein Ablagestapel, und wird sonntags durchgesehen.
+ *
+ * „Überfällig" und „Später" bleiben eigene Fächer, weil das Zusammenlegen
+ * Information vernichten würde. Leere Fächer entfallen — im Alltag sieht man
+ * darum meist nur zwei oder drei Überschriften.
  */
 export function groupTodos(todos: TodoVM[], now: Date = new Date()): TodoGroup[] {
   const today = dayKey(now);
@@ -85,9 +98,12 @@ export function groupTodos(todos: TodoVM[], now: Date = new Date()): TodoGroup[]
     ["heute", "Heute"],
     ["woche", "Diese Woche"],
     ["spaeter", "Später"],
-    ["ohne", "Ohne Termin"],
+    ["ohne", "Irgendwann"],
     ["erledigt", "Erledigt"],
   ];
+
+  // Im Parkplatz stehen die wichtigen oben — sonst versinken sie.
+  buckets.ohne.sort((a, b) => Number(b.important) - Number(a.important));
 
   return LABELS.filter(([k]) => buckets[k].length > 0).map(([key, label]) => ({
     key,

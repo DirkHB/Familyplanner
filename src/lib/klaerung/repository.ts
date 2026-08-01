@@ -6,6 +6,7 @@ import { isCareGap } from "@/lib/care/gaps";
 import { getDismissedTitleKeys } from "@/lib/care/rules";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { berlinWeekday } from "@/lib/overview/horizon";
 import { buildStack, type KlaerungCard } from "./build";
 
 /**
@@ -118,11 +119,30 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
     shiftCount: t.shiftCount,
   }));
 
+  // Sonntag ist Aufräumtag: Was ohne Termin liegt, bekommt einmal die Woche
+  // die Frage „diese Woche?". Ohne dieses Ritual wird der Parkplatz zum
+  // Friedhof — und eine Aufgabe ohne Plan kostet weiter Kopf.
+  let parken: Extract<KlaerungCard, { kind: "parken" }>[] = [];
+  if (berlinWeekday(now) === 6) {
+    const ohneTermin = await prisma.todo.findMany({
+      where: { status: "offen", dueDate: null },
+      orderBy: [{ important: "desc" }, { createdAt: "asc" }],
+      take: 3,
+    });
+    parken = ohneTermin.map((t) => ({
+      kind: "parken" as const,
+      id: t.id,
+      title: t.title,
+      important: t.important,
+    }));
+  }
+
   return buildStack({
     eskalationen,
     anfragen,
     betreuung: betreuung.filter((b) => !eskUids.has(b.uid)),
     aufgaben,
+    parken,
   });
 }
 

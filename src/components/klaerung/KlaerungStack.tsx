@@ -12,6 +12,8 @@ import {
   stapelKannNichtAction,
   stapelAntwortAction,
   stapelEskalationGeklaertAction,
+  stapelParkenDieseWocheAction,
+  stapelParkenBleibtAction,
 } from "@/app/klaerung/actions";
 
 /**
@@ -40,6 +42,10 @@ function actionFor(d: Decision): (() => Promise<unknown>) | null {
       return () => stapelAntwortAction(c.id, d.richtung === "rechts" ? "Ja" : "Nein");
     case "eskalation":
       return d.richtung === "rechts" ? () => stapelEskalationGeklaertAction(c.uid, c.occurrenceISO) : null;
+    case "parken":
+      return d.richtung === "rechts"
+        ? () => stapelParkenDieseWocheAction(c.id)
+        : () => stapelParkenBleibtAction(c.id);
   }
 }
 
@@ -48,6 +54,7 @@ const LABELS: Record<KlaerungCard["kind"], { links: string; rechts: string }> = 
   betreuung: { links: "Ich kann nicht", rechts: "Ich mach das ✓" },
   anfrage: { links: "Nein", rechts: "Ja ✓" },
   eskalation: { links: "Später", rechts: "Anders gelöst ✓" },
+  parken: { links: "Bleibt liegen", rechts: "Diese Woche ✓" },
 };
 
 export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClose: () => void }) {
@@ -222,6 +229,16 @@ function CardBody({ card }: { card: KlaerungCard }) {
         <div className="mt-10">
           <p className="eyebrow text-accent-light">{card.fromName} fragt</p>
           <p className="mt-3 font-display text-3xl leading-tight">{card.question}</p>
+        </div>
+      );
+    case "parken":
+      return (
+        <div className="mt-10">
+          <p className="eyebrow text-accent-light">
+            Liegt ohne Termin{card.important ? " · wichtig" : ""}
+          </p>
+          <p className="mt-3 font-display text-3xl leading-tight">{card.title}</p>
+          <p className="mt-3 text-surface/70">Nimmst du dir das diese Woche vor?</p>
         </div>
       );
     case "eskalation":

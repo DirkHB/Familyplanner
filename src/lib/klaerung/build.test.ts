@@ -98,3 +98,50 @@ describe("shiftLabel", () => {
     expect(shiftLabel(4)).toBe("zum 5. Mal verschoben");
   });
 });
+
+describe("Sonntags-Parkplatz", () => {
+  const parken = (id: string, important = false) =>
+    ({ kind: "parken", id, title: "Kinderwagen putzen", important }) as Extract<
+      KlaerungCard,
+      { kind: "parken" }
+    >;
+
+  it("steht hinter allem, was heute ansteht", () => {
+    const stack = buildStack({
+      eskalationen: [],
+      anfragen: [],
+      betreuung: [],
+      aufgaben: [aufgabe("heute")],
+      parken: [parken("p1")],
+    });
+    expect(stack.map((c) => c.kind)).toEqual(["aufgabe", "parken"]);
+  });
+
+  it("wichtige Geparkte zuerst", () => {
+    const stack = buildStack({
+      eskalationen: [],
+      anfragen: [],
+      betreuung: [],
+      aufgaben: [],
+      parken: [parken("egal"), parken("wichtig", true)],
+    });
+    expect(stack.map((c) => (c.kind === "parken" ? c.id : ""))).toEqual(["wichtig", "egal"]);
+  });
+
+  it("verdraengt nie das Dringende aus dem Deckel", () => {
+    const stack = buildStack({
+      eskalationen: [],
+      anfragen: [],
+      betreuung: [],
+      aufgaben: [aufgabe("a"), aufgabe("b"), aufgabe("c"), aufgabe("d"), aufgabe("e")],
+      parken: [parken("p1"), parken("p2")],
+    });
+    expect(stack).toHaveLength(MAX_KARTEN);
+    expect(stack.every((c) => c.kind === "aufgabe")).toBe(true);
+  });
+
+  it("ohne Sonntag bleibt der Stapel unveraendert", () => {
+    const stack = buildStack({ eskalationen: [], anfragen: [], betreuung: [], aufgaben: [aufgabe("x")] });
+    expect(stack.map((c) => c.kind)).toEqual(["aufgabe"]);
+  });
+});

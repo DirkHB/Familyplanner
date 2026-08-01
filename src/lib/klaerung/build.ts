@@ -34,7 +34,14 @@ export type KlaerungCard =
       dueLabel: string | null;
       overdue: boolean;
       shiftCount: number;
-    };
+    }
+  /**
+   * Sonntägliches Aufräumen des Parkplatzes. Masicampo und Baumeister (2011):
+   * Unerledigtes verstummt nicht durchs Erledigen, sondern durch einen
+   * konkreten Plan. Einmal die Woche bekommt jede geparkte Aufgabe deshalb die
+   * Frage „diese Woche?" — sonst wird der Parkplatz ein Friedhof.
+   */
+  | { kind: "parken"; id: string; title: string; important: boolean };
 
 /**
  * Stapel zusammenstellen. Reihenfolge nach Dringlichkeit:
@@ -46,9 +53,15 @@ export function buildStack(input: {
   anfragen: Extract<KlaerungCard, { kind: "anfrage" }>[];
   betreuung: Extract<KlaerungCard, { kind: "betreuung" }>[];
   aufgaben: Extract<KlaerungCard, { kind: "aufgabe" }>[];
+  /** Nur sonntags gefüllt — das Aufräumen des Parkplatzes. */
+  parken?: Extract<KlaerungCard, { kind: "parken" }>[];
 }): KlaerungCard[] {
   const aufgaben = [...input.aufgaben].sort((a, b) => Number(b.overdue) - Number(a.overdue));
-  return [...input.eskalationen, ...input.anfragen, ...input.betreuung, ...aufgaben].slice(
+  const parken = [...(input.parken ?? [])].sort(
+    (a, b) => Number(b.important) - Number(a.important),
+  );
+  // Parken steht hinten: Was heute ansteht, hat Vorrang vor dem Aufräumen.
+  return [...input.eskalationen, ...input.anfragen, ...input.betreuung, ...aufgaben, ...parken].slice(
     0,
     MAX_KARTEN,
   );

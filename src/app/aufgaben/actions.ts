@@ -130,3 +130,20 @@ export async function setTodoDueAction(id: string, dueRaw: string | null) {
   revalidatePath("/woche");
   return { ok: true };
 }
+
+/**
+ * Wichtig-Kennzeichen für Undatiertes. Bewusst nur ein Schalter statt der
+ * Eisenhower-Matrix: „dringend" ist bereits ein Datum. Wer eine Aufgabe als
+ * dringend erlebt, gibt ihr ein „bis wann" — dann steht sie ohnehin in Heute
+ * oder Diese Woche. „Wichtig" ist das, was ein Datum allein nicht ausdrückt.
+ */
+export async function toggleTodoImportantAction(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const { prisma } = await import("@/lib/prisma");
+  const todo = await prisma.todo.findUnique({ where: { id }, select: { important: true } });
+  if (!todo) return { ok: false };
+  await prisma.todo.update({ where: { id }, data: { important: !todo.important } });
+  revalidatePath("/aufgaben");
+  return { ok: true };
+}

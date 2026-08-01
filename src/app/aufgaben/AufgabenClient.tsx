@@ -15,6 +15,7 @@ import {
   deleteTodoAction,
   setTodoAssigneeAction,
   setTodoDueAction,
+  toggleTodoImportantAction,
   togglePrepItemAction,
 } from "./actions";
 
@@ -194,6 +195,7 @@ function TodoRow({ todo }: { todo: TodoVM }) {
   const [assignee, setAssignee] = useState<Person | null>(todo.assignee);
   const [editDue, setEditDue] = useState(false);
   const [due, setDue] = useState(todo.dueKey ?? "");
+  const [important, setImportant] = useState(todo.important);
   if (gone) return null;
 
   function cycleAssignee() {
@@ -236,6 +238,25 @@ function TodoRow({ todo }: { todo: TodoVM }) {
           </p>
         )}
       </button>
+      {!todo.dueKey && !todo.done && (
+        <button
+          onClick={() => {
+            setImportant((v) => !v);
+            start(async () => { await toggleTodoImportantAction(todo.id); });
+          }}
+          aria-label={important ? "Nicht mehr wichtig" : "Als wichtig markieren"}
+          aria-pressed={important}
+          className="shrink-0 px-1"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24"
+            fill={important ? "var(--color-counter)" : "none"}
+            stroke={important ? "var(--color-counter)" : "currentColor"}
+            strokeWidth="1.7" strokeLinejoin="round"
+            className={important ? "" : "text-ink-muted/40"}>
+            <path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8L3.5 9.7l5.9-.9L12 3.5Z" />
+          </svg>
+        </button>
+      )}
       <button onClick={cycleAssignee} aria-label="Zuständigkeit wechseln" className="shrink-0">
         {assignee ? (
           <Avatar person={assignee} size={24} />
