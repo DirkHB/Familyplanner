@@ -6,6 +6,7 @@ import { dayKey } from "./format";
 import { personForEmail, type Person } from "@/lib/auth/allowlist";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
+import { careWindow } from "@/lib/care/gaps";
 
 /**
  * Gebündelte, kurz gecachte Bereichsdaten für Woche/Monat: Vorkommen + Zusatzdaten
@@ -58,8 +59,11 @@ const load = unstable_cache(
         })
       : [];
 
+    // Betreuungen liegen auf Mitternacht des jeweiligen Tages. Mit `from` als
+    // Untergrenze fiele die Betreuung für heute ab 00:01 heraus — siehe careWindow.
+    const careRange = careWindow(from, to);
     const careRows = await prisma.careAssignment.findMany({
-      where: { occurrenceDate: { gte: from, lte: to } },
+      where: { occurrenceDate: { gte: careRange.from, lte: careRange.to } },
       include: { responsible: { select: { email: true } } },
     });
 

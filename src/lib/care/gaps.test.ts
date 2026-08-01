@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { berlinParts, inWachzeit, titleKey, isCareGap, WACHZEIT } from "./gaps";
+import { berlinParts, inWachzeit, titleKey, isCareGap, careWindow, WACHZEIT } from "./gaps";
 
 const keine = new Set<string>();
 const ev = (startISO: string, endISO: string, extra: Partial<Parameters<typeof isCareGap>[0]> = {}) => ({
@@ -110,5 +110,33 @@ describe("isCareGap", () => {
   it("abgewinkter Titel blockiert andere Termine nicht", () => {
     const abgewinkt = new Set([titleKey("Müllabfuhr")]);
     expect(isCareGap(ev("2026-07-30T12:00:00Z", "2026-07-30T13:00:00Z", { title: "Zahnarzt" }), abgewinkt)).toBe(true);
+  });
+});
+
+describe("careWindow", () => {
+  /**
+   * Der Fehler aus dem Betrieb: Termin heute, Betreuung längst geklärt. Die
+   * Betreuung liegt auf Mitternacht (00:00). Wird ab „jetzt" (07:30) abgefragt,
+   * fällt sie heraus — und der Kartenstapel fragte morgens erneut danach.
+   */
+  it("schließt die Betreuung von heute ein, auch wenn der Tag schon läuft", () => {
+    const jetzt = new Date("2026-08-01T05:30:00Z"); // 07:30 Berlin
+    const mitternacht = new Date("2026-08-01T00:00:00Z");
+    const w = careWindow(jetzt, new Date("2026-08-03T00:00:00Z"));
+    expect(w.from.getTime()).toBeLessThanOrEqual(mitternacht.getTime());
+  });
+
+  it("schließt auch den letzten Tag des Zeitraums noch ein", () => {
+    const bis = new Date("2026-08-03T00:00:00Z");
+    const w = careWindow(new Date("2026-08-01T05:30:00Z"), bis);
+    expect(w.to.getTime()).toBeGreaterThanOrEqual(bis.getTime());
+  });
+
+  it("bleibt eng genug: kein Fenster über mehrere Tage hinaus", () => {
+    const von = new Date("2026-08-01T00:00:00Z");
+    const bis = new Date("2026-08-02T00:00:00Z");
+    const w = careWindow(von, bis);
+    expect(von.getTime() - w.from.getTime()).toBe(86_400_000);
+    expect(w.to.getTime() - bis.getTime()).toBe(86_400_000);
   });
 });

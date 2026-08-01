@@ -64,6 +64,25 @@ export function titleKey(title: string): string {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Zeitfenster für die Abfrage der Betreuungen.
+ *
+ * Eine Betreuung wird pro Tag gespeichert, mit Mitternacht als Zeitstempel.
+ * Fragt man sie mit dem aktuellen Zeitpunkt als Untergrenze ab, fällt die
+ * Betreuung für HEUTE heraus, sobald es nach Mitternacht ist — die App hielt
+ * dann eine längst geklärte Betreuung für unbesprochen und fragte erneut.
+ *
+ * Deshalb je einen Tag Luft nach beiden Seiten. Zusätzliche Zeilen schaden
+ * nicht: Nachgeschlagen wird später über den genauen Tagesschlüssel, alles
+ * andere wird nie gefunden.
+ */
+export function careWindow(from: Date, to: Date): { from: Date; to: Date } {
+  return {
+    from: new Date(from.getTime() - 86_400_000),
+    to: new Date(to.getTime() + 86_400_000),
+  };
+}
+
 export type GapCandidate = {
   uid: string;
   title: string;
