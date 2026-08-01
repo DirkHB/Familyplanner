@@ -131,11 +131,12 @@ function EventRow({ ev, index, isNext = false }: { ev: EventVM; index: number; i
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.15), ease: [0.16, 1, 0.3, 1] }}
     >
+      {/* Vorbei heißt durchgestrichen, nicht unlesbar: Deckkraft und graue
+          Schrift zusammen ergaben 1.1:1 — weit unter WCAG AA. Jetzt trägt
+          allein die Schrift die Aussage, die Karte bleibt voll deckend. */}
       <Link
         href={ev.href}
-        className={`flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
-          ev.past ? "opacity-55" : ""
-        }`}
+        className="flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
       >
         <div
           className={`tnum flex w-14 shrink-0 items-center font-display text-lg ${
