@@ -9,12 +9,11 @@ import { AppShell } from "@/components/app/AppShell";
 import type { Overview, OpenItem } from "@/lib/overview/build";
 import { takeCareFromOverviewAction, dismissCareTitleAction } from "./actions";
 
-type Tab = "woche" | "offen" | "wer";
+type Tab = "woche" | "offen";
 
 const QUESTIONS: { key: Tab; q: string }[] = [
   { key: "woche", q: "Wie sieht die Woche aus?" },
   { key: "offen", q: "Was ist noch offen?" },
-  { key: "wer", q: "Wer macht was?" },
 ];
 
 export function UeberblickClient({
@@ -61,7 +60,9 @@ export function UeberblickClient({
           </div>
         )}
 
-        {/* Die drei Fragen */}
+        {/* Die zwei Fragen, die im Alltag zählen. „Wer macht was?" stand hier
+            einmal als dritte — im Betrieb hat sie niemand gebraucht: Wer was
+            übernimmt, steht bereits an den Terminen und in den Aufgaben. */}
         <div className="mt-5 flex flex-col gap-2">
           {QUESTIONS.map(({ key, q }) => {
             const active = tab === key;
@@ -117,7 +118,6 @@ export function UeberblickClient({
           >
             {tab === "woche" && <WeekAnswer overview={overview} />}
             {tab === "offen" && <OpenAnswer overview={overview} />}
-            {tab === "wer" && <WhoAnswer overview={overview} />}
           </motion.div>
         </AnimatePresence>
       </>
@@ -256,46 +256,6 @@ function LueckeRow({ item }: { item: Extract<OpenItem, { kind: "luecke" }> }) {
           nicht nötig
         </button>
       </div>
-    </div>
-  );
-}
-
-function WhoAnswer({ overview }: { overview: Overview }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <SplitCard title="Baby-Betreuung" split={overview.careSplit} />
-      <SplitCard title="Aufgaben" split={overview.todoSplit} />
-      <p className="px-1 text-xs text-ink-muted/70">
-        Nur zur Übersicht — die Zahlen bewerten nichts.
-      </p>
-    </div>
-  );
-}
-
-function SplitCard({ title, split }: { title: string; split: Overview["careSplit"] }) {
-  const total = split.constanze + split.dirk || 1;
-  const cPct = Math.round((split.constanze / total) * 100);
-  return (
-    <div className="rounded-card bg-surface p-4 shadow-card">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg">{title}</h3>
-        {split.offen > 0 && (
-          <span className="rounded-pill bg-counter-light px-2.5 py-0.5 text-xs font-medium text-signal">
-            {split.offen} offen
-          </span>
-        )}
-      </div>
-      <div className="mt-3 flex items-center gap-3">
-        <Avatar person="constanze" size={28} />
-        <div className="h-2.5 flex-1 overflow-hidden rounded-pill bg-surface-muted">
-          <div className="h-full rounded-pill" style={{ width: `${cPct}%`, background: "var(--color-counter)" }} />
-        </div>
-        <Avatar person="dirk" size={28} />
-      </div>
-      <p className="mt-2 text-center text-sm text-ink-muted">
-        <span className="tnum">{split.constanze}</span> · {split.label} ·{" "}
-        <span className="tnum">{split.dirk}</span>
-      </p>
     </div>
   );
 }

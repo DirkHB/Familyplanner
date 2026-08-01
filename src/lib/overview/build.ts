@@ -1,8 +1,8 @@
 import type { Person } from "@/lib/auth/allowlist";
 
 /**
- * Überblick — die drei Fragen, die im Alltag zählen:
- *   1. Wie sieht die Woche aus?  2. Was ist noch offen?  3. Wer macht was?
+ * Überblick — die zwei Fragen, die im Alltag zählen:
+ *   1. Wie sieht die Woche aus?  2. Was ist noch offen?
  * Reine Aufbereitung, keine DB/KI → sofort und testbar.
  */
 
@@ -38,32 +38,11 @@ export type OpenItem =
   | { kind: "luecke"; uid: string; label: string; when: string; occurrenceISO: string | null }
   | { kind: "todo"; id: string; label: string; when: string | null; overdue: boolean };
 
-export type Split = {
-  constanze: number;
-  dirk: number;
-  offen: number;
-  label: string;
-};
-
 export type Overview = {
   days: { key: string; label: string; events: OverviewEvent[] }[];
   eventCount: number;
   open: OpenItem[];
-  careSplit: Split;
-  todoSplit: Split;
 };
-
-function nameOf(p: Person): string {
-  return p === "constanze" ? "Constanze" : "Dirk";
-}
-
-/** Beschreibender Satz zur Verteilung — nie wertend, Constanze zuerst. */
-export function splitLabel(constanze: number, dirk: number, offen: number, what: string): string {
-  if (constanze + dirk + offen === 0) return `Nichts ${what} eingeplant.`;
-  if (constanze === dirk) return `Gleichmäßig verteilt (je ${constanze}).`;
-  const more = constanze > dirk ? "Constanze" : "Dirk";
-  return `${more} hat mehr ${what} (${constanze} zu ${dirk}).`;
-}
 
 export function buildOverview(input: {
   events: OverviewEvent[];
@@ -98,26 +77,10 @@ export function buildOverview(input: {
     open.push({ kind: "todo", id: t.id, label: t.title, when: t.dueLabel, overdue: t.overdue });
   }
 
-  // 3. Wer macht was — Betreuung und Aufgaben getrennt zählen.
-  let cC = 0, cD = 0, cO = 0;
-  for (const e of input.events) {
-    if (e.care === "da" && e.carePerson === "constanze") cC++;
-    else if (e.care === "da" && e.carePerson === "dirk") cD++;
-    else if (e.care === "offen" || e.care === "luecke") cO++;
-  }
-  let tC = 0, tD = 0, tO = 0;
-  for (const t of input.todos) {
-    if (t.assignee === "constanze") tC++;
-    else if (t.assignee === "dirk") tD++;
-    else tO++;
-  }
-
   return {
     days,
     eventCount: input.events.length,
     open,
-    careSplit: { constanze: cC, dirk: cD, offen: cO, label: splitLabel(cC, cD, cO, "Betreuung") },
-    todoSplit: { constanze: tC, dirk: tD, offen: tO, label: splitLabel(tC, tD, tO, "Aufgaben") },
   };
 }
 
@@ -138,4 +101,3 @@ export function briefingText(o: Overview, kind: "morgen" | "woche"): string {
   return parts.join(" · ").slice(0, 160);
 }
 
-export { nameOf };
