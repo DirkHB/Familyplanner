@@ -6,6 +6,7 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import type { Person } from "@/lib/auth/allowlist";
 import type { TodoGroup, TodoVM } from "@/lib/todos/group";
+import type { CareDay } from "@/lib/care/upcoming";
 import Link from "next/link";
 import {
   createTodoAction,
@@ -15,20 +16,6 @@ import {
   setTodoDueAction,
   togglePrepItemAction,
 } from "./actions";
-
-export type CareDay = {
-  key: string;
-  label: string;
-  past: boolean;
-  slots: {
-    id: string;
-    title: string;
-    /** „09:00–10:30" — oder null, wenn der Termin keine Uhrzeit hat. */
-    timeLabel: string | null;
-    sort: number;
-    person: Person | null;
-  }[];
-};
 
 export type EventTasks = {
   eventUid: string;
@@ -168,15 +155,8 @@ const CYCLE: (Person | null)[] = ["constanze", "dirk", null];
  * Rechts wischen = erledigt, links = entfernen (wie überall in der App).
  */
 function CareSlotRow({ slot }: { slot: CareDay["slots"][number] }) {
-  const [, start] = useTransition();
-  const [gone, setGone] = useState(false);
-  if (gone) return null;
   return (
-    <SwipeRow
-      onSwipeRight={() => start(async () => { await toggleTodoAction(slot.id); setGone(true); })}
-      onSwipeLeft={() => start(async () => { await deleteTodoAction(slot.id); setGone(true); })}
-      rightLabel="Erledigt"
-    >
+    <Link href={`/termin/${encodeURIComponent(slot.uid)}`} className="block">
       <div className="rounded-card bg-surface px-4 py-3 shadow-card">
         <div className="flex items-center justify-between gap-3">
           <span className="tnum font-medium">{slot.timeLabel ?? "ganztägig"}</span>
@@ -191,7 +171,7 @@ function CareSlotRow({ slot }: { slot: CareDay["slots"][number] }) {
         </div>
         <p className="mt-0.5 truncate text-sm text-ink-muted">{slot.title}</p>
       </div>
-    </SwipeRow>
+    </Link>
   );
 }
 

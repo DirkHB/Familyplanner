@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
+import { parseAllowlist, displayNameForEmail } from "@/lib/auth/allowlist";
 import { notifyUserId } from "@/lib/push/notify";
 
 export type RequestType = "yes_no" | "choice" | "free_text" | "date";
@@ -103,12 +103,6 @@ async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
           data: { responsibleUserId: req.toUserId, status: "geklaert" },
         });
       }
-      await ensureCareTodo(
-        req.eventUid,
-        title,
-        personForEmail(req.toUser.email),
-        assignment?.occurrenceDate ?? null,
-      );
       await notifyUserId(req.fromUserId, {
         title: `✓ ${answererName} übernimmt die Betreuung`,
         body: title,
@@ -132,25 +126,6 @@ async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
     body: `${req.question} → ${answer}`,
     url: "/anfragen",
     tag: `answer-${req.id}`,
-  });
-}
-
-/** Aufgabe „Baby betreuen · <Termin>" einmalig anlegen (für Übernehmende).
- *  Dedupe bewusst über JEDEN Status — eine bereits erledigte Aufgabe darf
- *  nie wieder als neue offene Kopie auftauchen. */
-export async function ensureCareTodo(
-  eventUid: string,
-  eventTitle: string,
-  person: "dirk" | "constanze",
-  due: Date | null,
-) {
-  const title = `Baby betreuen · ${eventTitle}`;
-  const existing = await prisma.todo.findFirst({
-    where: { eventUid, assignee: person, title },
-  });
-  if (existing) return existing;
-  return prisma.todo.create({
-    data: { title, eventUid, assignee: person, createdBy: person, dueDate: due },
   });
 }
 

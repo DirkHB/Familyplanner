@@ -21,6 +21,8 @@ export type EventVM = {
   notesPreview: string | null;
   /** ISO des konkreten Vorkommens — für Direktaktionen aus der Liste. */
   occurrenceISO: string;
+  /** Vorbei — wird in der Woche nur noch durchgestrichen gezeigt. */
+  past: boolean;
 };
 
 export type DayVM = {
@@ -107,6 +109,7 @@ export function buildWeek(
         openCount: meta.openCount ?? 0,
         notesPreview,
         occurrenceISO: o.start.toISOString(),
+        past: o.end <= now,
       };
     }),
   }));

@@ -122,16 +122,27 @@ function EventRow({ ev, index, isNext = false }: { ev: EventVM; index: number; i
     >
       <Link
         href={ev.href}
-        className="flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
+        className={`flex items-stretch gap-4 rounded-card bg-surface p-4 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99] ${
+          ev.past ? "opacity-55" : ""
+        }`}
       >
-        <div className={`tnum flex w-14 shrink-0 items-center font-display text-lg ${isNext ? "text-accent" : ""}`}>
+        <div
+          className={`tnum flex w-14 shrink-0 items-center font-display text-lg ${
+            isNext ? "text-accent" : ""
+          } ${ev.past ? "text-ink-muted line-through" : ""}`}
+        >
           {ev.allDay ? <span className="text-sm text-ink-muted">ganztägig</span> : ev.time}
         </div>
-        <div className="w-px shrink-0" style={{ background: ev.dotColor, opacity: 0.35 }} />
+        <div className="w-px shrink-0" style={{ background: ev.dotColor, opacity: ev.past ? 0.15 : 0.35 }} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor }} />
-            <span className="truncate text-lg font-semibold">{ev.title}</span>
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: ev.dotColor, opacity: ev.past ? 0.4 : 1 }}
+            />
+            <span className={`truncate text-lg font-semibold ${ev.past ? "text-ink-muted line-through" : ""}`}>
+              {ev.title}
+            </span>
             {ev.care && (
               <span className="ml-auto flex shrink-0 items-center gap-1">
                 {ev.care.status === "offen" && ev.occurrenceISO ? (

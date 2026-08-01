@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { createRequest, resolvePartner, ensureCareTodo } from "@/lib/requests/repository";
-import { personForEmail } from "@/lib/auth/allowlist";
+import { createRequest, resolvePartner } from "@/lib/requests/repository";
 
 /**
  * Baby-Betreuung pro Termin-Vorkommen (eventUid + occurrenceDate).
@@ -24,23 +23,15 @@ export async function getCareForOccurrence(eventUid: string, date: Date) {
 /** „Ich mache es" — Betreuung übernehmen, Status geklärt + Auto-Aufgabe. */
 export async function takeCare(eventUid: string, date: Date, userId: string) {
   const occurrenceDate = dayStart(date);
-  const result = await prisma.careAssignment.upsert({
+  // Bewusst KEINE Aufgabe daraus machen: Betreuung ist eine Zusage für ein
+  // Zeitfenster, keine Aufgabe. Sie lässt sich nicht vorziehen, nicht auf
+  // morgen schieben und nicht „früher erledigen". Sie steht am Termin und im
+  // Betreuungsbereich — dort mit Uhrzeit und Person.
+  return prisma.careAssignment.upsert({
     where: { eventUid_occurrenceDate: { eventUid, occurrenceDate } },
     create: { eventUid, occurrenceDate, responsibleUserId: userId, status: "geklaert" },
     update: { responsibleUserId: userId, status: "geklaert" },
   });
-
-  // Übernahme erscheint automatisch als Aufgabe (best effort).
-  try {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const event = await prisma.event.findFirst({ where: { uid: eventUid }, select: { title: true } });
-    if (user && event) {
-      await ensureCareTodo(eventUid, event.title, personForEmail(user.email), occurrenceDate);
-    }
-  } catch {
-    /* Aufgabe ist Komfort, nie blockierend */
-  }
-  return result;
 }
 
 /** „Braucht keine Betreuung" — Termin aus der Betreuungslogik nehmen (kein Icon mehr). */
