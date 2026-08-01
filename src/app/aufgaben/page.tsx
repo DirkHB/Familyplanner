@@ -6,6 +6,7 @@ import { buildTodoVM, groupTodos } from "@/lib/todos/group";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatMonthDay } from "@/lib/calendar/format";
 import { getUpcomingCare } from "@/lib/care/upcoming";
+import { getMainListGroups } from "@/lib/shopping/repository";
 import { AufgabenClient, type EventTasks } from "./AufgabenClient";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,11 @@ export default async function AufgabenPage() {
 
   // Betreuung kommt direkt aus den Zusagen, nicht mehr aus Aufgaben.
   const careDays = await getUpcomingCare(now);
+  // Zahl am Umschalter — damit der Einkauf sichtbar bleibt, obwohl er
+  // keinen eigenen Tab mehr hat.
+  const einkaufOffen = await getMainListGroups()
+    .then((r) => r.groups.reduce((n, g) => n + g.items.filter((i) => !i.checked).length, 0))
+    .catch(() => 0);
 
-  return <AufgabenClient groups={groups} me={me} eventTasks={eventTasks} careDays={careDays} />;
+  return <AufgabenClient groups={groups} me={me} eventTasks={eventTasks} careDays={careDays} einkaufOffen={einkaufOffen} />;
 }

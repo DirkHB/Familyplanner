@@ -4,12 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+/**
+ * Drei Tabs statt fünf. Der Monat lebt als Umschalter unter „Woche", der
+ * Einkauf unter „Aufgaben" — beide bleiben eigene Routen, sind aber keine
+ * eigenen Orte mehr, an denen man suchen muss.
+ */
 const TABS = [
-  { href: "/woche", label: "Woche", icon: CalendarIcon },
-  { href: "/ueberblick", label: "Überblick", icon: CompassIcon },
-  { href: "/termine", label: "Termine", icon: ClockIcon },
-  { href: "/aufgaben", label: "Aufgaben", icon: CheckIcon },
-  { href: "/einkauf", label: "Einkauf", icon: BasketIcon },
+  { href: "/woche", label: "Woche", icon: CalendarIcon, auch: ["/termine"] },
+  { href: "/ueberblick", label: "Überblick", icon: CompassIcon, auch: [] as string[] },
+  { href: "/aufgaben", label: "Aufgaben", icon: CheckIcon, auch: ["/einkauf"] },
 ];
 
 export function TabBar() {
@@ -31,8 +34,11 @@ export function TabBar() {
         className="mx-auto flex max-w-md items-center justify-around px-4 pt-2.5"
         style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom))" }}
       >
-        {TABS.map(({ href, label, icon: Icon }) => {
-          const active = path === href || path.startsWith(href + "/");
+        {TABS.map(({ href, label, icon: Icon, auch }) => {
+          const active =
+            path === href ||
+            path.startsWith(href + "/") ||
+            auch.some((p) => path === p || path.startsWith(p + "/"));
           return (
             <Link
               key={href}
@@ -63,22 +69,6 @@ function CalendarIcon() {
     <svg viewBox="0 0 24 24" {...S}>
       <rect x="3" y="4.5" width="18" height="16" rx="3" />
       <path d="M3 9h18M8 3v3M16 3v3" strokeLinecap="round" />
-    </svg>
-  );
-}
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" {...S}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 8v4.5l3 2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function BasketIcon() {
-  return (
-    <svg viewBox="0 0 24 24" {...S}>
-      <path d="M4 9h16l-1.4 9.2a2 2 0 0 1-2 1.8H7.4a2 2 0 0 1-2-1.8L4 9Z" strokeLinejoin="round" />
-      <path d="M8.5 9 12 3.5 15.5 9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

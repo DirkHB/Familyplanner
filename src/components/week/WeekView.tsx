@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
 import { AppShell } from "@/components/app/AppShell";
+import { SegmentedNav } from "@/components/app/SegmentedNav";
 import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
 import type { RequestVM } from "@/lib/requests/view-model";
@@ -58,6 +59,16 @@ export function WeekView({
               </svg>
             </Link>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <SegmentedNav
+            active="/woche"
+            items={[
+              { href: "/woche", label: "Woche" },
+              { href: "/termine", label: "Monat" },
+            ]}
+          />
         </div>
 
         <RequestHero requests={requests} />

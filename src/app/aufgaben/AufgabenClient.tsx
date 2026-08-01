@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
+import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
 import type { TodoGroup, TodoVM } from "@/lib/todos/group";
 import type { CareDay } from "@/lib/care/upcoming";
@@ -32,11 +33,14 @@ export function AufgabenClient({
   me,
   eventTasks = [],
   careDays = [],
+  einkaufOffen = 0,
 }: {
   groups: TodoGroup[];
   me: Person;
   eventTasks?: EventTasks[];
   careDays?: CareDay[];
+  /** Offene Einkaufsposten — als Zahl am Umschalter. */
+  einkaufOffen?: number;
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
   const [showForm, setShowForm] = useState(false);
@@ -51,6 +55,15 @@ export function AufgabenClient({
   return (
     <AppShell>
       <>
+        <div className="mb-4">
+          <SegmentedNav
+            active="/aufgaben"
+            items={[
+              { href: "/aufgaben", label: "Aufgaben" },
+              { href: "/einkauf", label: "Einkauf", badge: einkaufOffen },
+            ]}
+          />
+        </div>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-4xl">Aufgaben</h1>

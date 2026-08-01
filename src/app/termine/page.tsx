@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app/AppShell";
+import { SegmentedNav } from "@/components/app/SegmentedNav";
 import { BabyIcon } from "@/components/ui/BabyIcon";
 import { buildWeek, type DayVM, type EventVM } from "@/lib/calendar/view-model";
 import { getRangeData } from "@/lib/calendar/range-data";
@@ -42,6 +43,15 @@ export default async function TerminePage({
           nextHref={`/termine?m=${shiftMonth(monthKey, 1)}`}
           todayId={monthKey === todayKey.slice(0, 7) ? todayKey : null}
         >
+        <div className="mb-3">
+          <SegmentedNav
+            active="/termine"
+            items={[
+              { href: "/woche", label: "Woche" },
+              { href: "/termine", label: "Monat" },
+            ]}
+          />
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="font-display text-3xl">{monthTitle(monthKey)}</h1>
           <div className="flex gap-2">
