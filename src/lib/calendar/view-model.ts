@@ -46,7 +46,10 @@ export type EventMeta = {
 };
 
 /** Betreuungsstatus je Vorkommen, Schlüssel `${uid}:${YYYY-MM-DD}` (Berlin). */
-export type CareByOcc = Map<string, { status: string; person: Person | null }>;
+export type CareByOcc = Map<
+  string,
+  { status: string; person: Person | null; externName?: string | null }
+>;
 
 const CARE_LABEL = {
   geklaert: "Betreuung geklärt",
@@ -95,7 +98,7 @@ export function buildWeek(
         if (c && c.status !== "keine") {
           if (c.status === "offen") care = { status: "offen", label: "Betreuung offen", person: null };
           else if (c.status === "extern")
-            care = { status: "da", label: "Babysitter ist da", person: null };
+            care = { status: "da", label: `${c.externName ?? "Babysitter"} ist da`, person: null };
           else if (c.person)
             care = {
               status: "da",
@@ -135,6 +138,8 @@ export type CareVM = {
   status: "offen" | "zugesagt" | "geklaert" | "keine" | "extern";
   responsibleName: string | null;
   responsiblePerson: Person | null;
+  /** Bei „extern": wer von außen kommt (Oma, Opa, Babysitter). */
+  externName?: string | null;
 } | null;
 
 export type DetailVM = {

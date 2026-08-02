@@ -62,7 +62,7 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
       care?.status === "offen"
         ? " [Betreuung für Nicolas noch OFFEN]"
         : care?.status === "extern"
-          ? " [Babysitter ist bei Nicolas]"
+          ? ` [${care.externName ?? "Babysitter"} ist bei Nicolas]`
           : care?.person
             ? ` [${care.person === "constanze" ? "Constanze" : "Dirk"} ist bei Nicolas]`
             : "";

@@ -59,23 +59,41 @@ export async function takeCare(eventUid: string, date: Date, userId: string) {
   } catch {
     /* Push ist best effort — die Zusage steht auch ohne ihn. */
   }
+  await schliesseKlaerungsAufgaben(eventUid);
   return result;
 }
 
 /**
- * „Babysitter geklärt" — beide können nicht, jemand von außen übernimmt
- * (Oma, Opa, Sitter). Der Block im gemeinsamen Kalender heißt dann
- * „👶 Nicolas · Babysitter", damit beide die Absprache schwarz auf weiß haben.
+ * „Babysitter geklärt" — beide können nicht, jemand von außen übernimmt.
+ * `wer` ist der Name (Oma, Opa, Babysitter …) — er steht in der Notizspalte
+ * der Zusage und im Kalenderblock („👶 Nicolas · Oma"), damit beide die
+ * Absprache schwarz auf weiß haben.
  */
-export async function externCare(eventUid: string, date: Date) {
+export async function externCare(eventUid: string, date: Date, wer?: string | null) {
   const occurrenceDate = dayStart(date);
+  const name = wer?.trim() || null;
   const result = await prisma.careAssignment.upsert({
     where: { eventUid_occurrenceDate: { eventUid, occurrenceDate } },
-    create: { eventUid, occurrenceDate, status: "extern" },
-    update: { status: "extern", responsibleUserId: null },
+    create: { eventUid, occurrenceDate, status: "extern", note: name },
+    update: { status: "extern", responsibleUserId: null, note: name },
   });
-  await upsertCareBlock(eventUid, occurrenceDate, null).catch(() => {});
+  await upsertCareBlock(eventUid, occurrenceDate, null, name).catch(() => {});
+  await schliesseKlaerungsAufgaben(eventUid);
   return result;
+}
+
+/**
+ * „Frag ich heute Abend"-Aufgaben zu diesem Termin schließen, sobald die
+ * Betreuung geklärt ist — egal von wem. Sonst erinnert eine Aufgabe an ein
+ * Telefonat, das keiner mehr führen muss.
+ */
+async function schliesseKlaerungsAufgaben(eventUid: string) {
+  await prisma.todo
+    .updateMany({
+      where: { sourceUid: { startsWith: `care-frage:${eventUid}:` }, status: "offen" },
+      data: { status: "erledigt", completedAt: new Date() },
+    })
+    .catch(() => {});
 }
 
 /** „Braucht keine Betreuung" — Termin aus der Betreuungslogik nehmen (kein Icon mehr). */
@@ -88,6 +106,7 @@ export async function dismissCare(eventUid: string, date: Date) {
   });
   // Niemand übernimmt mehr — dann darf auch kein Block im Kalender stehen.
   await removeCareBlock(eventUid, occurrenceDate).catch(() => {});
+  await schliesseKlaerungsAufgaben(eventUid);
   return result;
 }
 

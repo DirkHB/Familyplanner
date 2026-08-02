@@ -66,6 +66,8 @@ export type EventDetailView = {
     status: "offen" | "zugesagt" | "geklaert" | "keine" | "extern";
     responsibleName: string | null;
     responsiblePerson: "dirk" | "constanze" | null;
+    /** Bei „extern": wer von außen kommt (Oma, Opa, Babysitter). */
+    externName: string | null;
   } | null;
 };
 
@@ -122,6 +124,7 @@ export async function getEventView(
           ? row.responsible.name ?? displayNameForEmail(row.responsible.email)
           : null,
         responsiblePerson: row.responsible ? personForEmail(row.responsible.email) : null,
+        externName: row.status === "extern" ? row.note : null,
       };
     }
   }

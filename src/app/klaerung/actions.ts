@@ -13,11 +13,12 @@ import {
 } from "@/lib/care/repository";
 import { dismissTitle, undismissTitle } from "@/lib/care/rules";
 import { answerRequest, resolvePartner } from "@/lib/requests/repository";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
 import { notifyUserId } from "@/lib/push/notify";
 import { removeCareBlock } from "@/lib/care/block-sync";
+import { frageFaellig } from "@/lib/care/frage-zeit";
 import { invalidateKalender } from "@/lib/calendar/range-data";
-import { startOfDayBerlin } from "@/lib/calendar/format";
+import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import type { StapelUndo } from "@/lib/klaerung/undo";
 
 /**
@@ -233,13 +234,14 @@ export async function stapelKannNichtAction(
 }
 
 /**
- * Eskalation: Babysitter (Oma, Opa, Sitter) ist organisiert. Die Betreuung
- * gilt als geklärt, der Kalender bekommt „👶 Nicolas · Babysitter" — und der
- * andere die Nachricht, damit niemand doppelt telefoniert.
+ * Eskalation: Jemand von außen ist organisiert. `wer` sagt, wer kommt (Oma,
+ * Opa, Babysitter) — der Name steht dann im Kalenderblock („👶 Nicolas · Oma")
+ * und der andere bekommt die Nachricht, damit niemand doppelt telefoniert.
  */
 export async function stapelBabysitterAction(
   uid: string,
   occurrenceISO: string | null,
+  wer: string | null = null,
 ): Promise<Ergebnis> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
@@ -248,13 +250,14 @@ export async function stapelBabysitterAction(
   const schon = await schonGeklaert(vorher, session.user.id);
   if (schon) return { ok: true, schon };
 
-  await externCare(uid, new Date(iso));
+  const name = wer?.trim() || "Babysitter";
+  await externCare(uid, new Date(iso), name);
   try {
     const event = await prisma.event.findFirst({ where: { uid }, select: { title: true } });
     const partner = await resolvePartner(session.user.id);
     if (partner) {
       await notifyUserId(partner.id, {
-        title: "✓ Babysitter geklärt",
+        title: `✓ ${name} ist bei Nicolas`,
         body: event?.title ?? "Betreuung ist organisiert.",
         url: `/termin/${encodeURIComponent(uid)}`,
         tag: `care-extern-${uid}`,
@@ -266,6 +269,49 @@ export async function stapelBabysitterAction(
   invalidateKalender();
   reval();
   return { ok: true, undo: { art: "care-stand", uid, occurrenceISO: iso, vorher } };
+}
+
+/**
+ * Der Wenn-dann-Weg auf der Eskalations-Karte: statt „später irgendwann"
+ * ein konkreter Plan — eine Aufgabe „Betreuung klären", fällig heute Abend
+ * (oder rechtzeitig vor dem Termin). Solange sie offen ist, hält die
+ * Eskalations-Karte still; wird die Betreuung geklärt, schließt sie sich
+ * von selbst (schliesseKlaerungsAufgaben).
+ */
+export async function stapelFrageAbendAction(
+  uid: string,
+  occurrenceISO: string | null,
+  titel: string,
+): Promise<Ergebnis> {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) return { ok: false };
+  const iso = occurrenceISO ?? new Date().toISOString();
+  const vorher = await careVorher(uid, iso);
+  const schon = await schonGeklaert(vorher, session.user.id);
+  if (schon) return { ok: true, schon };
+
+  const tag = dayKey(new Date(iso));
+  const sourceUid = `care-frage:${uid}:${tag}`;
+  const schonDa = await prisma.todo.findFirst({
+    where: { sourceUid, status: "offen" },
+    select: { id: true },
+  });
+  if (schonDa) return { ok: true, schon: "Steht schon in euren Aufgaben" };
+
+  const me = personForEmail(session.user.email);
+  const todo = await prisma.todo.create({
+    data: {
+      title: `Betreuung klären: ${titel}`,
+      notes: "Oma, Opa oder Babysitter fragen — sobald jemand zusagt, am Termin eintragen.",
+      dueDate: frageFaellig(new Date(), occurrenceISO ? new Date(occurrenceISO) : null),
+      assignee: me,
+      createdBy: me,
+      eventUid: uid,
+      sourceUid,
+    },
+  });
+  reval();
+  return { ok: true, undo: { art: "todo-weg", todoId: todo.id } };
 }
 
 export async function stapelAntwortAction(
@@ -415,6 +461,10 @@ export async function stapelRueckgaengigAction(u: StapelUndo): Promise<{ ok: boo
       await removeCareBlock(u.uid, occurrenceDate).catch(() => {});
       break;
     }
+
+    case "todo-weg":
+      await prisma.todo.delete({ where: { id: u.todoId } }).catch(() => null);
+      break;
 
     case "antwort-zurueck": {
       await prisma.request

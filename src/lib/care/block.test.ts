@@ -17,6 +17,14 @@ describe("careBlockTitle", () => {
   it("kennt den Babysitter, wenn beide nicht können", () => {
     expect(careBlockTitle("extern")).toBe("👶 Nicolas · Babysitter");
   });
+
+  it("nennt Oma beim Namen, wenn sie es ist", () => {
+    expect(careBlockTitle("extern", "Oma")).toBe("👶 Nicolas · Oma");
+    // Leerer Name fällt sauber auf den Babysitter zurück.
+    expect(careBlockTitle("extern", "  ")).toBe("👶 Nicolas · Babysitter");
+    // Für Constanze und Dirk zählt weiter ihr eigener Name.
+    expect(careBlockTitle("dirk", "Oma")).toBe("👶 Nicolas · Dirk");
+  });
 });
 
 describe("careBlockUid", () => {

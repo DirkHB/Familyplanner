@@ -30,4 +30,6 @@ export type StapelUndo =
       anfrageWeg?: string;
     }
   /** Antwort auf eine Anfrage zurücknehmen — die Frage steht wieder offen. */
-  | { art: "antwort-zurueck"; requestId: string; eventUid: string | null };
+  | { art: "antwort-zurueck"; requestId: string; eventUid: string | null }
+  /** Eine gerade angelegte Aufgabe („Frag ich heute Abend") wieder löschen. */
+  | { art: "todo-weg"; todoId: string };

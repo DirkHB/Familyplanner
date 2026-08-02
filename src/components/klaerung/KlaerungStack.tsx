@@ -14,6 +14,7 @@ import {
   stapelAntwortAction,
   stapelEskalationGeklaertAction,
   stapelBabysitterAction,
+  stapelFrageAbendAction,
   stapelParkenDieseWocheAction,
   stapelParkenBleibtAction,
   stapelRueckgaengigAction,
@@ -40,6 +41,8 @@ type Decision = {
   card: KlaerungCard;
   richtung: "rechts" | "links" | "morgen" | "keine";
   label: string;
+  /** Bei der Eskalation: wer von außen übernimmt (Oma, Opa, Babysitter). */
+  wer?: string;
 };
 
 type Ergebnis = { ok: boolean; undo?: StapelUndo; schon?: string };
@@ -59,10 +62,12 @@ function actionFor(d: Decision): (() => Promise<Ergebnis>) | null {
     case "anfrage":
       return () => stapelAntwortAction(c.id, d.richtung === "rechts" ? "Ja" : "Nein");
     case "eskalation":
-      if (d.richtung === "rechts") return () => stapelBabysitterAction(c.uid, c.occurrenceISO);
+      if (d.richtung === "rechts")
+        return () => stapelBabysitterAction(c.uid, c.occurrenceISO, d.wer ?? null);
       if (d.richtung === "keine")
         return () => stapelEskalationGeklaertAction(c.uid, c.occurrenceISO);
-      return null; // links = noch offen — bewusst keine Datenänderung
+      // links = Wenn-dann-Plan: konkrete Aufgabe statt vagem „später".
+      return () => stapelFrageAbendAction(c.uid, c.occurrenceISO, c.title);
     case "parken":
       return d.richtung === "rechts"
         ? () => stapelParkenDieseWocheAction(c.id)
@@ -74,15 +79,23 @@ const LABELS: Record<KlaerungCard["kind"], { links: string; rechts: string }> = 
   aufgabe: { links: "Später", rechts: "Erledigt ✓" },
   betreuung: { links: "Ich kann nicht", rechts: "Ich mach das ✓" },
   anfrage: { links: "Nein", rechts: "Ja ✓" },
-  eskalation: { links: "Noch offen", rechts: "Babysitter geklärt ✓" },
+  eskalation: { links: "Frag ich heute Abend", rechts: "Babysitter geklärt ✓" },
   parken: { links: "Bleibt liegen", rechts: "Diese Woche ✓" },
 };
 
 /** Was in der Rückgängig-Leiste steht — im Rückblick formuliert. */
-function entscheidungsLabel(card: KlaerungCard, richtung: Decision["richtung"]): string {
+function entscheidungsLabel(
+  card: KlaerungCard,
+  richtung: Decision["richtung"],
+  wer?: string,
+): string {
   if (richtung === "morgen") return "Auf morgen geschoben";
   if (richtung === "keine")
     return card.kind === "eskalation" ? "Anders gelöst" : "Als nicht nötig gemerkt";
+  if (card.kind === "eskalation") {
+    if (richtung === "rechts") return `${wer ?? "Babysitter"} übernimmt ✓`;
+    return "Aufgabe angelegt: heute Abend fragen";
+  }
   return LABELS[card.kind][richtung === "rechts" ? "rechts" : "links"];
 }
 
@@ -103,6 +116,12 @@ export function KlaerungStack({
    * Entscheidung — ohne Rückgängig, denn es wurde nichts geschrieben.
    */
   const [leiste, setLeiste] = useState<{ text: string; mitUndo: boolean; d: Decision } | null>(null);
+  /**
+   * „Babysitter geklärt ✓" auf der Eskalations-Karte fragt einmal nach: Wer?
+   * Meistens ist es Oma oder Opa — mit Namen im Kalender ist die Absprache
+   * eindeutig. Ein Tipp mehr, sonst nichts; „Zurück" führt raus.
+   */
+  const [werWahl, setWerWahl] = useState(false);
   /**
    * Die Gegenbuchung zur letzten Antwort — als Promise, weil „Rückgängig"
    * schneller getippt sein kann, als die Antwort des Servers zurück ist.
@@ -135,9 +154,15 @@ export function KlaerungStack({
     }
   }, [fertig, onClose]);
 
-  function decide(richtung: Decision["richtung"]) {
+  function decide(richtung: Decision["richtung"], wer?: string) {
     if (!card) return;
-    const d: Decision = { card, richtung, label: entscheidungsLabel(card, richtung) };
+    // Bei der Eskalation braucht „rechts" erst den Namen — Wähler zeigen.
+    if (card.kind === "eskalation" && richtung === "rechts" && !wer) {
+      setWerWahl(true);
+      return;
+    }
+    setWerWahl(false);
+    const d: Decision = { card, richtung, label: entscheidungsLabel(card, richtung, wer), wer };
     const run = actionFor(d);
     if (run) {
       // Sofort schreiben. Die Rückgängig-Leiste bleibt trotzdem ein paar
@@ -193,6 +218,8 @@ export function KlaerungStack({
               /* Nur die erste Karte zeigt die Wisch-Bewegung vor — einmal
                  reicht, danach kennt die Hand den Weg. */
               hinweis={index === 0}
+              werWahl={werWahl}
+              onWerAbbrechen={() => setWerWahl(false)}
             />
           )}
           {fertig && (
@@ -244,10 +271,14 @@ function SwipeCard({
   card,
   onDecide,
   hinweis = false,
+  werWahl = false,
+  onWerAbbrechen,
 }: {
   card: KlaerungCard;
-  onDecide: (r: Decision["richtung"]) => void;
+  onDecide: (r: Decision["richtung"], wer?: string) => void;
   hinweis?: boolean;
+  werWahl?: boolean;
+  onWerAbbrechen?: () => void;
 }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-7, 7]);
@@ -291,7 +322,11 @@ function SwipeCard({
         </motion.span>
 
         <CardBody card={card} />
-        <CardActions card={card} onDecide={onDecide} />
+        {werWahl && card.kind === "eskalation" ? (
+          <WerWaehler onDecide={onDecide} onAbbrechen={onWerAbbrechen} />
+        ) : (
+          <CardActions card={card} onDecide={onDecide} />
+        )}
       </div>
     </motion.div>
   );
@@ -362,6 +397,41 @@ function CardBody({ card }: { card: KlaerungCard }) {
  */
 const DRITTER_WEG =
   "w-full rounded-pill border border-surface/35 bg-surface/15 px-5 py-3.5 text-center text-[15px] font-medium text-surface";
+
+/**
+ * Der zweite Tipp nach „Babysitter geklärt ✓": Wer kommt? Drei Namen, fertig
+ * — kein Freitext, keine Pflichtangabe. Der Name landet im Kalenderblock.
+ */
+function WerWaehler({
+  onDecide,
+  onAbbrechen,
+}: {
+  onDecide: (r: Decision["richtung"], wer?: string) => void;
+  onAbbrechen?: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-center text-sm text-surface/70">Wer ist dann bei Nicolas?</p>
+      {/* flex statt grid-cols-3: Die Dreier-Spalte taucht sonst nirgends im
+          Projekt auf, und das CSS dazu fehlte im Build — die Knöpfe stapelten
+          sich. Flex braucht keine eigene Utility je Spaltenzahl. */}
+      <div className="flex gap-3">
+        {["Oma", "Opa", "Babysitter"].map((wer) => (
+          <button
+            key={wer}
+            onClick={() => onDecide("rechts", wer)}
+            className="flex-1 whitespace-nowrap rounded-pill bg-accent px-2 py-3.5 text-sm font-medium text-surface"
+          >
+            {wer}
+          </button>
+        ))}
+      </div>
+      <button onClick={onAbbrechen} className="text-center text-xs text-surface/50 underline">
+        Zurück
+      </button>
+    </div>
+  );
+}
 
 function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void }) {
   const labels = LABELS[card.kind];

@@ -89,7 +89,23 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
     const offen = await prisma.careAssignment.findMany({
       where: { eventUid: { in: [...neinUids] }, status: "offen", occurrenceDate: { gte: heuteStart, lt: morgenEnde } },
     });
+    // Wer „Frag ich heute Abend" gewählt hat, hat einen Plan — solange die
+    // Aufgabe offen ist, nervt die Karte nicht noch einmal. Wird die Aufgabe
+    // erledigt oder gelöscht, ohne dass die Betreuung geklärt ist, kommt die
+    // Karte als Sicherheitsnetz wieder.
+    const frageKeys = offen.map((a) => `care-frage:${a.eventUid}:${dayKey(a.occurrenceDate)}`);
+    const geplant = frageKeys.length
+      ? new Set(
+          (
+            await prisma.todo.findMany({
+              where: { sourceUid: { in: frageKeys }, status: "offen" },
+              select: { sourceUid: true },
+            })
+          ).map((t) => t.sourceUid!),
+        )
+      : new Set<string>();
     for (const a of offen) {
+      if (geplant.has(`care-frage:${a.eventUid}:${dayKey(a.occurrenceDate)}`)) continue;
       const occ = occurrences.find((o) => o.uid === a.eventUid && dayKey(o.start) === dayKey(a.occurrenceDate));
       eskalationen.push({
         kind: "eskalation",

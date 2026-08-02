@@ -24,7 +24,7 @@ export function invalidateKalender() {
 type Wire = {
   occ: (Omit<Occurrence, "start" | "end"> & { start: string; end: string })[];
   details: { eventUid: string; category: string; notes: string | null }[];
-  care: { eventUid: string; day: string; status: string; email: string | null }[];
+  care: { eventUid: string; day: string; status: string; email: string | null; note: string | null }[];
 };
 
 const load = unstable_cache(
@@ -75,6 +75,7 @@ const load = unstable_cache(
         day: dayKey(c.occurrenceDate),
         status: c.status,
         email: c.responsible?.email ?? null,
+        note: c.status === "extern" ? c.note : null,
       })),
     };
   },
@@ -82,7 +83,7 @@ const load = unstable_cache(
   { revalidate: 60, tags: [KALENDER_TAG] },
 );
 
-export type CareOcc = { status: string; person: Person | null };
+export type CareOcc = { status: string; person: Person | null; externName?: string | null };
 
 export async function getRangeData(from: Date, to: Date) {
   const d = await load(from.toISOString(), to.toISOString());
@@ -97,7 +98,7 @@ export async function getRangeData(from: Date, to: Date) {
   const careByOcc = new Map<string, CareOcc>(
     d.care.map((c) => [
       `${c.eventUid}:${c.day}`,
-      { status: c.status, person: c.email ? personForEmail(c.email) : null },
+      { status: c.status, person: c.email ? personForEmail(c.email) : null, externName: c.note },
     ]),
   );
   return { occurrences, metaByUid, careByOcc };

@@ -93,6 +93,23 @@ async function triggerBriefing(kind) {
 cron.schedule("0 7 * * *", () => triggerBriefing("morgen"), { timezone: TZ });
 cron.schedule("0 12 * * 0", () => triggerBriefing("woche"), { timezone: TZ });
 
+// --- Abend-Check: 18:00 — Betreuung in <24h noch offen? Dann beide anstupsen. ---
+async function triggerCareAbend() {
+  if (!process.env.WORKER_SECRET) return;
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/care-abend`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    log("care-abend", `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log("care-abend", `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("0 18 * * *", triggerCareAbend, { timezone: TZ });
+
 // Mini-HTTP-Server nur für den Sliplane-Healthcheck: Sliplane verlangt von jedem
 // Service eine HTTP-Antwort auf "/", sonst landet er in einer Redeploy-Schleife
 // (gelernt am Postgres-Container). Antwortet 200 mit Status der Jobs.

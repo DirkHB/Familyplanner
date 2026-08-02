@@ -296,8 +296,8 @@ function CareBlock({ vm }: { vm: DetailVM }) {
             👶
           </span>
           <div className="min-w-0">
-            <p className="font-semibold">Babysitter ist da</p>
-            <p className="text-sm text-ink-muted">Oma, Opa oder Sitter — ist organisiert.</p>
+            <p className="font-semibold">{care?.externName ?? "Babysitter"} ist da</p>
+            <p className="text-sm text-ink-muted">Extern organisiert — steht im Kalender.</p>
           </div>
           {canAct && (
             <button
@@ -348,7 +348,7 @@ function CareBlock({ vm }: { vm: DetailVM }) {
         <div>
           <p className="mb-3 text-sm text-ink-muted">
             {aendern
-              ? `Bisher: ${care?.status === "extern" ? "Babysitter" : care?.responsibleName} ist da.`
+              ? `Bisher: ${care?.status === "extern" ? (care.externName ?? "Babysitter") : care?.responsibleName} ist da.`
               : care?.status === "offen"
                 ? "Noch offen — eine Anfrage ist unterwegs."
                 : "Noch nicht geklärt."}

@@ -72,6 +72,7 @@ export async function upsertCareBlock(
   eventUid: string,
   occurrenceDate: Date,
   userId: string | null,
+  externName?: string | null,
 ): Promise<void> {
   if (!(await getFlag(CARE_BLOCKS))) return;
 
@@ -88,7 +89,7 @@ export async function upsertCareBlock(
   const uid = careBlockUid(eventUid, w.tag);
   const ics = buildIcs({
     uid,
-    title: careBlockTitle(person),
+    title: careBlockTitle(person, externName),
     start: w.start,
     end: w.end,
     allDay: false,
@@ -110,7 +111,7 @@ export async function upsertCareBlock(
         recurrenceId: "",
         href,
         etag: put.etag,
-        title: careBlockTitle(person),
+        title: careBlockTitle(person, externName),
         start: w.start,
         end: w.end,
         allDay: false,
@@ -118,7 +119,7 @@ export async function upsertCareBlock(
         lastSyncedAt: new Date(),
       },
       update: {
-        title: careBlockTitle(person),
+        title: careBlockTitle(person, externName),
         start: w.start,
         end: w.end,
         rawIcs: ics,

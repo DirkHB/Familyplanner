@@ -34,9 +34,12 @@ const NAME: Record<CarePerson, string> = {
 
 /**
  * Titel im echten Kalender. Das Baby-Zeichen macht die Zeile auf einen Blick
- * unterscheidbar von allem anderen im gemeinsamen Kalender.
+ * unterscheidbar von allem anderen im gemeinsamen Kalender. Bei externer
+ * Betreuung darf ein Name dabei sein — „👶 Nicolas · Oma" sagt mehr als
+ * „Babysitter", und meistens ist es Oma oder Opa.
  */
-export function careBlockTitle(person: CarePerson): string {
+export function careBlockTitle(person: CarePerson, externName?: string | null): string {
+  if (person === "extern" && externName?.trim()) return `👶 Nicolas · ${externName.trim()}`;
   return `👶 Nicolas · ${NAME[person]}`;
 }
 
