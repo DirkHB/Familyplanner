@@ -96,3 +96,95 @@ export async function setCareBlocksAction(an: boolean) {
   revalidatePath("/einstellungen");
   return { ok: true };
 }
+
+/* --------------------------- Aufgabenlisten & Läden --------------------------- */
+
+/**
+ * Beides sind Fächer, die Constanze und Dirk selbst anlegen. Die Aktionen
+ * geben einen Grund zurück statt zu werfen: Ein Name, den es schon gibt, ist
+ * kein Fehler des Programms, sondern etwas, das man lesen können muss.
+ */
+
+export async function createTodoListAction(name: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+  const { createTodoList } = await import("@/lib/todos/lists");
+  const res = await createTodoList(name);
+  revalidatePath("/einstellungen");
+  revalidatePath("/aufgaben");
+  return res;
+}
+
+export async function renameTodoListAction(id: string, name: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+  const { renameTodoList } = await import("@/lib/todos/lists");
+  const res = await renameTodoList(id, name);
+  revalidatePath("/einstellungen");
+  revalidatePath("/aufgaben");
+  return res;
+}
+
+export async function deleteTodoListAction(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const { deleteTodoList } = await import("@/lib/todos/lists");
+  await deleteTodoList(id);
+  revalidatePath("/einstellungen");
+  revalidatePath("/aufgaben");
+  return { ok: true };
+}
+
+export async function createStoreAction(name: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+  const { createStore } = await import("@/lib/shopping/repository");
+  const res = await createStore(name);
+  revalidatePath("/einstellungen");
+  revalidatePath("/einkauf");
+  return res;
+}
+
+export async function renameStoreAction(id: string, name: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+  const { renameStore } = await import("@/lib/shopping/repository");
+  const res = await renameStore(id, name);
+  revalidatePath("/einstellungen");
+  revalidatePath("/einkauf");
+  return res;
+}
+
+export async function deleteStoreAction(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const { deleteStore } = await import("@/lib/shopping/repository");
+  await deleteStore(id);
+  revalidatePath("/einstellungen");
+  revalidatePath("/einkauf");
+  return { ok: true };
+}
+
+/* ------------------- Erinnerungen aus iCloud übernehmen ------------------- */
+
+export async function discoverRemindersAction() {
+  const session = await auth();
+  if (!session?.user?.id) return { listen: [] };
+  const { discoverRemindersLists } = await import("@/lib/todos/import-icloud");
+  try {
+    return { listen: await discoverRemindersLists() };
+  } catch {
+    return { listen: [] };
+  }
+}
+
+export async function importRemindersAction(url: string) {
+  const session = await auth();
+  if (!session?.user?.email) return { ok: false, grund: "Nicht angemeldet.", uebernommen: 0, uebersprungen: 0 };
+  const { personForEmail } = await import("@/lib/auth/allowlist");
+  const { importRemindersList } = await import("@/lib/todos/import-icloud");
+  const res = await importRemindersList(url, personForEmail(session.user.email));
+  revalidatePath("/einstellungen");
+  revalidatePath("/aufgaben");
+  return res;
+}

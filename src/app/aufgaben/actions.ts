@@ -33,6 +33,7 @@ export async function createTodoAction(
     assignee,
     createdBy: me,
     remindAt: remind,
+    listId: String(fd.get("listId") ?? "") || null,
   });
   revalidatePath("/aufgaben");
   return { error: null };

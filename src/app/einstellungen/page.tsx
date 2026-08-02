@@ -4,6 +4,8 @@ import { SettingsClient } from "./SettingsClient";
 import { diagnoseCalendars } from "@/lib/calendar/diagnose";
 import { listDismissed } from "@/lib/care/rules";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
+import { listTodoLists, countOpenPerList } from "@/lib/todos/lists";
+import { listStores } from "@/lib/shopping/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +50,32 @@ export default async function EinstellungenPage() {
     : [[], []];
   const careBlocks = await getFlag(CARE_BLOCKS);
 
+  // Die Zahlen an den Fächern sind kein Schmuck: Sie beantworten die Frage,
+  // die beim Löschen zählt — steckt da noch etwas drin?
+  const [todoListen, offenProListe, laeden, artikelProLaden] = await Promise.all([
+    listTodoLists(),
+    countOpenPerList(),
+    listStores(),
+    prisma.shoppingItem.groupBy({ by: ["storeId"], _count: { _all: true } }),
+  ]);
+  const artikelZahl = new Map(artikelProLaden.map((r) => [r.storeId, r._count._all]));
+
   return (
     <SettingsClient
       account={vm}
       diagnose={diagnose}
       abgewinkt={abgewinkt.map((r) => r.titleKey)}
       careBlocks={careBlocks}
+      todoLists={todoListen.map((l) => ({
+        id: l.id,
+        name: l.name,
+        anzahl: offenProListe.get(l.id) ?? 0,
+      }))}
+      stores={laeden.map((s) => ({
+        id: s.id,
+        name: s.name,
+        anzahl: artikelZahl.get(s.id) ?? 0,
+      }))}
     />
   );
 }

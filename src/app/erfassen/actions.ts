@@ -9,8 +9,7 @@ import { createEvent } from "@/lib/calendar/create";
 import { displayNameForEmail, personForEmail, type Person } from "@/lib/auth/allowlist";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { createTodo } from "@/lib/todos/repository";
-import { addItem } from "@/lib/shopping/repository";
-import { normalizeStore } from "@/lib/shopping/stores";
+import { addItem, resolveStoreByName } from "@/lib/shopping/repository";
 
 /** Ein Eingabefeld für alles: Termin, Aufgabe oder Einkauf — die KI ordnet zu. */
 export async function captureAction(
@@ -47,7 +46,9 @@ export async function acceptSuggestionAction(
 
   try {
     if (item.kind === "einkauf") {
-      await addItem(item.title, me, normalizeStore(item.store));
+      // Kein passender Laden gefunden? Dann „Sonstiges" — der Artikel ist
+      // wichtiger als seine Einordnung.
+      await addItem(item.title, me, await resolveStoreByName(item.store));
       revalidatePath("/einkauf");
       return { ok: true, created: true, where: "Einkaufsliste" };
     }

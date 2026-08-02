@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { buildTodoVM, groupTodos, type TodoVM } from "./group";
+import {
+  buildTodoVM,
+  groupTodos,
+  filterByList,
+  countOpenByList,
+  ALLE_LISTEN,
+  OHNE_LISTE,
+  type TodoVM,
+} from "./group";
 
 // Fixe Referenz: Mittwoch, 30.07.2026, 12:00 Berlin (10:00 UTC).
 const NOW = new Date("2026-07-30T10:00:00Z");
@@ -16,6 +24,7 @@ function vm(partial: Partial<TodoVM> & { id: string }): TodoVM {
     overdue: false,
     hasReminder: false,
     important: false,
+    listId: null,
     ...partial,
   };
 }
@@ -93,5 +102,50 @@ describe("Fach Irgendwann", () => {
     );
     // Bei datierten Aufgaben zählt das Datum, nicht ein Kennzeichen.
     expect(g.find((x) => x.key === "heute")!.todos.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("filterByList", () => {
+  const todos = [
+    vm({ id: "a", listId: "l1" }),
+    vm({ id: "b", listId: "l2" }),
+    vm({ id: "c", listId: null }),
+  ];
+
+  it("zeigt ohne Auswahl alles", () => {
+    expect(filterByList(todos, ALLE_LISTEN).map((t) => t.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("schränkt auf eine Liste ein", () => {
+    expect(filterByList(todos, "l1").map((t) => t.id)).toEqual(["a"]);
+  });
+
+  it("findet die Aufgaben ohne Liste", () => {
+    expect(filterByList(todos, OHNE_LISTE).map((t) => t.id)).toEqual(["c"]);
+  });
+
+  it("gibt bei einer gelöschten Liste nichts zurück statt alles", () => {
+    // Wichtiger Unterschied: Ein leeres Fach ist ehrlich, alle Aufgaben
+    // anzuzeigen wäre eine falsche Aussage über die Auswahl.
+    expect(filterByList(todos, "gibt-es-nicht")).toEqual([]);
+  });
+});
+
+describe("countOpenByList", () => {
+  it("zählt je Liste und insgesamt, Erledigtes nicht mit", () => {
+    const counts = countOpenByList([
+      vm({ id: "a", listId: "l1" }),
+      vm({ id: "b", listId: "l1" }),
+      vm({ id: "c", listId: null }),
+      vm({ id: "d", listId: "l1", done: true }),
+    ]);
+    expect(counts.get("l1")).toBe(2);
+    expect(counts.get(OHNE_LISTE)).toBe(1);
+    expect(counts.get(ALLE_LISTEN)).toBe(3);
+  });
+
+  it("liefert für eine leere Liste gar keinen Eintrag", () => {
+    // Die Oberfläche zeigt dann keine Zahl an — besser als eine 0.
+    expect(countOpenByList([]).get("l1")).toBe(undefined);
   });
 });

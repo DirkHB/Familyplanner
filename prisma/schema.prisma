@@ -207,14 +207,35 @@ model ShoppingItem {
   eventUid  String?
   text      String
   quantity  String?
-  category  String? // Sortierung nach Ladenlayout
+  category  String? // Alt: Laden als fester Schlüssel. Ersetzt durch storeId.
+  storeId   String?      @map("store_id")
+  store     Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
   addedBy   String?
   checkedBy String?
   checkedAt DateTime?
   createdAt DateTime     @default(now())
 
   @@index([listId])
+  @@index([storeId])
   @@map("shopping_items")
+}
+
+/**
+ * Ein Laden, in dem ihr einkauft. Früher fünf fest verdrahtete Namen im Code —
+ * jetzt Zeilen, damit ihr sie selbst anlegen könnt.
+ *
+ * `storeId = null` ist bewusst kein Laden, sondern das Fach „Sonstiges": Es ist
+ * immer da, lässt sich nicht löschen und fängt alles auf, was beim Löschen
+ * eines Ladens heimatlos wird.
+ */
+model Store {
+  id        String         @id @default(cuid())
+  name      String
+  sortOrder Int            @default(0) @map("sort_order")
+  createdAt DateTime       @default(now())
+  items     ShoppingItem[]
+
+  @@map("stores")
 }
 
 /**
@@ -309,8 +330,26 @@ model ActivityLog {
  * ------------------------------ Aufgaben ------------------------------
  */
 
+/**
+ * Eine Aufgabenliste — „Haushalt", „Nicolas", „Papierkram".
+ *
+ * `listId = null` heißt „Ohne Liste" und ist kein Mangel: Der schnelle
+ * Eintrag zwischendurch soll nicht erst eine Einordnung verlangen.
+ */
+model TodoList {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now())
+  todos     Todo[]
+
+  @@map("todo_lists")
+}
+
 model Todo {
   id          String    @id @default(cuid())
+  listId      String?   @map("list_id")
+  list        TodoList? @relation(fields: [listId], references: [id], onDelete: SetNull)
   title       String
   notes       String?
   dueDate     DateTime? // ETA (Fälligkeit)
@@ -324,8 +363,16 @@ model Todo {
   remindedAt  DateTime? // wann tatsächlich erinnert wurde (einmalig)
   completedAt DateTime?
   createdAt   DateTime  @default(now())
+  /**
+   * Herkunft aus iCloud Erinnerungen (VTODO-UID). Nur dafür da, dass ein
+   * zweiter Klick auf „Übernehmen" nichts verdoppelt. Danach unbenutzt — es
+   * gibt keinen Abgleich zurück.
+   */
+  sourceUid   String?   @map("source_uid")
 
   @@index([status, dueDate])
+  @@index([listId])
+  @@index([sourceUid])
   @@map("todos")
 }
 

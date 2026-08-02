@@ -6,7 +6,7 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
-import type { TodoGroup, TodoVM } from "@/lib/todos/group";
+import { ALLE_LISTEN, OHNE_LISTE, type TodoGroup, type TodoVM } from "@/lib/todos/group";
 import type { CareDay } from "@/lib/care/upcoming";
 import Link from "next/link";
 import {
@@ -35,6 +35,7 @@ export function AufgabenClient({
   eventTasks = [],
   careDays = [],
   einkaufOffen = 0,
+  todoLists = [],
 }: {
   groups: TodoGroup[];
   me: Person;
@@ -42,16 +43,41 @@ export function AufgabenClient({
   careDays?: CareDay[];
   /** Offene Einkaufsposten — als Zahl am Umschalter. */
   einkaufOffen?: number;
+  todoLists?: { id: string; name: string }[];
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
+  const [liste, setListe] = useState<string>(ALLE_LISTEN);
   const [showForm, setShowForm] = useState(false);
+
+  // Gibt es die gewählte Liste nicht mehr (in einem anderen Gerät gelöscht),
+  // wäre sonst dauerhaft alles leer. Dann lieber wieder alles zeigen.
+  const listeGibtEs =
+    liste === ALLE_LISTEN || liste === OHNE_LISTE || todoLists.some((l) => l.id === liste);
+  const aktiveListe = listeGibtEs ? liste : ALLE_LISTEN;
 
   const filtered = groups
     .map((g) => ({
       ...g,
-      todos: filter === "alle" ? g.todos : g.todos.filter((t) => t.assignee === filter),
+      todos: g.todos
+        .filter((t) => filter === "alle" || t.assignee === filter)
+        .filter(
+          (t) =>
+            aktiveListe === ALLE_LISTEN ||
+            (aktiveListe === OHNE_LISTE ? t.listId === null : t.listId === aktiveListe),
+        ),
     }))
     .filter((g) => g.todos.length > 0);
+
+  // Zahlen an den Listen-Umschaltern: offene Aufgaben, den Personenfilter
+  // mitgerechnet — sonst stünde dort eine Zahl, die man nicht wiederfindet.
+  const sichtbar = groups.flatMap((g) => g.todos).filter((t) => filter === "alle" || t.assignee === filter);
+  const zahlFuer = (key: string) =>
+    sichtbar.filter(
+      (t) =>
+        !t.done &&
+        (key === ALLE_LISTEN || (key === OHNE_LISTE ? t.listId === null : t.listId === key)),
+    ).length;
+  const ohneListe = sichtbar.some((t) => t.listId === null);
 
   return (
     <AppShell>
@@ -102,7 +128,45 @@ export function AufgabenClient({
           ))}
         </div>
 
-        {showForm && <CreateForm me={me} onDone={() => setShowForm(false)} />}
+        {/* Listen als Umschalter — nur, wenn es welche gibt. Ein einzelner
+            Knopf „Alle" wäre nur Ballast. */}
+        {todoLists.length > 0 && (
+          <div className="-mx-5 mt-3 overflow-x-auto px-5" style={{ touchAction: "pan-x pan-y" }}>
+            <div className="flex w-max gap-2">
+              {[
+                { key: ALLE_LISTEN, name: "Alle Listen" },
+                ...todoLists.map((l) => ({ key: l.id, name: l.name })),
+                ...(ohneListe ? [{ key: OHNE_LISTE, name: "Ohne Liste" }] : []),
+              ].map((l) => {
+                const aktiv = aktiveListe === l.key;
+                const n = zahlFuer(l.key);
+                return (
+                  <button
+                    key={l.key}
+                    onClick={() => setListe(l.key)}
+                    className={`flex shrink-0 items-center gap-2 rounded-pill px-4 py-2 text-sm font-medium transition-colors ${
+                      aktiv ? "bg-accent text-surface" : "bg-surface text-ink shadow-card"
+                    }`}
+                  >
+                    {l.name}
+                    {n > 0 && (
+                      <span className={aktiv ? "text-surface/70" : "text-ink-muted"}>{n}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {showForm && (
+          <CreateForm
+            me={me}
+            todoLists={todoLists}
+            vorauswahl={aktiveListe === ALLE_LISTEN || aktiveListe === OHNE_LISTE ? null : aktiveListe}
+            onDone={() => setShowForm(false)}
+          />
+        )}
 
         {careDays.length > 0 && filter === "alle" && (
           <section className="mt-6">
@@ -303,7 +367,18 @@ function TodoRow({ todo }: { todo: TodoVM }) {
   );
 }
 
-function CreateForm({ me, onDone }: { me: Person; onDone: () => void }) {
+function CreateForm({
+  me,
+  onDone,
+  todoLists = [],
+  vorauswahl = null,
+}: {
+  me: Person;
+  onDone: () => void;
+  todoLists?: { id: string; name: string }[];
+  /** Steht oben eine Liste im Umschalter, landet die neue Aufgabe dort. */
+  vorauswahl?: string | null;
+}) {
   const [state, formAction, pending] = useActionState(createTodoAction, { error: null });
   const partner: Person = me === "dirk" ? "constanze" : "dirk";
   const label = (p: Person) => (p === "constanze" ? "Constanze" : "Dirk");
@@ -349,6 +424,23 @@ function CreateForm({ me, onDone }: { me: Person; onDone: () => void }) {
           </select>
         </label>
       </div>
+      {todoLists.length > 0 && (
+        <label className="block text-sm text-ink-muted">
+          In welche Liste?
+          <select
+            name="listId"
+            defaultValue={vorauswahl ?? ""}
+            className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base text-ink outline-none focus:border-accent"
+          >
+            <option value="">Ohne Liste</option>
+            {todoLists.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex items-center gap-2 text-sm text-ink-muted">
         <input name="remind" type="checkbox" className="h-4 w-4 accent-[var(--color-accent)]" />
         Am Fälligkeitstag um 9 Uhr erinnern (Push)

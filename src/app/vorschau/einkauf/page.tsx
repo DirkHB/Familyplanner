@@ -1,11 +1,11 @@
 import { EinkaufClient } from "@/app/einkauf/EinkaufClient";
-import type { Store } from "@/lib/shopping/stores";
+
 
 export const dynamic = "force-dynamic";
 
 /** Öffentliche Vorschau der Einkaufsliste (Beispieldaten), ohne Login/DB. */
 export default function VorschauEinkauf() {
-  const groups: { category: Store; label: string; items: { id: string; text: string; checked: boolean; addedByPerson: "dirk" | "constanze" }[] }[] = [
+  const groups: { category: string; label: string; items: { id: string; text: string; checked: boolean; addedByPerson: "dirk" | "constanze" }[] }[] = [
     {
       category: "lidl",
       label: "Lidl",

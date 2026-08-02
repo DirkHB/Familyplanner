@@ -16,6 +16,8 @@ export type TodoVM = {
   hasReminder: boolean;
   /** Nur für Undatiertes: hebt die Aufgabe im Fach „Irgendwann" nach oben. */
   important: boolean;
+  /** Zu welcher Liste die Aufgabe gehört; `null` heißt „Ohne Liste". */
+  listId: string | null;
 };
 
 export type TodoGroup = { key: string; label: string; todos: TodoVM[] };
@@ -38,6 +40,7 @@ export function buildTodoVM(
     status: string;
     remindAt: Date | null;
     important?: boolean;
+    listId?: string | null;
   },
   now: Date = new Date(),
 ): TodoVM {
@@ -55,7 +58,41 @@ export function buildTodoVM(
     overdue: !done && !!dueKey && dueKey < dayKey(now),
     hasReminder: !!row.remindAt,
     important: !!row.important,
+    listId: row.listId ?? null,
   };
+}
+
+/** Kennung für „alle Listen zusammen" — der Normalfall beim Öffnen. */
+export const ALLE_LISTEN = "alle";
+
+/** Kennung für Aufgaben ohne Liste. Kein Datensatz, sondern die Abwesenheit. */
+export const OHNE_LISTE = "ohne";
+
+/**
+ * Aufgaben auf eine Liste einschränken.
+ *
+ * Die Liste ist ein Filter, keine zweite Ordnung: Innerhalb der Auswahl bleibt
+ * die Einteilung nach „wann". Fächer nach Liste UND nach Zeitpunkt gleichzeitig
+ * wären zwei Ordnungen übereinander — dann findet man gar nichts mehr.
+ */
+export function filterByList(todos: TodoVM[], auswahl: string): TodoVM[] {
+  if (auswahl === ALLE_LISTEN) return todos;
+  if (auswahl === OHNE_LISTE) return todos.filter((t) => t.listId === null);
+  return todos.filter((t) => t.listId === auswahl);
+}
+
+/** Wie viele offene Aufgaben je Liste — für die Zahlen an den Umschaltern. */
+export function countOpenByList(todos: TodoVM[]): Map<string, number> {
+  const m = new Map<string, number>();
+  let alle = 0;
+  for (const t of todos) {
+    if (t.done) continue;
+    alle++;
+    const key = t.listId ?? OHNE_LISTE;
+    m.set(key, (m.get(key) ?? 0) + 1);
+  }
+  m.set(ALLE_LISTEN, alle);
+  return m;
 }
 
 /**

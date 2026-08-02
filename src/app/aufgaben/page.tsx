@@ -7,6 +7,7 @@ import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatMonthDay } from "@/lib/calendar/format";
 import { getUpcomingCare } from "@/lib/care/upcoming";
 import { getMainListGroups } from "@/lib/shopping/repository";
+import { listTodoLists } from "@/lib/todos/lists";
 import { AufgabenClient, type EventTasks } from "./AufgabenClient";
 
 export const dynamic = "force-dynamic";
@@ -61,5 +62,16 @@ export default async function AufgabenPage() {
     .then((r) => r.groups.reduce((n, g) => n + g.items.filter((i) => !i.checked).length, 0))
     .catch(() => 0);
 
-  return <AufgabenClient groups={groups} me={me} eventTasks={eventTasks} careDays={careDays} einkaufOffen={einkaufOffen} />;
+  const todoLists = await listTodoLists();
+
+  return (
+    <AufgabenClient
+      groups={groups}
+      me={me}
+      eventTasks={eventTasks}
+      careDays={careDays}
+      einkaufOffen={einkaufOffen}
+      todoLists={todoLists.map((l) => ({ id: l.id, name: l.name }))}
+    />
+  );
 }

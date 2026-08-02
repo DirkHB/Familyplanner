@@ -8,7 +8,7 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
-import type { Store } from "@/lib/shopping/stores";
+
 import {
   addItemAction,
   toggleItemAction,
@@ -26,11 +26,11 @@ import {
 } from "@/lib/offline/queue";
 
 type Item = { id: string; text: string; checked: boolean; addedByPerson: Person | null };
-type Group = { category: Store; label: string; items: Item[] };
+type Group = { category: string; label: string; items: Item[] };
 
 const isOffline = () => typeof navigator !== "undefined" && !navigator.onLine;
 
-type Drag = { id: string; text: string; x: number; y: number; from: Store };
+type Drag = { id: string; text: string; x: number; y: number; from: string };
 
 export function EinkaufClient({
   groups,
@@ -43,20 +43,20 @@ export function EinkaufClient({
   suggestions?: string[];
 }) {
   const [usedSuggestions, setUsedSuggestions] = useState<string[]>([]);
-  const [addTo, setAddTo] = useState<Store | null>(null);
+  const [addTo, setAddTo] = useState<string | null>(null);
   const [storeText, setStoreText] = useState("");
   const router = useRouter();
   const [, start] = useTransition();
   const [override, setOverride] = useState<Record<string, boolean>>({});
   const [removed, setRemoved] = useState<Record<string, boolean>>({});
-  const [storeOverride, setStoreOverride] = useState<Record<string, Store>>({});
+  const [storeOverride, setStoreOverride] = useState<Record<string, string>>({});
   const [pendingAdds, setPendingAdds] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [queued, setQueued] = useState(0);
   const [online, setOnline] = useState(true);
   const [drag, setDrag] = useState<Drag | null>(null);
-  const [hoverStore, setHoverStore] = useState<Store | null>(null);
-  const sectionEls = useRef(new Map<Store, HTMLElement>());
+  const [hoverStore, setHoverStore] = useState<string | null>(null);
+  const sectionEls = useRef(new Map<string, HTMLElement>());
 
   const isChecked = (it: Item) => override[it.id] ?? it.checked;
 
@@ -120,7 +120,7 @@ export function EinkaufClient({
       catch { enqueue(localQueueStore, op); setQueued((n) => n + 1); }
     });
   }
-  function addText(t: string, store?: Store) {
+  function addText(t: string, store?: string) {
     if (!t) return;
     const op: QueuedOp = { kind: "add", text: t, ts: Date.now() };
     start(async () => {
@@ -155,14 +155,14 @@ export function EinkaufClient({
   }
 
   /* --------------------- Drag-and-drop (Pointer, auch Touch) --------------------- */
-  function storeAtPoint(x: number, y: number): Store | null {
+  function storeAtPoint(x: number, y: number): string | null {
     for (const [store, el] of sectionEls.current) {
       const r = el.getBoundingClientRect();
       if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return store;
     }
     return null;
   }
-  function dragStart(e: React.PointerEvent, it: Item, from: Store) {
+  function dragStart(e: React.PointerEvent, it: Item, from: string) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({ id: it.id, text: it.text, x: e.clientX, y: e.clientY, from });
@@ -374,7 +374,7 @@ function DragGhost({ drag }: { drag: Drag }) {
   );
 }
 
-function pendingAddsFor(store: Store, adds: string[]): string[] {
+function pendingAddsFor(store: string, adds: string[]): string[] {
   return store === "sonstiges" ? adds : [];
 }
 

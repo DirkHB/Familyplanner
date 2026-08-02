@@ -11,7 +11,15 @@ import {
   disconnectAction,
   sendTestPushAction,
   setCareBlocksAction,
+  createTodoListAction,
+  renameTodoListAction,
+  deleteTodoListAction,
+  createStoreAction,
+  renameStoreAction,
+  deleteStoreAction,
 } from "./actions";
+import { FaecherEditor, type Fach } from "@/components/settings/FaecherEditor";
+import { RemindersImport } from "@/components/settings/RemindersImport";
 
 type Cal = {
   id: string;
@@ -38,11 +46,15 @@ export function SettingsClient({
   diagnose = [],
   abgewinkt = [],
   careBlocks = false,
+  todoLists = [],
+  stores = [],
 }: {
   account: Account;
   diagnose?: Diagnose[];
   abgewinkt?: string[];
   careBlocks?: boolean;
+  todoLists?: Fach[];
+  stores?: Fach[];
 }) {
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -72,6 +84,34 @@ export function SettingsClient({
         </section>
 
         <CareBlocksSetting an={careBlocks} />
+
+        <FaecherEditor
+          ueberschrift="Aufgabenlisten"
+          erklaerung={
+            "Fächer für eure Aufgaben — Haushalt, Nicolas, Papierkram. Eine Aufgabe braucht keine Liste: Der schnelle Eintrag zwischendurch soll nicht erst eine Einordnung verlangen."
+          }
+          fachWort="Liste"
+          restFach="Ohne Liste"
+          faecher={todoLists}
+          onCreate={createTodoListAction}
+          onRename={renameTodoListAction}
+          onDelete={deleteTodoListAction}
+        />
+
+        <RemindersImport />
+
+        <FaecherEditor
+          ueberschrift="Läden"
+          erklaerung={
+            "Nach diesen Fächern ist die Einkaufsliste sortiert. Sonstiges ist immer da und fängt alles auf, was keinem Laden zugeordnet ist."
+          }
+          fachWort="Laden"
+          restFach="Sonstiges"
+          faecher={stores}
+          onCreate={createStoreAction}
+          onRename={renameStoreAction}
+          onDelete={deleteStoreAction}
+        />
 
         {diagnose.length > 0 && <DiagnoseBlock diagnose={diagnose} />}
         {abgewinkt.length > 0 && <AbgewinktBlock titel={abgewinkt} />}

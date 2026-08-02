@@ -1,6 +1,13 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { STORE_ORDER, STORE_LABEL, normalizeStore, type Store } from "./stores";
+import {
+  OHNE_LADEN,
+  OHNE_LADEN_LABEL,
+  groupKeyFor,
+  storeIdFromGroupKey,
+  normalizeName,
+  nameVergeben,
+} from "./stores";
 import type { Person } from "@/lib/auth/allowlist";
 
 /** Gemeinsame Haupt-Einkaufsliste (Singleton), gruppiert nach Läden. */
@@ -19,7 +26,26 @@ export type ItemVM = {
   checked: boolean;
   addedByPerson: Person | null;
 };
-export type GroupVM = { category: Store; label: string; items: ItemVM[] };
+/** `category` ist die Gruppen-Kennung: eine Laden-Id oder `OHNE_LADEN`. */
+export type GroupVM = { category: string; label: string; items: ItemVM[] };
+
+export async function listStores() {
+  return prisma.store.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
+}
+
+/**
+ * Einen Laden über seinen Namen finden — für alles, was nur einen Namen kennt
+ * (die KI-Erfassung zum Beispiel). Kein Treffer heißt „Sonstiges", nicht
+ * „Fehler": Ein Artikel darf nie daran scheitern, dass der Laden unbekannt ist.
+ */
+export async function resolveStoreByName(name: unknown): Promise<string | null> {
+  if (typeof name !== "string" || !name.trim()) return null;
+  const gesucht = normalizeName(name).toLowerCase();
+  const treffer = (await listStores()).find(
+    (s) => normalizeName(s.name).toLowerCase() === gesucht,
+  );
+  return treffer?.id ?? null;
+}
 
 export async function getMainListGroups(): Promise<{ groups: GroupVM[]; openCount: number }> {
   const list = await getOrCreateMainList();
@@ -29,15 +55,19 @@ export async function getMainListGroups(): Promise<{ groups: GroupVM[]; openCoun
     where: { listId: list.id, checkedAt: { lt: new Date(Date.now() - CHECKED_TTL_MS) } },
   });
 
-  const items = await prisma.shoppingItem.findMany({
-    where: { listId: list.id },
-    orderBy: [{ checkedAt: "asc" }, { createdAt: "asc" }],
-  });
+  const [items, stores] = await Promise.all([
+    prisma.shoppingItem.findMany({
+      where: { listId: list.id },
+      orderBy: [{ checkedAt: "asc" }, { createdAt: "asc" }],
+    }),
+    listStores(),
+  ]);
 
-  const byStore = new Map<Store, ItemVM[]>(STORE_ORDER.map((s) => [s, []]));
+  const byStore = new Map<string, ItemVM[]>(stores.map((s) => [s.id, []]));
+  byStore.set(OHNE_LADEN, []);
   let openCount = 0;
   for (const it of items) {
-    const store = normalizeStore(it.category);
+    const key = groupKeyFor(it.storeId);
     const vm: ItemVM = {
       id: it.id,
       text: it.text,
@@ -45,26 +75,62 @@ export async function getMainListGroups(): Promise<{ groups: GroupVM[]; openCoun
       addedByPerson: (it.addedBy as Person) ?? null,
     };
     if (!vm.checked) openCount++;
-    byStore.get(store)!.push(vm);
+    // Ein Laden, den es nicht mehr gibt, darf keinen Artikel verschlucken.
+    (byStore.get(key) ?? byStore.get(OHNE_LADEN)!).push(vm);
   }
 
-  // Alle 5 Läden immer liefern (auch leer) — sie sind zugleich Drop-Ziele.
-  const groups: GroupVM[] = STORE_ORDER.map((s) => ({
-    category: s,
-    label: STORE_LABEL[s],
-    items: byStore.get(s)!,
-  }));
+  // Alle Läden immer liefern (auch leer) — sie sind zugleich Ablegeziele.
+  // „Sonstiges" steht am Ende und ist nie weg.
+  const groups: GroupVM[] = [
+    ...stores.map((s) => ({ category: s.id, label: s.name, items: byStore.get(s.id)! })),
+    { category: OHNE_LADEN, label: OHNE_LADEN_LABEL, items: byStore.get(OHNE_LADEN)! },
+  ];
 
   return { groups, openCount };
 }
 
-export async function addItem(text: string, addedBy: Person, store?: Store) {
+/* ------------------------------ Läden pflegen ------------------------------ */
+
+export async function createStore(name: string): Promise<{ ok: boolean; grund?: string }> {
+  const sauber = normalizeName(name);
+  if (!sauber) return { ok: false, grund: "Der Laden braucht einen Namen." };
+  const vorhandene = await listStores();
+  if (nameVergeben(sauber, vorhandene.map((s) => s.name)))
+    return { ok: false, grund: `„${sauber}" gibt es schon.` };
+  const letzte = vorhandene[vorhandene.length - 1];
+  await prisma.store.create({
+    data: { name: sauber, sortOrder: (letzte?.sortOrder ?? -1) + 1 },
+  });
+  return { ok: true };
+}
+
+export async function renameStore(id: string, name: string): Promise<{ ok: boolean; grund?: string }> {
+  const sauber = normalizeName(name);
+  if (!sauber) return { ok: false, grund: "Der Laden braucht einen Namen." };
+  const vorhandene = await listStores();
+  const andere = vorhandene.filter((s) => s.id !== id);
+  if (nameVergeben(sauber, andere.map((s) => s.name)))
+    return { ok: false, grund: `„${sauber}" gibt es schon.` };
+  await prisma.store.update({ where: { id }, data: { name: sauber } }).catch(() => null);
+  return { ok: true };
+}
+
+/**
+ * Laden löschen. Die Artikel bleiben — sie rutschen nach „Sonstiges", weil die
+ * Fremdschlüssel auf NULL gehen. Einen Einkaufszettel beim Umbenennen eines
+ * Ladens zu leeren wäre die schlechteste denkbare Überraschung.
+ */
+export async function deleteStore(id: string) {
+  return prisma.store.delete({ where: { id } }).catch(() => null);
+}
+
+export async function addItem(text: string, addedBy: Person, storeId?: string | null) {
   const list = await getOrCreateMainList();
   const item = await prisma.shoppingItem.create({
     data: {
       listId: list.id,
       text: text.trim(),
-      category: store ?? "sonstiges",
+      storeId: storeId ?? null,
       addedBy,
     },
   });
@@ -112,9 +178,9 @@ export async function getFrequentSuggestions(limit = 8): Promise<string[]> {
 }
 
 /** Artikel per Drag-and-drop einem anderen Laden zuordnen. */
-export async function moveItemToStore(id: string, store: Store) {
+export async function moveItemToStore(id: string, groupKey: string) {
   return prisma.shoppingItem
-    .update({ where: { id }, data: { category: normalizeStore(store) } })
+    .update({ where: { id }, data: { storeId: storeIdFromGroupKey(groupKey) } })
     .catch(() => null);
 }
 
@@ -186,7 +252,9 @@ export async function addItemToEvent(text: string, eventUid: string, addedBy: Pe
       listId: list.id,
       eventUid,
       text: text.trim(),
-      category: "sonstiges",
+      // Ohne Laden — das Fach „Sonstiges". Wer es beim Termin einträgt, denkt
+      // an den Termin, nicht an den Laden.
+      storeId: null,
       addedBy,
     },
   });

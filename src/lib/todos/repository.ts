@@ -20,6 +20,7 @@ export async function createTodo(input: {
   assignee?: Person | null;
   createdBy: Person;
   remindAt?: Date | null;
+  listId?: string | null;
 }) {
   const todo = await prisma.todo.create({
     data: {
@@ -29,6 +30,7 @@ export async function createTodo(input: {
       assignee: input.assignee ?? null,
       createdBy: input.createdBy,
       remindAt: input.remindAt ?? null,
+      listId: input.listId ?? null,
     },
   });
 
@@ -115,4 +117,9 @@ export async function runTodoReminders(now: Date = new Date()): Promise<{ sent: 
 /** Zuständigkeit wechseln (Avatar-Tap: Constanze → Dirk → offen). */
 export async function setTodoAssignee(id: string, assignee: Person | null) {
   await prisma.todo.update({ where: { id }, data: { assignee } }).catch(() => null);
+}
+
+/** Aufgabe in eine andere Liste legen (`null` = ohne Liste). */
+export async function setTodoList(id: string, listId: string | null) {
+  await prisma.todo.update({ where: { id }, data: { listId } }).catch(() => null);
 }

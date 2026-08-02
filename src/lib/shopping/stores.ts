@@ -1,16 +1,30 @@
-/** Einkaufs-Bereiche = eure Läden (statt Warengruppen): frei per Drag-and-drop sortierbar. */
+/**
+ * Eure Läden.
+ *
+ * Früher fünf feste Namen im Code. Jetzt Zeilen in der Datenbank, damit ihr
+ * sie in den Einstellungen selbst anlegen könnt. Hier steht nur, was ohne
+ * Datenbank gilt — damit es prüfbar bleibt.
+ */
 
-export const STORE_ORDER = ["lidl", "ali", "edeka", "kaefer", "sonstiges"] as const;
-export type Store = (typeof STORE_ORDER)[number];
+export { normalizeName, nameVergeben, MAX_NAME_LAENGE } from "@/lib/names";
 
-export const STORE_LABEL: Record<Store, string> = {
-  lidl: "Lidl",
-  ali: "Ali",
-  edeka: "Edeka",
-  kaefer: "Käfer",
-  sonstiges: "Sonstiges",
-};
+/** Der Schlüssel für „kein Laden". Kein Datensatz, sondern die Abwesenheit. */
+export const OHNE_LADEN = "ohne";
 
-export function normalizeStore(raw: unknown): Store {
-  return STORE_ORDER.includes(raw as Store) ? (raw as Store) : "sonstiges";
+/** Wie das Fach ohne Laden heißt. Es ist immer da und nie löschbar. */
+export const OHNE_LADEN_LABEL = "Sonstiges";
+
+export type StoreVM = { id: string; name: string };
+
+/**
+ * Die Gruppen-Kennung eines Artikels: die Laden-Id oder das Fach ohne Laden.
+ * An einer Stelle, damit Anzeige und Verschieben nie auseinanderlaufen.
+ */
+export function groupKeyFor(storeId: string | null | undefined): string {
+  return storeId ?? OHNE_LADEN;
+}
+
+/** Umgekehrt: Was aus der Oberfläche kommt, zurück in eine Laden-Id. */
+export function storeIdFromGroupKey(key: string): string | null {
+  return key === OHNE_LADEN ? null : key;
 }
