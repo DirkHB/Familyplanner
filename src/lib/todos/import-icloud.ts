@@ -35,8 +35,15 @@ async function icloud() {
 /**
  * Welche Erinnerungslisten liegen im Konto?
  *
- * Erkannt werden sie am Inhalt, nicht am Namen: Eine Sammlung, in der VTODOs
- * stehen, ist eine Erinnerungsliste. Kalender fallen damit von selbst heraus.
+ * Vorauswahl über die Server-Angabe, was eine Sammlung enthalten darf:
+ * Nur wer VTODO kann (oder nichts angibt), wird durchsucht — der große
+ * Terminkalender wird nicht umsonst heruntergeladen. Gelesen wird mit dem
+ * VTODO-Abruf; der normale Weg filtert serverseitig auf Termine und hätte
+ * jede Erinnerungsliste leer aussehen lassen.
+ *
+ * Listen ohne offene Erinnerungen erscheinen bewusst trotzdem: „Reminders,
+ * 0 offen" ist eine Antwort, mit der man etwas anfangen kann — gar nichts
+ * anzuzeigen sieht aus wie ein Fehler der App.
  */
 export async function discoverRemindersLists(): Promise<RemindersList[]> {
   const client = await icloud();
@@ -48,16 +55,18 @@ export async function discoverRemindersLists(): Promise<RemindersList[]> {
   ]);
   const bekannt = new Set(vorhandeneListen.map((l) => l.name.toLowerCase()));
 
+  const kandidaten = sammlungen.filter(
+    (s) => s.components.length === 0 || s.components.includes("VTODO"),
+  );
+
   const out: RemindersList[] = [];
-  for (const s of sammlungen) {
+  for (const s of kandidaten) {
     let offen = 0;
     let erledigt = 0;
-    let hatTodos = false;
     try {
-      const { objects } = await client.fetchChanges(s.url);
+      const objects = await client.fetchTodoObjects(s.url);
       for (const o of objects) {
         for (const t of parseTodos(o.ics)) {
-          hatTodos = true;
           if (t.done) erledigt++;
           else offen++;
         }
@@ -65,7 +74,9 @@ export async function discoverRemindersLists(): Promise<RemindersList[]> {
     } catch {
       continue; // Eine unlesbare Sammlung überspringen, nicht alles abbrechen.
     }
-    if (!hatTodos) continue;
+    // Ohne Server-Angabe zählt der Inhalt: Nur was wirklich Erinnerungen
+    // trägt, ist eine Erinnerungsliste.
+    if (s.components.length === 0 && offen + erledigt === 0) continue;
     out.push({
       url: s.url,
       name: s.displayName,
@@ -106,7 +117,7 @@ export async function importRemindersList(
 
   let objects;
   try {
-    ({ objects } = await client.fetchChanges(url));
+    objects = await client.fetchTodoObjects(url);
   } catch {
     return { ok: false, grund: "Liste konnte nicht gelesen werden.", uebernommen: 0, uebersprungen: 0 };
   }

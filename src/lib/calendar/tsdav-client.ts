@@ -42,6 +42,7 @@ export async function createICloudClient(creds: Creds): Promise<CalDavClient> {
         ctag: (c.ctag as string | undefined) ?? null,
         syncToken: (c.syncToken as string | undefined) ?? null,
         color: (c.calendarColor as string | undefined) ?? null,
+        components: Array.isArray(c.components) ? (c.components as string[]) : [],
       }));
     },
 
@@ -58,6 +59,30 @@ export async function createICloudClient(creds: Creds): Promise<CalDavClient> {
         newSyncToken: (cal.syncToken as string | undefined) ?? null,
         ctag: (cal.ctag as string | undefined) ?? null,
       };
+    },
+
+    async fetchTodoObjects(calendarUrl: string) {
+      const cal = await getCalendar(calendarUrl);
+      // tsdav filtert ohne eigene Filter fest auf VEVENT — für Erinnerungen
+      // muss der comp-filter explizit VTODO verlangen, sonst liefert der
+      // Server eine leere Menge und die Liste wirkt leer, obwohl sie es
+      // nicht ist. Genau so sah der Fehler in der App aus.
+      const objects = await client.fetchCalendarObjects({
+        calendar: cal,
+        filters: [
+          {
+            "comp-filter": {
+              _attributes: { name: "VCALENDAR" },
+              "comp-filter": { _attributes: { name: "VTODO" } },
+            },
+          },
+        ],
+      });
+      return objects.map((o) => ({
+        href: o.url,
+        etag: (o.etag as string | undefined) ?? "",
+        ics: (o.data as string | undefined) ?? "",
+      }));
     },
 
     async putEvent(

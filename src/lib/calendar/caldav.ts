@@ -6,6 +6,11 @@ export type RemoteCalendar = {
   ctag: string | null;
   syncToken: string | null;
   color: string | null;
+  /**
+   * Was die Sammlung laut Server enthalten darf (VEVENT, VTODO, …).
+   * Leer heißt „keine Angabe" — dann hilft nur Hineinschauen.
+   */
+  components: string[];
 };
 
 export type RemoteObject = {
@@ -49,6 +54,15 @@ export interface CalDavClient {
 
   /** Löschen (mit If-Match). */
   deleteEvent(href: string, ifMatchEtag: string): Promise<void>;
+
+  /**
+   * Erinnerungen (VTODO) einer Sammlung holen.
+   *
+   * Eigener Weg neben fetchChanges, weil tsdav ohne eigene Filter
+   * serverseitig fest auf VEVENT filtert — Erinnerungen kämen dort
+   * schlicht nie an, egal wie viele in der Liste stehen.
+   */
+  fetchTodoObjects(calendarUrl: string): Promise<RemoteObject[]>;
 }
 
 /** Bei 412 (ETag-Konflikt) geworfen, damit der Sync neu laden/mergen kann. */

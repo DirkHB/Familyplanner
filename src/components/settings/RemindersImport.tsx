@@ -45,11 +45,25 @@ export function RemindersImport() {
         >
           {pending ? "Suche …" : "Nachsehen, was da ist"}
         </button>
-      ) : listen.length === 0 ? (
-        <p className="mt-4 text-sm text-ink-muted">
-          Keine Erinnerungslisten gefunden. Prüf in den Einstellungen deines iPhones, ob
-          Erinnerungen mit iCloud abgeglichen werden.
-        </p>
+      ) : listen.length === 0 || listen.every((l) => l.offen + l.erledigt === 0) ? (
+        <div className="mt-4 text-sm text-ink-muted">
+          <p>
+            {listen.length === 0
+              ? "Keine Erinnerungslisten gefunden."
+              : "Die gefundenen Listen sind über diesen Weg leer."}
+          </p>
+          {/*
+            Ehrlich sein statt ratlos wirken: Seit der Erinnerungen-Umstellung
+            (iOS 13) gibt Apple modernisierte Listen über CalDAV oft nicht
+            mehr heraus. Das ist dann keine Fehlbedienung und kein Fehler der
+            App — es gibt schlicht keinen Apple-Weg von außen.
+          */}
+          <p className="mt-2">
+            Wahrscheinlicher Grund: Apple gibt modernisierte Erinnerungen (seit iOS 13) nach
+            außen nicht mehr heraus. Dann hilft der Umweg über die Stichwort-Erfassung: Liste
+            in Erinnerungen öffnen, alle markieren, kopieren — und unter „Erfassen" einfügen.
+          </p>
+        </div>
       ) : (
         <ul className="mt-4 flex flex-col gap-2">
           {listen.map((l) => (
