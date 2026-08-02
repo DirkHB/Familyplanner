@@ -24,6 +24,10 @@ model User {
   emailVerified     DateTime?
   image             String?
   notificationPrefs Json      @default("{}")
+  // Tagesfenster für den Zeitstrahl (7–21, wenn leer). Je Person, weil
+  // Constanze und Dirk unterschiedlich takten.
+  tagVonStunde      Int?      @map("tag_von_stunde")
+  tagBisStunde      Int?      @map("tag_bis_stunde")
   createdAt         DateTime  @default(now())
 
   accounts          Account[]

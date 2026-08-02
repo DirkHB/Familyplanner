@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { countTodosDueToday } from "@/lib/klaerung/repository";
+import { personForEmail } from "@/lib/auth/allowlist";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** Zahl für die rote Markierung am Aufgaben-Tab: heute fällig oder überfällig. */
+/** Für die Tab-Leiste: rote Zahl am Aufgaben-Tab + eigene Person für den Profil-Kreis. */
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ aufgaben: 0 }, { status: 401 });
   const aufgaben = await countTodosDueToday().catch(() => 0);
-  return NextResponse.json({ aufgaben });
+  const person = session.user.email ? personForEmail(session.user.email) : null;
+  return NextResponse.json({ aufgaben, person });
 }

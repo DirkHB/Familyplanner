@@ -9,6 +9,7 @@ import { AppShell } from "@/components/app/AppShell";
 import { SegmentedNav } from "@/components/app/SegmentedNav";
 import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
+import { STANDARD_FENSTER, type TagesFenster } from "@/lib/calendar/zeitstrahl";
 import type { RequestVM } from "@/lib/requests/view-model";
 import { takeCareAction, requestCareAction } from "@/app/termin/[uid]/actions";
 
@@ -19,6 +20,7 @@ export function WeekView({
   days,
   requests = [],
   nextTodayKey = null,
+  fenster = STANDARD_FENSTER,
 }: {
   greetingName: string;
   greeting?: string;
@@ -27,6 +29,8 @@ export function WeekView({
   requests?: RequestVM[];
   /** Schlüssel des nächsten noch anstehenden Termins heute — wird hervorgehoben. */
   nextTodayKey?: string | null;
+  /** Tagesfenster für die Randmarken des Zeitstrahls (je Person einstellbar). */
+  fenster?: TagesFenster;
 }) {
   const empty = days.length === 0;
   return (
@@ -39,26 +43,8 @@ export function WeekView({
               {greeting}, {greetingName}
             </h1>
           </div>
-          <div className="mt-1 flex shrink-0 items-center gap-2">
-            <Link
-              href="/einstellungen"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
-              aria-label="Einstellungen"
-            >
-              {/* Klassisches Zahnrad — die frühere Strahlen-Variante wurde als Sonne gelesen.
-                  Ohne Beschriftung: das Zahnrad ist als Symbol eindeutig genug, und der
-                  runde Knopf entspricht den anderen Icon-Knöpfen (Monatsnavigation, +). */}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
-                <path
-                  d="M19.1 13.6a7.6 7.6 0 0 0 0-3.2l1.9-1.4-1.9-3.3-2.2.9a7.6 7.6 0 0 0-2.8-1.6L13.7 2h-3.4l-.4 2.4a7.6 7.6 0 0 0-2.8 1.6l-2.2-.9L3 8.4l1.9 1.4a7.6 7.6 0 0 0 0 3.2L3 14.4l1.9 3.3 2.2-.9a7.6 7.6 0 0 0 2.8 1.6l.4 2.4h3.4l.4-2.4a7.6 7.6 0 0 0 2.8-1.6l2.2.9 1.9-3.3-1.9-1.4Z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
-          </div>
+          {/* Das Zahnrad wohnte hier — Einstellungen liegen jetzt unterm Profil
+              in der Tab-Leiste, damit sie von überall erreichbar sind. */}
         </div>
 
         <div className="mt-4">
@@ -78,7 +64,7 @@ export function WeekView({
         ) : (
           <div className="mt-8 flex flex-col gap-6">
             {days.map((day) => (
-              <DaySection key={day.key} day={day} nextTodayKey={nextTodayKey} />
+              <DaySection key={day.key} day={day} nextTodayKey={nextTodayKey} fenster={fenster} />
             ))}
           </div>
         )}
@@ -94,7 +80,7 @@ function FabErfassen() {
       href="/erfassen"
       aria-label="Schnell erfassen"
       className="absolute right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-surface shadow-hero transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
-      style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
+      style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
         <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
@@ -103,7 +89,17 @@ function FabErfassen() {
   );
 }
 
-function DaySection({ day, nextTodayKey }: { day: DayVM; nextTodayKey: string | null }) {
+function DaySection({
+  day,
+  nextTodayKey,
+  fenster,
+}: {
+  day: DayVM;
+  nextTodayKey: string | null;
+  fenster: TagesFenster;
+}) {
+  const byKey = new Map(day.events.map((e) => [e.key, e]));
+  const ganztags = day.events.filter((e) => e.allDay);
   return (
     <section>
       <div className="mb-3 flex items-baseline gap-3">
@@ -115,16 +111,96 @@ function DaySection({ day, nextTodayKey }: { day: DayVM; nextTodayKey: string | 
         <span className="h-px flex-1 bg-surface-muted" />
         <span className="tnum text-ink-muted">{day.dayNumber}.</span>
       </div>
-      <div className="flex flex-col gap-3">
-        {day.events.map((ev, i) => (
-          <EventRow key={ev.key} ev={ev} index={i} isNext={ev.key === nextTodayKey} />
-        ))}
+
+      {ganztags.length > 0 && (
+        <div className="mb-3 flex flex-col gap-3">
+          {ganztags.map((ev, i) => (
+            <EventRow key={ev.key} ev={ev} index={i} isNext={false} />
+          ))}
+        </div>
+      )}
+
+      {/* Der Zeitstrahl: eine stille Linie am linken Rand, Punkte an den
+          Termingruppen, gestrichelte Marken für freie Blöcke. Freie Blöcke
+          sind bewusst immer gleich hoch — die Frage ist „ist da Luft?",
+          die Dauer steht als Text dran. */}
+      <div className="relative pl-4">
+        <span aria-hidden className="absolute bottom-1 left-[3px] top-1 w-px bg-surface-muted" />
+        <p className="tnum mb-1 text-[11px] leading-none text-ink-muted/60">{fenster.vonStunde} Uhr</p>
+        <div className="flex flex-col gap-2.5">
+          {day.strahl.map((seg, i) =>
+            seg.art === "frei" ? (
+              <div key={`frei-${i}`} className="relative flex h-7 items-center">
+                <span aria-hidden className="absolute -left-4 top-1/2 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink-muted/50 bg-bg" />
+                <span className="rounded-pill border border-dashed border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted/80">
+                  {seg.label}
+                </span>
+              </div>
+            ) : (
+              <div key={seg.keys.join("+")} className="relative">
+                <span aria-hidden className="absolute -left-4 top-6 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-ink-muted/60" />
+                {seg.keys.length === 1 ? (
+                  <EventRow ev={byKey.get(seg.keys[0])!} index={i} isNext={seg.keys[0] === nextTodayKey} />
+                ) : (
+                  /* Parallele Termine: nebeneinander, kompakt. */
+                  <div className="grid grid-cols-2 gap-2">
+                    {seg.keys.map((k) => (
+                      <EventRow key={k} ev={byKey.get(k)!} index={i} isNext={k === nextTodayKey} kompakt />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+        <p className="tnum mt-1 text-[11px] leading-none text-ink-muted/60">{fenster.bisStunde} Uhr</p>
       </div>
     </section>
   );
 }
 
-function EventRow({ ev, index, isNext = false }: { ev: EventVM; index: number; isNext?: boolean }) {
+function EventRow({
+  ev,
+  index,
+  isNext = false,
+  kompakt = false,
+}: {
+  ev: EventVM;
+  index: number;
+  isNext?: boolean;
+  /** Halbbreit neben einem parallelen Termin: Zeit über dem Titel, ohne Beiwerk. */
+  kompakt?: boolean;
+}) {
+  if (kompakt) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.15), ease: [0.16, 1, 0.3, 1] }}
+        className="min-w-0"
+      >
+        <Link
+          href={ev.href}
+          className="block h-full rounded-card bg-surface p-3 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
+        >
+          <p className={`tnum font-display text-base ${isNext ? "text-accent" : ""} ${ev.past ? "text-ink-muted line-through" : ""}`}>
+            {ev.time}
+          </p>
+          <p className={`mt-0.5 flex items-center gap-1.5 ${ev.past ? "text-ink-muted line-through" : ""}`}>
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor, opacity: ev.past ? 0.4 : 1 }} />
+            <span className="truncate font-semibold">{ev.title}</span>
+          </p>
+          {ev.care && (
+            <span className="mt-1.5 flex items-center gap-1">
+              <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />
+              {ev.care.person && <Avatar person={ev.care.person} size={18} />}
+            </span>
+          )}
+        </Link>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}

@@ -57,6 +57,8 @@ export function buildSampleWeek(now: Date = new Date()): {
     ev("s-physio", "Physio", 0, 9, 0, 50),
     ev("s-einkauf", "Einkauf", 0, 16, 30, 45),
     ev("s-arzt", "Kinderarzt · U3", 1, 10, 15, 45, "Praxis Dr. Behrens"),
+    // Bewusst überlappend — die Vorschau muss parallele Termine zeigen.
+    ev("s-friseur", "Friseur", 1, 10, 30, 60),
     ev("s-tennis", "Tennis", 2, 19, 0, 90),
     allDay("s-oma", "Geburtstag Oma", 3),
   ];
@@ -65,6 +67,7 @@ export function buildSampleWeek(now: Date = new Date()): {
     ["s-physio", { category: "sport", care: { status: "geklaert" }, people: ["dirk"] }],
     ["s-einkauf", { category: "erledigung", care: { status: "offen" }, people: ["constanze"], openCount: 2 }],
     ["s-arzt", { category: "arzt", care: { status: "geklaert" }, people: ["constanze", "dirk"] }],
+    ["s-friseur", { category: "erledigung", people: ["dirk"] }],
     ["s-tennis", { category: "sport", care: { status: "da", responsible: ["constanze"] }, people: ["dirk"] }],
     ["s-oma", { category: "geburtstag" }],
   ]);

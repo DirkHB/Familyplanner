@@ -21,6 +21,13 @@ export default async function EinstellungenPage() {
   const session = await auth();
   const userId = session?.user?.id;
 
+  const ich = userId
+    ? await prisma.user.findUnique({
+        where: { id: userId },
+        select: { tagVonStunde: true, tagBisStunde: true },
+      })
+    : null;
+
   const account = userId
     ? await prisma.calendarAccount.findFirst({
         where: { userId, provider: "icloud" },
@@ -76,6 +83,8 @@ export default async function EinstellungenPage() {
         name: s.name,
         anzahl: artikelZahl.get(s.id) ?? 0,
       }))}
+      tagVon={ich?.tagVonStunde ?? null}
+      tagBis={ich?.tagBisStunde ?? null}
     />
   );
 }

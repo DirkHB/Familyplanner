@@ -2,6 +2,7 @@ import type { Occurrence } from "./types";
 import { formatTime, groupByDay, formatDateHeader, dayKey } from "./format";
 import { categoryOf, guessCategory } from "./categories";
 import { isCareBlockUid } from "@/lib/care/block";
+import { buildStrahl, STANDARD_FENSTER, type StrahlSegment, type TagesFenster } from "./zeitstrahl";
 
 /** Serialisierbare View-Models für die Client-Komponenten (Server formatiert, Client rendert). */
 
@@ -32,6 +33,8 @@ export type DayVM = {
   dayNumber: string;
   isToday: boolean;
   events: EventVM[];
+  /** Zeitstrahl des Tages: freie Blöcke und Termingruppen, ganztägiges außen vor. */
+  strahl: StrahlSegment[];
 };
 
 export type EventMeta = {
@@ -58,6 +61,7 @@ export function buildWeek(
   metaByUid: Map<string, EventMeta> = new Map(),
   now: Date = new Date(),
   careByOcc?: CareByOcc,
+  fenster: TagesFenster = STANDARD_FENSTER,
 ): DayVM[] {
   const groups = groupByDay(occurrences, now);
   return groups.map((g) => ({
@@ -65,6 +69,13 @@ export function buildWeek(
     weekday: g.weekday,
     dayNumber: g.dayNumber,
     isToday: g.isToday,
+    strahl: buildStrahl(
+      g.occurrences
+        .filter((o) => !o.allDay)
+        .map((o) => ({ key: `${o.uid}:${o.recurrenceId}`, start: o.start, end: o.end })),
+      g.key,
+      fenster,
+    ),
     events: g.occurrences.map((o): EventVM => {
       const meta = metaByUid.get(o.uid) ?? {};
       const cat = meta.category ? categoryOf(meta.category) : categoryOf(guessCategory(o.summary));

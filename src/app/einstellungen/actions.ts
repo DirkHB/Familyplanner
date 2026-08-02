@@ -237,3 +237,24 @@ export async function importPastedListAction(name: string, text: string) {
     uebersprungen: titel.length - uebernommen,
   };
 }
+
+/**
+ * Tagesfenster für den Zeitstrahl — je Person. Der Standard (7–21) bleibt
+ * gespeichert leer, damit eine spätere Änderung des Standards beide erreicht,
+ * die nie etwas verstellt haben.
+ */
+export async function setTagesfensterAction(von: number, bis: number) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+  if (!Number.isInteger(von) || !Number.isInteger(bis) || von < 0 || bis > 24 || von >= bis) {
+    return { ok: false, grund: "Das Fenster braucht einen Anfang vor dem Ende." };
+  }
+  const { prisma } = await import("@/lib/prisma");
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { tagVonStunde: von, tagBisStunde: bis },
+  });
+  revalidatePath("/einstellungen");
+  revalidatePath("/woche");
+  return { ok: true };
+}

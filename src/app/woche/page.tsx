@@ -9,6 +9,7 @@ import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { getKlaerungStack } from "@/lib/klaerung/repository";
 import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
+import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,20 @@ export default async function WochePage() {
   const from = startOfDayBerlin(now);
   const to = new Date(from.getTime() + 10 * 86_400_000);
 
+  // Tagesfenster der angemeldeten Person — der Zeitstrahl rechnet damit.
+  const ich = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { tagVonStunde: true, tagBisStunde: true },
+      })
+    : null;
+  const fenster =
+    ich?.tagVonStunde != null && ich?.tagBisStunde != null
+      ? { vonStunde: ich.tagVonStunde, bisStunde: ich.tagBisStunde }
+      : STANDARD_FENSTER;
+
   const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
-  const days = buildWeek(occurrences, metaByUid, now, careByOcc);
+  const days = buildWeek(occurrences, metaByUid, now, careByOcc, fenster);
 
   const requests = session?.user?.id
     ? (await getOpenRequestsForUser(session.user.id)).map((r) => buildRequestVM(r, now))
@@ -50,6 +63,7 @@ export default async function WochePage() {
         days={days}
         requests={requests}
         nextTodayKey={nextTodayKey}
+        fenster={fenster}
       />
       <KlaerungGate cards={stack} todayKey={todayKey} />
     </>

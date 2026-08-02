@@ -11,6 +11,7 @@ import {
   disconnectAction,
   sendTestPushAction,
   setCareBlocksAction,
+  setTagesfensterAction,
   createTodoListAction,
   renameTodoListAction,
   deleteTodoListAction,
@@ -58,6 +59,8 @@ export function SettingsClient({
   careBlocks = false,
   todoLists = [],
   stores = [],
+  tagVon = null,
+  tagBis = null,
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -65,6 +68,8 @@ export function SettingsClient({
   careBlocks?: boolean;
   todoLists?: Fach[];
   stores?: Fach[];
+  tagVon?: number | null;
+  tagBis?: number | null;
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -93,6 +98,9 @@ export function SettingsClient({
             defaultOffen={!account}
           >
             {account ? <Connected account={account} /> : <ConnectForm />}
+          </Zeile>
+          <Zeile titel="Dein Tag" status={`${tagVon ?? 7}–${tagBis ?? 21} Uhr`}>
+            <TagesfensterInhalt von={tagVon ?? 7} bis={tagBis ?? 21} />
           </Zeile>
           <Zeile titel="Mitteilungen" status="Ruhe 21–7 Uhr">
             <p className="text-sm text-ink-muted">
@@ -259,6 +267,71 @@ function CareBlocksZeile({ an }: { an: boolean }) {
         Wer übernimmt, bekommt „👶 Nicolas · Name" in den gemeinsamen Kalender — sichtbar auf
         dem Sperrbildschirm.{aktiv && " Nimmst du eine Zusage zurück, verschwindet der Eintrag."}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Tagesfenster für den Zeitstrahl der Woche — je Person. Zwischen Anfang und
+ * Ende rechnet die Woche freie Blöcke aus; was davor oder danach liegt, ist
+ * kein „frei", sondern Schlaf und Feierabend.
+ */
+function TagesfensterInhalt({ von, bis }: { von: number; bis: number }) {
+  const [pending, start] = useTransition();
+  const [wahlVon, setWahlVon] = useState(von);
+  const [wahlBis, setWahlBis] = useState(bis);
+  const [gespeichert, setGespeichert] = useState(false);
+  const geaendert = wahlVon !== von || wahlBis !== bis;
+
+  const stunden = (a: number, b: number) =>
+    Array.from({ length: b - a + 1 }, (_, i) => a + i);
+
+  return (
+    <div>
+      <p className="text-sm text-ink-muted">
+        Zwischen diesen Stunden zeigt die Woche deinen Zeitstrahl und rechnet freie Blöcke
+        aus. Gilt nur für dich.
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <select
+          value={wahlVon}
+          onChange={(e) => { setWahlVon(Number(e.target.value)); setGespeichert(false); }}
+          aria-label="Tagesanfang"
+          className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-bg px-3 py-2.5 text-base outline-none focus:border-accent"
+        >
+          {stunden(5, 12).map((h) => (
+            <option key={h} value={h}>{h} Uhr</option>
+          ))}
+        </select>
+        <span className="text-ink-muted">bis</span>
+        <select
+          value={wahlBis}
+          onChange={(e) => { setWahlBis(Number(e.target.value)); setGespeichert(false); }}
+          aria-label="Tagesende"
+          className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-bg px-3 py-2.5 text-base outline-none focus:border-accent"
+        >
+          {stunden(17, 24).map((h) => (
+            <option key={h} value={h}>{h} Uhr</option>
+          ))}
+        </select>
+      </div>
+      {geaendert && (
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const r = await setTagesfensterAction(wahlVon, wahlBis);
+              if (r.ok) setGespeichert(true);
+            })
+          }
+          className="mt-3 w-full rounded-pill bg-accent px-5 py-2.5 text-sm font-medium text-surface disabled:opacity-60"
+        >
+          {pending ? "Speichere …" : "Übernehmen"}
+        </button>
+      )}
+      {gespeichert && !geaendert && (
+        <p className="mt-2 text-sm font-medium text-accent">Gespeichert.</p>
+      )}
     </div>
   );
 }
