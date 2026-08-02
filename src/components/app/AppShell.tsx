@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { TabBar } from "./TabBar";
 import {
   rememberScroll,
@@ -41,9 +41,34 @@ export function AppShell({
   contentClassName?: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const scrollerRef = useRef<HTMLDivElement>(null);
   // „Nach oben": erscheint erst, wenn man wirklich unterwegs ist.
   const [zurueckSichtbar, setZurueckSichtbar] = useState(false);
+
+  /**
+   * Beim Zurückkommen in die App die Server-Daten neu holen. Die Seiten sind
+   * serverseitig gerendert — was der andere inzwischen entschieden hat
+   * („Dirk ist bei Nicolas"), stünde sonst erst nach einer eigenen Navigation
+   * da. Gerade die iOS-PWA friert beim App-Wechsel komplett ein und zeigt
+   * beim Aufwachen erstmal den alten Stand.
+   */
+  useEffect(() => {
+    let zuletzt = Date.now();
+    const auffrischen = () => {
+      if (document.visibilityState !== "visible") return;
+      // Nicht bei jedem kurzen Fokuswechsel — alle 15 s reicht.
+      if (Date.now() - zuletzt < 15_000) return;
+      zuletzt = Date.now();
+      router.refresh();
+    };
+    document.addEventListener("visibilitychange", auffrischen);
+    window.addEventListener("focus", auffrischen);
+    return () => {
+      document.removeEventListener("visibilitychange", auffrischen);
+      window.removeEventListener("focus", auffrischen);
+    };
+  }, [router]);
 
   useBrowserLayoutEffect(() => {
     const el = scrollerRef.current;

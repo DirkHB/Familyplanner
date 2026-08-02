@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "motion/react";
+import { motion, AnimatePresence, animate, useMotionValue, useTransform } from "motion/react";
 import type { KlaerungCard } from "@/lib/klaerung/build";
 import { shiftLabel } from "@/lib/klaerung/build";
 import {
@@ -13,6 +13,7 @@ import {
   stapelKannNichtAction,
   stapelAntwortAction,
   stapelEskalationGeklaertAction,
+  stapelBabysitterAction,
   stapelParkenDieseWocheAction,
   stapelParkenBleibtAction,
   stapelRueckgaengigAction,
@@ -41,7 +42,7 @@ type Decision = {
   label: string;
 };
 
-type Ergebnis = { ok: boolean; undo?: StapelUndo };
+type Ergebnis = { ok: boolean; undo?: StapelUndo; schon?: string };
 
 function actionFor(d: Decision): (() => Promise<Ergebnis>) | null {
   const c = d.card;
@@ -58,7 +59,10 @@ function actionFor(d: Decision): (() => Promise<Ergebnis>) | null {
     case "anfrage":
       return () => stapelAntwortAction(c.id, d.richtung === "rechts" ? "Ja" : "Nein");
     case "eskalation":
-      return d.richtung === "rechts" ? () => stapelEskalationGeklaertAction(c.uid, c.occurrenceISO) : null;
+      if (d.richtung === "rechts") return () => stapelBabysitterAction(c.uid, c.occurrenceISO);
+      if (d.richtung === "keine")
+        return () => stapelEskalationGeklaertAction(c.uid, c.occurrenceISO);
+      return null; // links = noch offen — bewusst keine Datenänderung
     case "parken":
       return d.richtung === "rechts"
         ? () => stapelParkenDieseWocheAction(c.id)
@@ -70,14 +74,15 @@ const LABELS: Record<KlaerungCard["kind"], { links: string; rechts: string }> = 
   aufgabe: { links: "Später", rechts: "Erledigt ✓" },
   betreuung: { links: "Ich kann nicht", rechts: "Ich mach das ✓" },
   anfrage: { links: "Nein", rechts: "Ja ✓" },
-  eskalation: { links: "Später", rechts: "Anders gelöst ✓" },
+  eskalation: { links: "Noch offen", rechts: "Babysitter geklärt ✓" },
   parken: { links: "Bleibt liegen", rechts: "Diese Woche ✓" },
 };
 
 /** Was in der Rückgängig-Leiste steht — im Rückblick formuliert. */
 function entscheidungsLabel(card: KlaerungCard, richtung: Decision["richtung"]): string {
   if (richtung === "morgen") return "Auf morgen geschoben";
-  if (richtung === "keine") return "Als nicht nötig gemerkt";
+  if (richtung === "keine")
+    return card.kind === "eskalation" ? "Anders gelöst" : "Als nicht nötig gemerkt";
   return LABELS[card.kind][richtung === "rechts" ? "rechts" : "links"];
 }
 
@@ -91,7 +96,13 @@ export function KlaerungStack({
   briefing?: string | null;
 }) {
   const [index, setIndex] = useState(0);
-  const [undo, setUndo] = useState<Decision | null>(null);
+  /**
+   * Die Leiste unter dem Stapel: normalerweise „… · Rückgängig". Meldet der
+   * Server aber, dass der andere die Frage inzwischen längst geklärt hat
+   * (die Karte war ein Schnappschuss), steht hier stattdessen seine
+   * Entscheidung — ohne Rückgängig, denn es wurde nichts geschrieben.
+   */
+  const [leiste, setLeiste] = useState<{ text: string; mitUndo: boolean; d: Decision } | null>(null);
   /**
    * Die Gegenbuchung zur letzten Antwort — als Promise, weil „Rückgängig"
    * schneller getippt sein kann, als die Antwort des Servers zurück ist.
@@ -129,13 +140,19 @@ export function KlaerungStack({
     const d: Decision = { card, richtung, label: entscheidungsLabel(card, richtung) };
     const run = actionFor(d);
     if (run) {
-      // Sofort schreiben. Die Rückgängig-Leiste bleibt trotzdem 3 Sekunden —
-      // sie nimmt jetzt zurück, statt den Versand aufzuhalten.
+      // Sofort schreiben. Die Rückgängig-Leiste bleibt trotzdem ein paar
+      // Sekunden — sie nimmt jetzt zurück, statt den Versand aufzuhalten.
       undoRef.current = run()
-        .then((r) => r.undo ?? null)
+        .then((r) => {
+          if (r.schon) {
+            // Der andere war schneller — nichts geschrieben, nur Bescheid geben.
+            setLeiste((cur) => (cur?.d === d ? { text: r.schon!, mitUndo: false, d } : cur));
+          }
+          return r.undo ?? null;
+        })
         .catch(() => null);
-      setUndo(d);
-      setTimeout(() => setUndo((u) => (u === d ? null : u)), 3000);
+      setLeiste({ text: d.label, mitUndo: true, d });
+      setTimeout(() => setLeiste((cur) => (cur?.d === d ? null : cur)), 4000);
     }
     setIndex((i) => i + 1);
   }
@@ -143,7 +160,7 @@ export function KlaerungStack({
   function undoLast() {
     const p = undoRef.current;
     undoRef.current = null;
-    setUndo(null);
+    setLeiste(null);
     setIndex((i) => Math.max(0, i - 1));
     if (p) {
       void p.then((u) => (u ? stapelRueckgaengigAction(u) : null)).catch(() => null);
@@ -169,7 +186,14 @@ export function KlaerungStack({
       <div className="relative min-h-0 flex-1 px-5 pb-5">
         <AnimatePresence mode="popLayout">
           {card && !fertig && (
-            <SwipeCard key={`${card.kind}-${index}`} card={card} onDecide={decide} />
+            <SwipeCard
+              key={`${card.kind}-${index}`}
+              card={card}
+              onDecide={decide}
+              /* Nur die erste Karte zeigt die Wisch-Bewegung vor — einmal
+                 reicht, danach kennt die Hand den Weg. */
+              hinweis={index === 0}
+            />
           )}
           {fertig && (
             <motion.div
@@ -185,21 +209,29 @@ export function KlaerungStack({
         </AnimatePresence>
       </div>
 
-      {/* Rückgängig — drei Sekunden sichtbar; die Entscheidung ist längst
-          geschrieben, der Knopf bucht sie zurück. Zentriert über einen
-          Flex-Container: Motion setzt selbst transform, ein -translate-x-1/2
-          in der Klasse würde dabei verloren gehen. */}
+      {/* Rückgängig — ein paar Sekunden sichtbar; die Entscheidung ist längst
+          geschrieben, der Knopf bucht sie zurück. War der andere schneller,
+          steht hier stattdessen seine Entscheidung (ohne Rückgängig).
+          Zentriert über einen Flex-Container: Motion setzt selbst transform,
+          ein -translate-x-1/2 in der Klasse würde dabei verloren gehen. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
         <AnimatePresence>
-          {undo && (
+          {leiste && (
             <motion.button
+              key={leiste.mitUndo ? "undo" : "schon"}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
-              onClick={undoLast}
+              onClick={leiste.mitUndo ? undoLast : undefined}
               className="pointer-events-auto flex items-center gap-2 whitespace-nowrap rounded-pill bg-surface px-5 py-3 text-sm font-medium text-ink shadow-hero"
             >
-              {undo.label} · <span className="underline">Rückgängig</span>
+              {leiste.mitUndo ? (
+                <>
+                  {leiste.text} · <span className="underline">Rückgängig</span>
+                </>
+              ) : (
+                leiste.text
+              )}
             </motion.button>
           )}
         </AnimatePresence>
@@ -208,12 +240,31 @@ export function KlaerungStack({
   );
 }
 
-function SwipeCard({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void }) {
+function SwipeCard({
+  card,
+  onDecide,
+  hinweis = false,
+}: {
+  card: KlaerungCard;
+  onDecide: (r: Decision["richtung"]) => void;
+  hinweis?: boolean;
+}) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-7, 7]);
   const rechtsOpacity = useTransform(x, [30, 110], [0, 1]);
   const linksOpacity = useTransform(x, [-110, -30], [1, 0]);
   const labels = LABELS[card.kind];
+
+  // Die erste Karte macht die Wisch-Geste einmal selbst vor: kurz nach rechts,
+  // kurz nach links, zurück — dabei blitzen die beiden Antwort-Stempel auf.
+  // Deutlicher als jeder Text, und nach 1,5 Sekunden wieder vergessen.
+  useEffect(() => {
+    if (!hinweis) return;
+    const t = setTimeout(() => {
+      animate(x, [0, 68, -68, 0], { duration: 1.5, ease: "easeInOut" });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [hinweis, x]);
 
   return (
     <motion.div
@@ -289,7 +340,13 @@ function CardBody({ card }: { card: KlaerungCard }) {
         <div className="mt-10">
           <p className="eyebrow text-counter-light">Ihr könnt beide nicht</p>
           <p className="mt-3 font-display text-3xl leading-tight">{card.title}</p>
-          <p className="mt-3 text-surface/70">{card.when} — Oma fragen? Termin verschieben?</p>
+          <p className="mt-3 text-surface/70">
+            {card.when} — Babysitter geklärt? Oma, Opa oder Sitter fragen, oder den{" "}
+            <Link href={`/termin/${encodeURIComponent(card.uid)}`} className="underline">
+              Termin verschieben
+            </Link>
+            .
+          </p>
         </div>
       );
   }
@@ -298,13 +355,13 @@ function CardBody({ card }: { card: KlaerungCard }) {
 /**
  * Der dritte Weg, mittig über den beiden Wisch-Knöpfen.
  *
- * Mit Rand statt nur mit Flächenfarbe: `bg-surface/10` allein ist auf dem
- * dunklen Grund so blass, dass der Knopf wie eine Bildunterschrift aussieht.
- * Bei „Auf morgen schieben" war das zu verschmerzen, bei „Nicht nötig" nicht —
- * das ist beim Kinderarzt die einzig richtige Antwort.
+ * In voller Breite und mit derselben Höhe wie die beiden Hauptknöpfe: Beim
+ * Kinderarzt ist „Nicht nötig" die einzig richtige Antwort — dann darf der
+ * Knopf nicht wie eine Bildunterschrift aussehen, sondern muss als
+ * gleichwertige Wahl dastehen.
  */
 const DRITTER_WEG =
-  "self-center rounded-pill border border-surface/25 bg-surface/10 px-5 py-2.5 text-sm font-medium text-surface";
+  "w-full rounded-pill border border-surface/35 bg-surface/15 px-5 py-3.5 text-center text-[15px] font-medium text-surface";
 
 function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void }) {
   const labels = LABELS[card.kind];
@@ -327,10 +384,12 @@ function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Dec
           Nicht nötig — Nicolas ist dabei
         </button>
       )}
+      {/* Beide können nicht, aber es hat sich anders gelöst (Termin verlegt,
+          Nicolas kommt mit) — der Weg neben „Babysitter geklärt". */}
       {card.kind === "eskalation" && (
-        <Link href={`/termin/${encodeURIComponent(card.uid)}`} className={DRITTER_WEG}>
-          Termin ansehen
-        </Link>
+        <button onClick={() => onDecide("keine")} className={DRITTER_WEG}>
+          Anders gelöst — keine Betreuung nötig
+        </button>
       )}
       {/* Knöpfe als Alternative zum Wischen — gleiche Bedeutung, gleiche Seite. */}
       <div className="grid grid-cols-2 gap-3">
@@ -341,7 +400,7 @@ function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Dec
           {labels.rechts}
         </button>
       </div>
-      <p className="text-center text-xs text-surface/50">oder Karte wischen — rechts ja, links nein</p>
+      <p className="text-center text-xs text-surface/50">← oder Karte wischen →</p>
     </div>
   );
 }

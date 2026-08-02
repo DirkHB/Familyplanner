@@ -13,6 +13,10 @@ describe("careBlockTitle", () => {
     expect(careBlockTitle("dirk")).toBe("👶 Nicolas · Dirk");
     expect(careBlockTitle("constanze")).toBe("👶 Nicolas · Constanze");
   });
+
+  it("kennt den Babysitter, wenn beide nicht können", () => {
+    expect(careBlockTitle("extern")).toBe("👶 Nicolas · Babysitter");
+  });
 });
 
 describe("careBlockUid", () => {

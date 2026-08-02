@@ -63,7 +63,7 @@ export type EventDetailView = {
   prepChecklist: { text: string; done: boolean }[];
   occurrenceISO: string | null;
   care: {
-    status: "offen" | "zugesagt" | "geklaert" | "keine";
+    status: "offen" | "zugesagt" | "geklaert" | "keine" | "extern";
     responsibleName: string | null;
     responsiblePerson: "dirk" | "constanze" | null;
   } | null;
@@ -117,7 +117,7 @@ export async function getEventView(
     });
     if (row) {
       care = {
-        status: row.status as "offen" | "zugesagt" | "geklaert" | "keine",
+        status: row.status as "offen" | "zugesagt" | "geklaert" | "keine" | "extern",
         responsibleName: row.responsible
           ? row.responsible.name ?? displayNameForEmail(row.responsible.email)
           : null,

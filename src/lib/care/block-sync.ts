@@ -6,7 +6,7 @@ import { buildIcs } from "@/lib/calendar/ics-builder";
 import { expandOccurrences } from "@/lib/calendar/ical";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { dayKey } from "@/lib/calendar/format";
-import { personForEmail, type Person } from "@/lib/auth/allowlist";
+import { personForEmail } from "@/lib/auth/allowlist";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import {
   CARE_MARKER,
@@ -15,6 +15,7 @@ import {
   careBlockUid,
   careBlockDescription,
   dayKeyFromCareBlockUid,
+  type CarePerson,
 } from "./block";
 
 /**
@@ -64,23 +65,26 @@ async function fenster(eventUid: string, occurrenceDate: Date) {
 /**
  * Block anlegen oder aktualisieren. Die UID ergibt sich aus Anlass und Tag —
  * ein zweiter Aufruf überschreibt denselben Eintrag, statt einen weiteren
- * anzulegen.
+ * anzulegen. `userId: null` heißt: jemand von außen (Babysitter, Oma) — der
+ * Block gehört trotzdem in den Kalender, gerade dann.
  */
 export async function upsertCareBlock(
   eventUid: string,
   occurrenceDate: Date,
-  userId: string,
+  userId: string | null,
 ): Promise<void> {
   if (!(await getFlag(CARE_BLOCKS))) return;
 
   const [ziel, w, user] = await Promise.all([
     schreibziel(),
     fenster(eventUid, occurrenceDate),
-    prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+    userId
+      ? prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+      : Promise.resolve(null),
   ]);
-  if (!ziel || !w || !user) return;
+  if (!ziel || !w || (userId && !user)) return;
 
-  const person: Person = personForEmail(user.email);
+  const person: CarePerson = user ? personForEmail(user.email) : "extern";
   const uid = careBlockUid(eventUid, w.tag);
   const ics = buildIcs({
     uid,

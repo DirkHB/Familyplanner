@@ -61,9 +61,11 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
     const careTxt =
       care?.status === "offen"
         ? " [Betreuung für Nicolas noch OFFEN]"
-        : care?.person
-          ? ` [${care.person === "constanze" ? "Constanze" : "Dirk"} ist bei Nicolas]`
-          : "";
+        : care?.status === "extern"
+          ? " [Babysitter ist bei Nicolas]"
+          : care?.person
+            ? ` [${care.person === "constanze" ? "Constanze" : "Dirk"} ist bei Nicolas]`
+            : "";
     const vorbei = o.end <= now ? " (vorbei)" : "";
     zeilen.push(`- ${tag} ${zeit}: ${o.summary}${careTxt}${vorbei}`);
   }

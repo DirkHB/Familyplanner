@@ -20,13 +20,23 @@ export const CARE_MARKER = "X-PLANYOURWEEK-BETREUUNG";
 /** Erkennbar schon an der UID — ohne das .ics lesen zu müssen. */
 export const CARE_UID_PREFIX = "fp-care-";
 
-const NAME: Record<Person, string> = { constanze: "Constanze", dirk: "Dirk" };
+/**
+ * Wer beim Baby ist: Constanze, Dirk — oder jemand von außen (Oma, Opa,
+ * Babysitter), wenn beide nicht können.
+ */
+export type CarePerson = Person | "extern";
+
+const NAME: Record<CarePerson, string> = {
+  constanze: "Constanze",
+  dirk: "Dirk",
+  extern: "Babysitter",
+};
 
 /**
  * Titel im echten Kalender. Das Baby-Zeichen macht die Zeile auf einen Blick
  * unterscheidbar von allem anderen im gemeinsamen Kalender.
  */
-export function careBlockTitle(person: Person): string {
+export function careBlockTitle(person: CarePerson): string {
   return `👶 Nicolas · ${NAME[person]}`;
 }
 

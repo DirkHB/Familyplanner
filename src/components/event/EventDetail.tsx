@@ -290,7 +290,25 @@ function CareBlock({ vm }: { vm: DetailVM }) {
         )}
       </div>
 
-      {care?.status === "keine" ? (
+      {care?.status === "extern" && !aendern ? (
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-light text-lg">
+            👶
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold">Babysitter ist da</p>
+            <p className="text-sm text-ink-muted">Oma, Opa oder Sitter — ist organisiert.</p>
+          </div>
+          {canAct && (
+            <button
+              onClick={() => setAendern(true)}
+              className="ml-auto shrink-0 text-sm font-medium text-accent"
+            >
+              Ändern
+            </button>
+          )}
+        </div>
+      ) : care?.status === "keine" ? (
         <div className="flex items-center justify-between">
           <p className="text-sm text-ink-muted">Keine Betreuung nötig.</p>
           {canAct && (
@@ -330,7 +348,7 @@ function CareBlock({ vm }: { vm: DetailVM }) {
         <div>
           <p className="mb-3 text-sm text-ink-muted">
             {aendern
-              ? `Bisher: ${care?.responsibleName} ist da.`
+              ? `Bisher: ${care?.status === "extern" ? "Babysitter" : care?.responsibleName} ist da.`
               : care?.status === "offen"
                 ? "Noch offen — eine Anfrage ist unterwegs."
                 : "Noch nicht geklärt."}

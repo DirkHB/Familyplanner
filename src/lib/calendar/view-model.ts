@@ -94,6 +94,8 @@ export function buildWeek(
         const c = careByOcc.get(`${o.uid}:${dayKey(o.start)}`);
         if (c && c.status !== "keine") {
           if (c.status === "offen") care = { status: "offen", label: "Betreuung offen", person: null };
+          else if (c.status === "extern")
+            care = { status: "da", label: "Babysitter ist da", person: null };
           else if (c.person)
             care = {
               status: "da",
@@ -130,7 +132,7 @@ export function buildWeek(
 /* ------------------------------ Termin-Detail ------------------------------ */
 
 export type CareVM = {
-  status: "offen" | "zugesagt" | "geklaert" | "keine";
+  status: "offen" | "zugesagt" | "geklaert" | "keine" | "extern";
   responsibleName: string | null;
   responsiblePerson: Person | null;
 } | null;

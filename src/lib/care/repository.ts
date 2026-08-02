@@ -1,15 +1,18 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createRequest, resolvePartner } from "@/lib/requests/repository";
+import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notifyUserId } from "@/lib/push/notify";
 import { upsertCareBlock, removeCareBlock } from "./block-sync";
 
 /**
  * Baby-Betreuung pro Termin-Vorkommen (eventUid + occurrenceDate).
- * Status: offen | zugesagt | geklaert. Bei „offen" wird automatisch eine Anfrage
- * an den anderen erzeugt (Abschnitt 6.2).
+ * Status: offen | zugesagt | geklaert | extern. Bei „offen" wird automatisch
+ * eine Anfrage an den anderen erzeugt (Abschnitt 6.2); „extern" heißt: jemand
+ * von außen (Oma, Opa, Babysitter) übernimmt, weil beide nicht können.
  */
 
-export type CareStatus = "offen" | "zugesagt" | "geklaert";
+export type CareStatus = "offen" | "zugesagt" | "geklaert" | "extern";
 
 function dayStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -37,6 +40,41 @@ export async function takeCare(eventUid: string, date: Date, userId: string) {
   // Und als echter Termin in den gemeinsamen Kalender — damit die Zusage auf
   // dem Sperrbildschirm steht und der andere sie sofort sieht.
   await upsertCareBlock(eventUid, occurrenceDate, userId).catch(() => {});
+
+  // Der andere erfährt es sofort per Push — nicht erst beim nächsten Öffnen.
+  try {
+    const [me, event] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } }),
+      prisma.event.findFirst({ where: { uid: eventUid }, select: { title: true } }),
+    ]);
+    const partner = await resolvePartner(userId);
+    if (me && partner) {
+      await notifyUserId(partner.id, {
+        title: `✓ ${me.name ?? displayNameForEmail(me.email)} ist bei Nicolas`,
+        body: event?.title ?? "Betreuung geklärt",
+        url: `/termin/${encodeURIComponent(eventUid)}`,
+        tag: `care-take-${eventUid}-${occurrenceDate.toISOString().slice(0, 10)}`,
+      });
+    }
+  } catch {
+    /* Push ist best effort — die Zusage steht auch ohne ihn. */
+  }
+  return result;
+}
+
+/**
+ * „Babysitter geklärt" — beide können nicht, jemand von außen übernimmt
+ * (Oma, Opa, Sitter). Der Block im gemeinsamen Kalender heißt dann
+ * „👶 Nicolas · Babysitter", damit beide die Absprache schwarz auf weiß haben.
+ */
+export async function externCare(eventUid: string, date: Date) {
+  const occurrenceDate = dayStart(date);
+  const result = await prisma.careAssignment.upsert({
+    where: { eventUid_occurrenceDate: { eventUid, occurrenceDate } },
+    create: { eventUid, occurrenceDate, status: "extern" },
+    update: { status: "extern", responsibleUserId: null },
+  });
+  await upsertCareBlock(eventUid, occurrenceDate, null).catch(() => {});
   return result;
 }
 

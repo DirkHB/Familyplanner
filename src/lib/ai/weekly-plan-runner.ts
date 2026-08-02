@@ -41,7 +41,7 @@ export async function buildContextFromDb(userId: string | null, now: Date = new 
       const care =
         status === "offen"
           ? { status: "offen" as const, label: "Betreuung offen" }
-          : status === "geklaert" || status === "zugesagt"
+          : status === "geklaert" || status === "zugesagt" || status === "extern"
             ? { status: "geklaert" as const, label: "Betreuung geklärt" }
             : null;
       return { time: o.allDay ? "" : formatTime(o.start), title: o.summary, categoryLabel: label, care };
