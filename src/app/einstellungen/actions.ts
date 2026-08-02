@@ -82,3 +82,17 @@ export async function sendTestPushAction(): Promise<{ devices: number; sent: num
     : 0;
   return { devices, sent, quiet: isQuietHours(new Date()) };
 }
+
+/**
+ * Schreibt die App Betreuungsbloecke in den echten iCloud-Kalender?
+ * Standard ist aus — das ist die erste Funktion, die selbstaendig Eintraege
+ * im gemeinsamen Kalender anlegt.
+ */
+export async function setCareBlocksAction(an: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const { setFlag, CARE_BLOCKS } = await import("@/lib/settings/store");
+  await setFlag(CARE_BLOCKS, an);
+  revalidatePath("/einstellungen");
+  return { ok: true };
+}

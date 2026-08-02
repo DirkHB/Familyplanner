@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { SettingsClient } from "./SettingsClient";
 import { diagnoseCalendars } from "@/lib/calendar/diagnose";
 import { listDismissed } from "@/lib/care/rules";
+import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 
 export const dynamic = "force-dynamic";
 
@@ -45,12 +46,14 @@ export default async function EinstellungenPage() {
   const [diagnose, abgewinkt] = userId
     ? await Promise.all([diagnoseCalendars(), listDismissed()])
     : [[], []];
+  const careBlocks = await getFlag(CARE_BLOCKS);
 
   return (
     <SettingsClient
       account={vm}
       diagnose={diagnose}
       abgewinkt={abgewinkt.map((r) => r.titleKey)}
+      careBlocks={careBlocks}
     />
   );
 }

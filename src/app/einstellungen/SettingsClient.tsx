@@ -10,6 +10,7 @@ import {
   syncNowAction,
   disconnectAction,
   sendTestPushAction,
+  setCareBlocksAction,
 } from "./actions";
 
 type Cal = {
@@ -36,10 +37,12 @@ export function SettingsClient({
   account,
   diagnose = [],
   abgewinkt = [],
+  careBlocks = false,
 }: {
   account: Account;
   diagnose?: Diagnose[];
   abgewinkt?: string[];
+  careBlocks?: boolean;
 }) {
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -67,6 +70,8 @@ export function SettingsClient({
           <EnableNotifications />
           <TestPush />
         </section>
+
+        <CareBlocksSetting an={careBlocks} />
 
         {diagnose.length > 0 && <DiagnoseBlock diagnose={diagnose} />}
         {abgewinkt.length > 0 && <AbgewinktBlock titel={abgewinkt} />}
@@ -140,6 +145,55 @@ function AbgewinktBlock({ titel }: { titel: string[] }) {
         Bei diesen Terminen fragt die App nicht mehr, wer bei Nicolas ist.
       </p>
       <p className="text-sm text-ink">{titel.join(" · ")}</p>
+    </section>
+  );
+}
+
+/**
+ * Betreuung als echter Kalendereintrag. Bewusst mit Schalter und
+ * standardmäßig aus: Es ist die einzige Funktion, die von sich aus Einträge im
+ * gemeinsamen Kalender anlegt.
+ */
+function CareBlocksSetting({ an }: { an: boolean }) {
+  const [pending, start] = useTransition();
+  const [aktiv, setAktiv] = useState(an);
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-display text-lg">Betreuung im Kalender</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Wer die Betreuung übernimmt, bekommt einen Eintrag „👶 Nicolas · Name" im
+            gemeinsamen Kalender — sichtbar auf dem Sperrbildschirm, ohne die App zu öffnen.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={aktiv}
+          aria-label="Betreuung im Kalender eintragen"
+          disabled={pending}
+          onClick={() => {
+            const neu = !aktiv;
+            setAktiv(neu);
+            start(async () => { await setCareBlocksAction(neu); });
+          }}
+          className={`relative mt-1 h-7 w-12 shrink-0 rounded-pill transition-colors ${
+            aktiv ? "bg-accent" : "bg-surface-muted"
+          }`}
+        >
+          <motion.span
+            layout
+            transition={{ type: "spring", stiffness: 500, damping: 34 }}
+            className="absolute top-0.5 h-6 w-6 rounded-full bg-surface shadow-card"
+            style={{ left: aktiv ? 22 : 2 }}
+          />
+        </button>
+      </div>
+      {aktiv && (
+        <p className="mt-3 text-xs text-ink-muted/80">
+          Nimmst du eine Zusage zurück, verschwindet der Eintrag wieder.
+        </p>
+      )}
     </section>
   );
 }

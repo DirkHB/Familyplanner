@@ -363,3 +363,18 @@ model CareRule {
 
   @@map("care_rules")
 }
+
+/* ------------------------------ Einstellungen ------------------------------ */
+
+/**
+ * Schalter, die für die App als Ganzes gelten (nicht pro Person). Bewusst als
+ * Schlüssel/Wert: Es sind wenige, sie kommen selten dazu, und ein eigenes Feld
+ * je Schalter wäre eine Migration für jede Kleinigkeit.
+ */
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}

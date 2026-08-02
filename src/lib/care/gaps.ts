@@ -1,3 +1,5 @@
+import { isCareBlockUid } from "./block";
+
 /**
  * Betreuungslücken für Nicolas.
  *
@@ -98,6 +100,10 @@ export type GapCandidate = {
  * für die schon einmal „nicht nötig" gesagt wurde.
  */
 export function isCareGap(ev: GapCandidate, abgewinkt: ReadonlySet<string>): boolean {
+  // Ein von uns geschriebener Betreuungsblock ist die Antwort auf die Frage,
+  // nie die Frage selbst. Die Regel steht hier und nicht bei den Aufrufern,
+  // damit sie nirgends vergessen werden kann.
+  if (isCareBlockUid(ev.uid)) return false;
   if (ev.hasCareDecision) return false;
   if (!inWachzeit(ev.start, ev.end, ev.allDay)) return false;
   return !abgewinkt.has(titleKey(ev.title));

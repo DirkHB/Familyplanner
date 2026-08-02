@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createRequest, resolvePartner } from "@/lib/requests/repository";
+import { upsertCareBlock, removeCareBlock } from "./block-sync";
 
 /**
  * Baby-Betreuung pro Termin-Vorkommen (eventUid + occurrenceDate).
@@ -27,21 +28,29 @@ export async function takeCare(eventUid: string, date: Date, userId: string) {
   // Zeitfenster, keine Aufgabe. Sie lässt sich nicht vorziehen, nicht auf
   // morgen schieben und nicht „früher erledigen". Sie steht am Termin und im
   // Betreuungsbereich — dort mit Uhrzeit und Person.
-  return prisma.careAssignment.upsert({
+  const result = await prisma.careAssignment.upsert({
     where: { eventUid_occurrenceDate: { eventUid, occurrenceDate } },
     create: { eventUid, occurrenceDate, responsibleUserId: userId, status: "geklaert" },
     update: { responsibleUserId: userId, status: "geklaert" },
   });
+
+  // Und als echter Termin in den gemeinsamen Kalender — damit die Zusage auf
+  // dem Sperrbildschirm steht und der andere sie sofort sieht.
+  await upsertCareBlock(eventUid, occurrenceDate, userId).catch(() => {});
+  return result;
 }
 
 /** „Braucht keine Betreuung" — Termin aus der Betreuungslogik nehmen (kein Icon mehr). */
 export async function dismissCare(eventUid: string, date: Date) {
   const occurrenceDate = dayStart(date);
-  return prisma.careAssignment.upsert({
+  const result = await prisma.careAssignment.upsert({
     where: { eventUid_occurrenceDate: { eventUid, occurrenceDate } },
     create: { eventUid, occurrenceDate, status: "keine" },
     update: { status: "keine", responsibleUserId: null },
   });
+  // Niemand übernimmt mehr — dann darf auch kein Block im Kalender stehen.
+  await removeCareBlock(eventUid, occurrenceDate).catch(() => {});
+  return result;
 }
 
 /** „Offen" markieren → erzeugt automatisch eine Ja/Nein-Anfrage an den Partner. */
@@ -57,6 +66,8 @@ export async function requestCare(
     create: { eventUid, occurrenceDate, status: "offen" },
     update: { status: "offen", responsibleUserId: null },
   });
+  // Wieder offen heißt: Der bisherige Block gilt nicht mehr.
+  await removeCareBlock(eventUid, occurrenceDate).catch(() => {});
 
   const partner = await resolvePartner(fromUserId);
   if (partner) {

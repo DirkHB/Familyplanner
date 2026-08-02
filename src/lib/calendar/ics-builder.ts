@@ -8,6 +8,12 @@ export type NewEvent = {
   allDay: boolean;
   location?: string | null;
   description?: string | null;
+  /**
+   * Zusätzliche X-Eigenschaften, z. B. die Kennzeichnung eines
+   * Betreuungsblocks. Apple Kalender ignoriert Unbekanntes, wir erkennen
+   * unsere eigenen Einträge daran wieder.
+   */
+  xProps?: Record<string, string>;
 };
 
 function pad(n: number): string {
@@ -57,6 +63,9 @@ export function buildIcs(ev: NewEvent, now: Date = new Date()): string {
   lines.push(`SUMMARY:${esc(ev.title)}`);
   if (ev.location) lines.push(`LOCATION:${esc(ev.location)}`);
   if (ev.description) lines.push(`DESCRIPTION:${esc(ev.description)}`);
+  for (const [key, value] of Object.entries(ev.xProps ?? {})) {
+    lines.push(`${key}:${esc(value)}`);
+  }
   lines.push("END:VEVENT", "END:VCALENDAR");
 
   // RFC 5545 verlangt CRLF-Zeilenenden.

@@ -42,3 +42,28 @@ describe("buildIcs (Round-Trip durch den Parser)", () => {
     expect(ics.startsWith("BEGIN:VCALENDAR")).toBe(true);
   });
 });
+
+describe("X-Eigenschaften", () => {
+  it("schreibt zusaetzliche Kennzeichen ins VEVENT", () => {
+    const ics = buildIcs({
+      uid: "fp-care-1@planyourweek.app",
+      title: "Nicolas",
+      start: new Date("2026-08-03T08:00:00Z"),
+      end: new Date("2026-08-03T09:00:00Z"),
+      allDay: false,
+      xProps: { "X-PLANYOURWEEK-BETREUUNG": "dirk" },
+    });
+    expect(ics).toContain("X-PLANYOURWEEK-BETREUUNG:dirk");
+  });
+
+  it("bleibt ohne Kennzeichen unveraendert", () => {
+    const ics = buildIcs({
+      uid: "fp-1@planyourweek.app",
+      title: "Zahnarzt",
+      start: new Date("2026-08-03T08:00:00Z"),
+      end: new Date("2026-08-03T09:00:00Z"),
+      allDay: false,
+    });
+    expect(ics).not.toContain("X-PLANYOURWEEK");
+  });
+});

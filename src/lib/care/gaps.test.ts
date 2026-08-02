@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { berlinParts, inWachzeit, titleKey, isCareGap, careWindow, WACHZEIT } from "./gaps";
+import { careBlockUid } from "./block";
 
 const keine = new Set<string>();
 const ev = (startISO: string, endISO: string, extra: Partial<Parameters<typeof isCareGap>[0]> = {}) => ({
@@ -105,6 +106,17 @@ describe("isCareGap", () => {
     const abgewinkt = new Set([titleKey("Müllabfuhr")]);
     const e = ev("2026-07-30T12:00:00Z", "2026-07-30T13:00:00Z", { title: "  müllabfuhr " });
     expect(isCareGap(e, abgewinkt)).toBe(false);
+  });
+
+  it("fragt nie nach dem eigenen Betreuungsblock", () => {
+    // Der Block liegt naturgemaess in der Wachzeit und hat keine eigene
+    // Betreuungszusage — ohne Schutz wuerde die App nach dem fragen, was sie
+    // selbst in den Kalender geschrieben hat.
+    const block = ev("2026-07-30T12:00:00Z", "2026-07-30T13:00:00Z", {
+      uid: careBlockUid("anlass@icloud.com", "2026-07-30"),
+      title: "👶 Nicolas · Dirk",
+    });
+    expect(isCareGap(block, keine)).toBe(false);
   });
 
   it("abgewinkter Titel blockiert andere Termine nicht", () => {

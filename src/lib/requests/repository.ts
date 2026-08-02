@@ -102,6 +102,10 @@ async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
           where: { id: assignment.id },
           data: { responsibleUserId: req.toUserId, status: "geklaert" },
         });
+        // Zusage per „Ja" ist dieselbe Zusage wie „Ich mach das" — also
+        // ebenfalls ein echter Eintrag im gemeinsamen Kalender.
+        const { upsertCareBlock } = await import("@/lib/care/block-sync");
+        await upsertCareBlock(req.eventUid, assignment.occurrenceDate, req.toUserId).catch(() => {});
       }
       await notifyUserId(req.fromUserId, {
         title: `✓ ${answererName} übernimmt die Betreuung`,
