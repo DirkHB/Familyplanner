@@ -27,5 +27,11 @@ export default function VorschauKlaerung() {
         <Link href="/vorschau/woche" className="text-sm text-ink-muted underline">zur Woche</Link>
       </div>
     );
-  return <KlaerungStack cards={CARDS} onClose={() => setOffen(false)} />;
+  return (
+    <KlaerungStack
+      cards={CARDS}
+      briefing="Heute noch 2 Termine — als Nächstes 14:00 Kinderarzt. Einmal ist die Betreuung noch offen."
+      onClose={() => setOffen(false)}
+    />
+  );
 }

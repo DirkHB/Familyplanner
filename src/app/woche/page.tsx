@@ -98,7 +98,7 @@ export default async function WochePage({
         briefing={briefing}
         naechsteWoche={naechste}
       />
-      {!naechste && <KlaerungGate cards={stack} todayKey={todayKey} />}
+      {!naechste && <KlaerungGate cards={stack} todayKey={todayKey} briefing={briefing} />}
     </>
   );
 }

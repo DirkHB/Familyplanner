@@ -42,7 +42,15 @@ function writeState(s: StackState) {
   }
 }
 
-export function KlaerungGate({ cards, todayKey }: { cards: KlaerungCard[]; todayKey: string }) {
+export function KlaerungGate({
+  cards,
+  todayKey,
+  briefing = null,
+}: {
+  cards: KlaerungCard[];
+  todayKey: string;
+  briefing?: string | null;
+}) {
   /**
    * Schnappschuss statt Live-Daten: Jede Antwort rendert die Woche darunter
    * sofort neu, und mit ihr käme ein kleinerer Kartenstapel herein — der
@@ -70,6 +78,7 @@ export function KlaerungGate({ cards, todayKey }: { cards: KlaerungCard[]; today
   return (
     <KlaerungStack
       cards={offen}
+      briefing={briefing}
       onClose={() => {
         writeState(markLater(readState(), new Date()));
         setOffen(null);

@@ -81,7 +81,15 @@ function entscheidungsLabel(card: KlaerungCard, richtung: Decision["richtung"]):
   return LABELS[card.kind][richtung === "rechts" ? "rechts" : "links"];
 }
 
-export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClose: () => void }) {
+export function KlaerungStack({
+  cards,
+  onClose,
+  briefing = null,
+}: {
+  cards: KlaerungCard[];
+  onClose: () => void;
+  briefing?: string | null;
+}) {
   const [index, setIndex] = useState(0);
   const [undo, setUndo] = useState<Decision | null>(null);
   /**
@@ -92,6 +100,22 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
 
   const card = cards[index] ?? null;
   const fertig = index >= cards.length;
+
+  // Der Stapel kennt das Briefing: Der Assistent sagt, WARUM sich die paar
+  // Antworten jetzt lohnen. Gleicher Cache wie der Kopf der Woche.
+  const [brief, setBrief] = useState(briefing);
+  useEffect(() => {
+    let weg = false;
+    fetch("/api/briefing")
+      .then((r) => (r.ok ? r.json() : { text: null }))
+      .then((d) => {
+        if (!weg && typeof d.text === "string" && d.text) setBrief(d.text);
+      })
+      .catch(() => {});
+    return () => {
+      weg = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (fertig) {
@@ -137,6 +161,10 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
           Später
         </button>
       </div>
+
+      {brief && !fertig && (
+        <p className="px-5 pb-2 text-sm leading-snug text-ink-muted">{brief}</p>
+      )}
 
       <div className="relative min-h-0 flex-1 px-5 pb-5">
         <AnimatePresence mode="popLayout">

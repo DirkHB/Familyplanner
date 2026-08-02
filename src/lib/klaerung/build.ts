@@ -57,11 +57,15 @@ export function buildStack(input: {
   parken?: Extract<KlaerungCard, { kind: "parken" }>[];
 }): KlaerungCard[] {
   const aufgaben = [...input.aufgaben].sort((a, b) => Number(b.overdue) - Number(a.overdue));
+  // Die zeitlich nächste Betreuungsfrage zuerst: Sie verfällt als erste.
+  const betreuung = [...input.betreuung].sort((a, b) =>
+    a.occurrenceISO.localeCompare(b.occurrenceISO),
+  );
   const parken = [...(input.parken ?? [])].sort(
     (a, b) => Number(b.important) - Number(a.important),
   );
   // Parken steht hinten: Was heute ansteht, hat Vorrang vor dem Aufräumen.
-  return [...input.eskalationen, ...input.anfragen, ...input.betreuung, ...aufgaben, ...parken].slice(
+  return [...input.eskalationen, ...input.anfragen, ...betreuung, ...aufgaben, ...parken].slice(
     0,
     MAX_KARTEN,
   );
