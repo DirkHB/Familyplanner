@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -23,6 +23,7 @@ export function UeberblickClient({
   otherHref,
   otherLabel,
   showToggle = true,
+  initialTab = "woche",
 }: {
   overview: Overview;
   scopeLabel: string;
@@ -30,8 +31,33 @@ export function UeberblickClient({
   otherHref: string;
   otherLabel: string;
   showToggle?: boolean;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("woche");
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  /**
+   * Beim Zurückkommen aus einem Termin kann Next die Seite aus seinem
+   * Zwischenspeicher holen — gerendert für die Adresse ohne den Parameter.
+   * Dann stimmt initialTab nicht. Deshalb nach dem Einhängen noch einmal in
+   * der echten Adresse nachsehen; die trägt der Verlaufseintrag verlässlich.
+   */
+  useEffect(() => {
+    const ausUrl = new URLSearchParams(window.location.search).get("frage");
+    setTab(ausUrl === "offen" ? "offen" : "woche");
+  }, []);
+
+  /**
+   * Die gewählte Frage in die Adresse schreiben — ohne Next-Navigation, weil
+   * sich an den Daten nichts ändert. Nur so gilt sie noch, wenn man aus einem
+   * Termin zurückkommt: Der Verlaufseintrag trägt sie dann bei sich.
+   */
+  function waehle(key: Tab) {
+    setTab(key);
+    const url = new URL(window.location.href);
+    if (key === "offen") url.searchParams.set("frage", "offen");
+    else url.searchParams.delete("frage");
+    window.history.replaceState(null, "", url);
+  }
   const openCare = overview.open.filter((o) => o.kind === "care" || o.kind === "luecke").length;
   const openTodos = overview.open.filter((o) => o.kind === "todo").length;
 
@@ -71,7 +97,7 @@ export function UeberblickClient({
             return (
               <button
                 key={key}
-                onClick={() => setTab(key)}
+                onClick={() => waehle(key)}
                 className={`flex items-center justify-between rounded-card px-4 py-3 text-left transition-colors ${
                   active ? "bg-accent text-surface shadow-card" : "bg-surface text-ink shadow-card"
                 }`}

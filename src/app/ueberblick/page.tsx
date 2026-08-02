@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function UeberblickPage({
   searchParams,
 }: {
-  searchParams: Promise<{ n?: string }>;
+  searchParams: Promise<{ n?: string; frage?: string }>;
 }) {
-  const { n } = await searchParams;
+  const { n, frage } = await searchParams;
   const now = new Date();
   const auto = defaultHorizon(now);
   // ?n=1 blättert bewusst auf die nächste Woche (sonst gilt die Automatik).
@@ -34,13 +34,22 @@ export default async function UeberblickPage({
     ? `Nächste Woche · ${formatMonthDay(from)} – ${formatMonthDay(lastDay)}`
     : `Ab jetzt bis Sonntag, ${formatMonthDay(lastDay)}`;
 
+  // Die offene Frage steht in der Adresse, damit sie beim Zurückkommen aus
+  // einem Termin noch gilt. Als reiner React-Zustand ging sie verloren: Die
+  // Seite wird neu aufgebaut und stand wieder auf der ersten Frage.
+  const initialTab = frage === "offen" ? "offen" : "woche";
+  const frageQuery = initialTab === "offen" ? "frage=offen" : "";
+  const mitFrage = (basis: string) =>
+    frageQuery ? `${basis}${basis.includes("?") ? "&" : "?"}${frageQuery}` : basis;
+
   return (
     <UeberblickClient
       overview={overview}
       scopeLabel={scopeLabel}
       briefing={briefing}
+      initialTab={initialTab}
       // Wenn die Automatik schon auf „nächste Woche" steht, gibt es nichts umzuschalten.
-      otherHref={showingNext ? "/ueberblick" : "/ueberblick?n=1"}
+      otherHref={mitFrage(showingNext ? "/ueberblick" : "/ueberblick?n=1")}
       otherLabel={showingNext ? "Aktuell" : "Nächste Woche"}
       showToggle={!(auto === "naechste-woche" && showingNext)}
     />
