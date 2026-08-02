@@ -65,6 +65,13 @@ export function buildTodoVM(
 /** Kennung für „alle Listen zusammen" — der Normalfall beim Öffnen. */
 export const ALLE_LISTEN = "alle";
 
+/**
+ * Formular-Kennung für „Neue Liste …" im Anlege-Formular. Kollidiert nie mit
+ * echten Listen-Ids (das sind cuids). Formular und Server-Aktion müssen
+ * dieselbe Kennung meinen — deshalb steht sie hier und nicht doppelt.
+ */
+export const NEUE_LISTE = "__neu";
+
 /** Kennung für Aufgaben ohne Liste. Kein Datensatz, sondern die Abwesenheit. */
 export const OHNE_LISTE = "ohne";
 

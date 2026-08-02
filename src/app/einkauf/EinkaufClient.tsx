@@ -8,6 +8,9 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
+import { OHNE_LADEN } from "@/lib/shopping/stores";
+import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
+import { createStoreAction } from "@/app/einstellungen/actions";
 
 import {
   addItemAction,
@@ -320,7 +323,7 @@ export function EinkaufClient({
                   ))}
                 </div>
               )}
-              {s.store === "sonstiges" && pendingAdds.length > 0 && (
+              {s.store === OHNE_LADEN && pendingAdds.length > 0 && (
                 <div className="mt-1 border-t border-surface-muted/60 pt-1">
                   {pendingAdds.map((t, i) => (
                     <div key={i} className="flex items-center gap-2.5 py-1.5 opacity-70">
@@ -332,6 +335,16 @@ export function EinkaufClient({
               )}
             </section>
           ))}
+
+          {/* Anlegen im Moment des Bedarfs — der Weg über die Einstellungen
+              bleibt für Umbenennen und Löschen. */}
+          <div className="px-1 pt-1">
+            <NeuesFachChip
+              label="+ Laden"
+              placeholder="Wie heißt der Laden?"
+              onCreate={createStoreAction}
+            />
+          </div>
         </div>
 
         <AnimatePresence>
@@ -375,7 +388,8 @@ function DragGhost({ drag }: { drag: Drag }) {
 }
 
 function pendingAddsFor(store: string, adds: string[]): string[] {
-  return store === "sonstiges" ? adds : [];
+  // Ohne Laden abgeschickt = wartet im Auffangfach.
+  return store === OHNE_LADEN ? adds : [];
 }
 
 function Row({

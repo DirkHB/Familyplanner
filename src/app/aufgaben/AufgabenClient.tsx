@@ -6,9 +6,12 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
-import { ALLE_LISTEN, OHNE_LISTE, type TodoGroup, type TodoVM } from "@/lib/todos/group";
+import { ALLE_LISTEN, OHNE_LISTE, NEUE_LISTE, type TodoGroup, type TodoVM } from "@/lib/todos/group";
+import { MAX_NAME_LAENGE } from "@/lib/names";
 import type { CareDay } from "@/lib/care/upcoming";
 import Link from "next/link";
+import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
+import { createTodoListAction } from "@/app/einstellungen/actions";
 import {
   createTodoAction,
   toggleTodoAction,
@@ -128,12 +131,12 @@ export function AufgabenClient({
           ))}
         </div>
 
-        {/* Listen als Umschalter — nur, wenn es welche gibt. Ein einzelner
-            Knopf „Alle" wäre nur Ballast. */}
-        {todoLists.length > 0 && (
-          <div className="-mx-5 mt-3 overflow-x-auto px-5" style={{ touchAction: "pan-x pan-y" }}>
-            <div className="flex w-max gap-2">
-              {[
+        {/* Listen als Umschalter. Gibt es noch keine, bleibt nur der stille
+            „+ Liste"-Chip — er ist der Einstieg, nicht die Einstellungen. */}
+        <div className="-mx-5 mt-3 overflow-x-auto px-5" style={{ touchAction: "pan-x pan-y" }}>
+          <div className="flex w-max items-center gap-2">
+            {todoLists.length > 0 &&
+              [
                 { key: ALLE_LISTEN, name: "Alle Listen" },
                 ...todoLists.map((l) => ({ key: l.id, name: l.name })),
                 ...(ohneListe ? [{ key: OHNE_LISTE, name: "Ohne Liste" }] : []),
@@ -155,9 +158,15 @@ export function AufgabenClient({
                   </button>
                 );
               })}
-            </div>
+            <NeuesFachChip
+              label="+ Liste"
+              placeholder="Wie soll sie heißen?"
+              onCreate={createTodoListAction}
+              // Gleich hinschalten: Wer eine Liste anlegt, will sie füllen.
+              onCreated={(id) => id && setListe(id)}
+            />
           </div>
-        )}
+        </div>
 
         {showForm && (
           <CreateForm
@@ -380,6 +389,7 @@ function CreateForm({
   vorauswahl?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(createTodoAction, { error: null });
+  const [listWahl, setListWahl] = useState(vorauswahl ?? "");
   const partner: Person = me === "dirk" ? "constanze" : "dirk";
   const label = (p: Person) => (p === "constanze" ? "Constanze" : "Dirk");
 
@@ -424,22 +434,34 @@ function CreateForm({
           </select>
         </label>
       </div>
-      {todoLists.length > 0 && (
-        <label className="block text-sm text-ink-muted">
-          In welche Liste?
-          <select
-            name="listId"
-            defaultValue={vorauswahl ?? ""}
-            className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base text-ink outline-none focus:border-accent"
-          >
-            <option value="">Ohne Liste</option>
-            {todoLists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <label className="block text-sm text-ink-muted">
+        In welche Liste?
+        <select
+          name="listId"
+          value={listWahl}
+          onChange={(e) => setListWahl(e.target.value)}
+          className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base text-ink outline-none focus:border-accent"
+        >
+          <option value="">Ohne Liste</option>
+          {todoLists.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+          {/* Anlegen im Moment des Bedarfs — wer hier merkt, dass die
+              passende Liste fehlt, soll nicht in die Einstellungen müssen. */}
+          <option value={NEUE_LISTE}>Neue Liste …</option>
+        </select>
+      </label>
+      {listWahl === NEUE_LISTE && (
+        <input
+          name="listName"
+          autoFocus
+          required
+          maxLength={MAX_NAME_LAENGE}
+          placeholder="Wie soll die Liste heißen?"
+          className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent"
+        />
       )}
       <label className="flex items-center gap-2 text-sm text-ink-muted">
         <input name="remind" type="checkbox" className="h-4 w-4 accent-[var(--color-accent)]" />

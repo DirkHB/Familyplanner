@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { personForEmail, type Person } from "@/lib/auth/allowlist";
 import { createTodo, toggleTodo, deleteTodo } from "@/lib/todos/repository";
+import { createTodoList } from "@/lib/todos/lists";
+import { NEUE_LISTE } from "@/lib/todos/group";
 
 export async function createTodoAction(
   _prev: { error: string | null } | null,
@@ -26,6 +28,16 @@ export async function createTodoAction(
   // Erinnerung: am Fälligkeitstag um 09:00 (wenn gewünscht und Datum gesetzt).
   const remind = fd.get("remind") === "on" && dueDate ? dueDate : null;
 
+  // „Neue Liste …" gewählt: erst die Liste anlegen, dann die Aufgabe hinein.
+  // Gibt es den Namen schon, liefert createTodoList die vorhandene Liste —
+  // die Aufgabe landet also richtig statt in einem Duplikat.
+  let listId = String(fd.get("listId") ?? "") || null;
+  if (listId === NEUE_LISTE) {
+    const name = String(fd.get("listName") ?? "").trim();
+    const res = name ? await createTodoList(name) : null;
+    listId = res?.ok ? (res.id ?? null) : null;
+  }
+
   await createTodo({
     title,
     notes: String(fd.get("notes") ?? ""),
@@ -33,7 +45,7 @@ export async function createTodoAction(
     assignee,
     createdBy: me,
     remindAt: remind,
-    listId: String(fd.get("listId") ?? "") || null,
+    listId,
   });
   revalidatePath("/aufgaben");
   return { error: null };
