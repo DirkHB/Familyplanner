@@ -230,7 +230,6 @@ function ManageBlock({ vm, onTitleChanged }: { vm: DetailVM; onTitleChanged: (t:
  */
 function CareBlockInfo({ vm }: { vm: DetailVM }) {
   const [pending, start] = useTransition();
-  const [gefragt, setGefragt] = useState(false);
   const router = useRouter();
 
   return (
@@ -241,28 +240,21 @@ function CareBlockInfo({ vm }: { vm: DetailVM }) {
         steht im gemeinsamen Kalender, damit ihr beide ihn seht.
       </p>
 
-      {gefragt ? (
-        <p className="mt-4 text-sm font-medium text-accent">
-          Zurückgenommen — eine Anfrage ist unterwegs.
-        </p>
-      ) : (
-        !vm.readOnly && (
-          <button
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                const r = await withdrawCareBlockAction(vm.uid);
-                if (r.ok) {
-                  setGefragt(true);
-                  router.refresh();
-                }
-              })
-            }
-            className="mt-4 w-full rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
-          >
-            Ich kann doch nicht — den anderen fragen
-          </button>
-        )
+      {!vm.readOnly && (
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const r = await withdrawCareBlockAction(vm.uid);
+              // Nicht neu laden, sondern weg: Diese Seite gibt es jetzt nicht
+              // mehr — der Block, den sie zeigt, ist gerade gelöscht worden.
+              if (r.ok) router.replace(r.weiterZu);
+            })
+          }
+          className="mt-4 w-full rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
+        >
+          {pending ? "Nehme zurück …" : "Ich kann doch nicht — den anderen fragen"}
+        </button>
       )}
     </section>
   );

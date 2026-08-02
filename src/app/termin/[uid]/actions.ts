@@ -108,26 +108,35 @@ export async function requestCareAction(uid: string, occurrenceISO: string, titl
  * Der Block verschwindet aus dem Kalender und der Anlass steht wieder offen —
  * mit einer Anfrage an den anderen. Stillschweigend offen lassen wäre der
  * schlechteste Ausgang: Dann glaubt einer, es sei geklärt, und niemand ist da.
+ *
+ * Gibt zurück, wohin es danach geht. Das ist keine Bequemlichkeit, sondern
+ * nötig: Die Seite, auf der man gerade steht, IST der gelöschte Block. Wer
+ * sie neu lädt, landet auf 404.
  */
-export async function withdrawCareBlockAction(blockUid: string) {
+export async function withdrawCareBlockAction(
+  blockUid: string,
+): Promise<{ ok: boolean; weiterZu: string }> {
   const session = await auth();
-  if (!session?.user?.id) return { ok: false as const };
+  if (!session?.user?.id) return { ok: false, weiterZu: "/woche" };
 
   const anlass = await anlassFuerBlock(blockUid);
   if (!anlass) {
     // Kein Anlass mehr auffindbar (Termin gelöscht) — dann bleibt nur, den
-    // verwaisten Block wegzuräumen.
+    // verwaisten Block wegzuräumen. Zurück in die Woche.
     await removeCareBlockByUid(blockUid);
     invalidateKalender();
     revalidatePath("/woche");
-    return { ok: true as const, gefragt: false };
+    return { ok: true, weiterZu: "/woche" };
   }
 
   await requestCare(anlass.eventUid, anlass.occurrenceDate, session.user.id, anlass.title);
   invalidateKalender();
   revalidatePath("/woche");
-  revalidatePath(`/termin/${encodeURIComponent(anlass.eventUid)}`);
-  return { ok: true as const, gefragt: true };
+  const ziel = `/termin/${encodeURIComponent(anlass.eventUid)}`;
+  revalidatePath(ziel);
+  // Zum Anlass, nicht in die Woche: Dort sieht man sofort, dass die Betreuung
+  // wieder offen ist und die Anfrage läuft.
+  return { ok: true, weiterZu: ziel };
 }
 
 /**
