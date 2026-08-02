@@ -145,6 +145,11 @@ export type DetailVM = {
    * er braucht weder Betreuung noch Vorbereitung noch Einkauf.
    */
   isCareBlock: boolean;
+  /**
+   * Wozu der Block gehört. `null` heißt: Den Anlass gibt es nicht mehr — dann
+   * ist der Block verwaist und kann nur noch weggeräumt werden.
+   */
+  careBlockAnlass: string | null;
   readOnly?: boolean;
 };
 
@@ -161,6 +166,7 @@ export type DetailInput = {
   prepChecklist: { text: string; done: boolean }[];
   occurrenceISO?: string | null;
   care?: CareVM;
+  careBlockAnlass?: string | null;
 };
 
 export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
@@ -184,6 +190,7 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
     occurrenceISO: v.occurrenceISO ?? null,
     care: v.care ?? null,
     isCareBlock: istBlock,
+    careBlockAnlass: v.careBlockAnlass ?? null,
     readOnly,
   };
 }

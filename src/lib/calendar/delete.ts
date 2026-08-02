@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
+import { removeCareBlocksForEvent } from "@/lib/care/block-sync";
 
 /** App→iCloud: Termin (bzw. ganze Serie) löschen und lokal aufräumen. */
 
@@ -33,6 +34,11 @@ export async function deleteEvent(userId: string, uid: string): Promise<DeleteEv
     // 404 = in iCloud schon weg — dann lokal trotzdem aufräumen.
     if (!/404/.test(msg)) return { deleted: false, reason: "Löschen in iCloud fehlgeschlagen." };
   }
+
+  // Erst die Betreuungsblöcke, die zu diesem Termin gehören — die stehen als
+  // eigene Einträge in iCloud und verschwinden nicht mit dem Anlass. Muss vor
+  // dem lokalen Aufräumen passieren, sonst fehlen die Daten, um sie zu finden.
+  await removeCareBlocksForEvent(uid);
 
   // Lokal spiegeln: Event(-Serie), Zusatzdaten, Betreuung. Aufgaben bleiben bewusst.
   await prisma.event.deleteMany({ where: { uid } });

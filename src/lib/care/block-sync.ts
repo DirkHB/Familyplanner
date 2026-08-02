@@ -10,6 +10,7 @@ import { personForEmail, type Person } from "@/lib/auth/allowlist";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import {
   CARE_MARKER,
+  CARE_UID_PREFIX,
   careBlockTitle,
   careBlockUid,
   careBlockDescription,
@@ -164,6 +165,26 @@ export async function anlassFuerBlock(
     occurrenceDate: treffer.occurrenceDate,
     title: ev?.title ?? "diesem Termin",
   };
+}
+
+/**
+ * Alle Blöcke zu einem Anlass entfernen — beim Löschen des Termins.
+ *
+ * Bewusst über die Blöcke selbst und nicht über die Betreuungszeilen: Beim
+ * Löschen verschwinden die Zeilen ohnehin, und ein Block, dessen Zeile schon
+ * weg ist, bliebe sonst für immer im Kalender stehen. Genau das ist passiert.
+ */
+export async function removeCareBlocksForEvent(eventUid: string): Promise<void> {
+  const bloecke = await prisma.event.findMany({
+    where: { uid: { startsWith: CARE_UID_PREFIX } },
+    select: { uid: true },
+  });
+  for (const b of bloecke) {
+    const tag = dayKeyFromCareBlockUid(b.uid);
+    if (tag && careBlockUid(eventUid, tag) === b.uid) {
+      await removeCareBlockByUid(b.uid);
+    }
+  }
 }
 
 /** Block entfernen, wenn die Betreuung zurückgenommen wird. */

@@ -84,6 +84,30 @@ describe("Anlass zu einem Block wiederfinden", () => {
   });
 });
 
+describe("Blöcke eines gelöschten Termins finden", () => {
+  it("erwischt alle Tage der Serie und lässt fremde Blöcke stehen", () => {
+    // So sucht removeCareBlocksForEvent: über alle Blöcke gehen, aus jedem den
+    // Tag lesen und prüfen, ob er zu diesem Anlass gehört. Ohne das blieb beim
+    // Löschen des Termins die Betreuung im Kalender stehen.
+    const anlass = "kurs@icloud.com";
+    const imKalender = [
+      careBlockUid(anlass, "2026-08-03"),
+      careBlockUid(anlass, "2026-08-10"),
+      careBlockUid("anderer@icloud.com", "2026-08-03"),
+    ];
+
+    const zuLoeschen = imKalender.filter((blockUid) => {
+      const tag = dayKeyFromCareBlockUid(blockUid);
+      return tag !== null && careBlockUid(anlass, tag) === blockUid;
+    });
+
+    expect(zuLoeschen).toEqual([
+      careBlockUid(anlass, "2026-08-03"),
+      careBlockUid(anlass, "2026-08-10"),
+    ]);
+  });
+});
+
 describe("careBlockDescription", () => {
   it("nennt den Anlass", () => {
     expect(careBlockDescription("Kinderarzt · U3")).toContain("Kinderarzt · U3");

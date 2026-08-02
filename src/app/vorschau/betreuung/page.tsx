@@ -24,6 +24,7 @@ export default function VorschauBetreuung() {
     notes: "",
     occurrenceISO: start.toISOString(),
     care: null,
+    careBlockAnlass: "Sport · Volleyball",
     prepChecklist: [],
   });
   return <EventDetail vm={vm} shopping={null} />;

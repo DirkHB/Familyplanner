@@ -3,6 +3,8 @@ import { EventDetail } from "@/components/event/EventDetail";
 import { getEventView } from "@/lib/calendar/repository";
 import { buildDetailVM } from "@/lib/calendar/view-model";
 import { getEventItems, getLinkableItems } from "@/lib/shopping/repository";
+import { isCareBlockUid } from "@/lib/care/block";
+import { anlassFuerBlock } from "@/lib/care/block-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,18 @@ export default async function TerminPage({
   const decoded = decodeURIComponent(uid);
   const view = await getEventView(decoded);
   if (!view) notFound();
+
+  // Bei einem Betreuungsblock zählt nur, wozu er gehört — Einkauf und
+  // Vorbereitung zeigt die Ansicht dort ohnehin nicht.
+  if (isCareBlockUid(decoded)) {
+    const anlass = await anlassFuerBlock(decoded);
+    return (
+      <EventDetail
+        vm={buildDetailVM({ ...view, careBlockAnlass: anlass?.title ?? null })}
+        shopping={null}
+      />
+    );
+  }
 
   const [linked, linkable] = await Promise.all([getEventItems(decoded), getLinkableItems()]);
   const shopping = {

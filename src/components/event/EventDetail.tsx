@@ -235,10 +235,17 @@ function CareBlockInfo({ vm }: { vm: DetailVM }) {
   return (
     <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
       <h2 className="font-display text-lg">Betreuung für Nicolas</h2>
-      <p className="mt-2 text-sm text-ink-muted">
-        Diesen Eintrag hat der Familienplaner angelegt, weil die Betreuung zugesagt wurde. Er
-        steht im gemeinsamen Kalender, damit ihr beide ihn seht.
-      </p>
+      {vm.careBlockAnlass ? (
+        <p className="mt-2 text-sm text-ink-muted">
+          Während <span className="font-medium text-ink">{vm.careBlockAnlass}</span>. Diesen
+          Eintrag hat der Familienplaner angelegt, damit die Zusage im gemeinsamen Kalender
+          steht.
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-ink-muted">
+          Den Termin dazu gibt es nicht mehr. Dieser Eintrag ist übrig geblieben.
+        </p>
+      )}
 
       {!vm.readOnly && (
         <button
@@ -253,7 +260,11 @@ function CareBlockInfo({ vm }: { vm: DetailVM }) {
           }
           className="mt-4 w-full rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
         >
-          {pending ? "Nehme zurück …" : "Ich kann doch nicht — den anderen fragen"}
+          {pending
+            ? "Räume auf …"
+            : vm.careBlockAnlass
+              ? "Ich kann doch nicht — den anderen fragen"
+              : "Eintrag entfernen"}
         </button>
       )}
     </section>
