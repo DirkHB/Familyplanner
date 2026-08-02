@@ -7,6 +7,7 @@ import { MonthShell } from "@/components/termine/MonthShell";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import { buildMonthMatrix, monthTitle, shiftMonth, isMonthKey } from "@/lib/calendar/month";
 import { shortLabel } from "@/lib/calendar/keyword";
+import { MonatsRaster, type RasterEvent } from "@/components/termine/MonatsRaster";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,14 @@ export default async function TerminePage({
   const eventsByDay = new Map(days.map((d) => [d.key, d.events]));
 
   const weeks = buildMonthMatrix(monthKey);
+
+  // Fürs Client-Raster serialisiert; die Kurzformen rechnet der Server.
+  const rasterEvents: Record<string, RasterEvent[]> = {};
+  const kurzTitel: Record<string, string> = {};
+  for (const d of days) {
+    rasterEvents[d.key] = d.events.map((ev) => ({ key: ev.key, title: ev.title, dotColor: ev.dotColor }));
+    for (const ev of d.events) kurzTitel[ev.key] = shortLabel(ev.title);
+  }
 
   return (
     <AppShell>
@@ -61,60 +70,14 @@ export default async function TerminePage({
           </div>
         </div>
 
-        {/* Monatsraster: ganzer Monat in Kacheln, Termine als Mini-Stichworte */}
-        <div className="mt-4 overflow-hidden rounded-card bg-surface shadow-card">
-          <div className="grid grid-cols-7 border-b border-surface-muted/60 text-center">
-            {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => (
-              <span key={w} className="py-1.5 text-[10px] font-medium text-ink-muted">{w}</span>
-            ))}
-          </div>
-          {weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 border-b border-surface-muted/40 last:border-0">
-              {week.map((cell) => {
-                const events = cell.inMonth ? (eventsByDay.get(cell.key) ?? []) : [];
-                const isToday = cell.key === todayKey;
-                const shown = events.slice(0, 3);
-                const more = events.length - shown.length;
-                const content = (
-                  <div
-                    className={`flex min-h-[68px] flex-col gap-0.5 px-0.5 pb-1 pt-0.5 ${
-                      cell.inMonth ? "" : "opacity-30"
-                    } ${isToday ? "bg-accent-light/60" : ""}`}
-                  >
-                    <span
-                      className={`tnum self-end px-0.5 text-[10px] leading-tight ${
-                        isToday
-                          ? "flex h-4 w-4 items-center justify-center self-end rounded-full bg-accent font-semibold text-surface"
-                          : "text-ink-muted"
-                      }`}
-                    >
-                      {cell.day}
-                    </span>
-                    {shown.map((ev) => (
-                      <span
-                        key={ev.key}
-                        className="block truncate rounded-[3px] pl-0.5 text-left text-[8px] font-medium leading-[1.35] text-ink"
-                        style={{ borderLeft: `2px solid ${ev.dotColor}`, background: "var(--color-bg)" }}
-                      >
-                        {shortLabel(ev.title)}
-                      </span>
-                    ))}
-                    {more > 0 && (
-                      <span className="pl-1 text-left text-[8px] leading-none text-ink-muted">+{more}</span>
-                    )}
-                  </div>
-                );
-                return events.length > 0 ? (
-                  <a key={cell.key} href={`#${cell.key}`} className="min-w-0 border-r border-surface-muted/40 last:border-r-0">
-                    {content}
-                  </a>
-                ) : (
-                  <div key={cell.key} className="min-w-0 border-r border-surface-muted/40 last:border-r-0">{content}</div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+        {/* Monatsraster: 1. Tipp springt zur Tagesgruppe, 2. Tipp auf
+            denselben Tag öffnet das Anlege-Blatt (leere Tage sofort). */}
+        <MonatsRaster
+          weeks={weeks}
+          todayKey={todayKey}
+          eventsByDay={rasterEvents}
+          kurz={kurzTitel}
+        />
         </MonthShell>
 
         {/* Tagesliste des Monats */}
