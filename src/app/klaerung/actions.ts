@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { toggleTodo } from "@/lib/todos/repository";
 import { takeCare, requestCare, dismissCare } from "@/lib/care/repository";
+import { dismissTitle } from "@/lib/care/rules";
 import { answerRequest } from "@/lib/requests/repository";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { startOfDayBerlin } from "@/lib/calendar/format";
@@ -42,6 +43,28 @@ export async function stapelBetreuungIchAction(uid: string, occurrenceISO: strin
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   await takeCare(uid, new Date(occurrenceISO), session.user.id);
+  invalidateKalender();
+  reval();
+  return { ok: true };
+}
+
+/**
+ * „Nicht nötig" — Nicolas ist beim Termin dabei (Kinderarzt, Krabbelgruppe),
+ * oder die Frage stellt sich hier gar nicht.
+ *
+ * Merkt sich beides: dieses Vorkommen ist entschieden, und die Terminart wird
+ * nie wieder gefragt. Ohne das Zweite müsste man den Schwimmkurs jede Woche
+ * neu abwinken — und genau daran stirbt so eine Funktion.
+ */
+export async function stapelBetreuungUnnoetigAction(
+  uid: string,
+  occurrenceISO: string,
+  title: string,
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await dismissCare(uid, new Date(occurrenceISO));
+  await dismissTitle(title, session.user.id);
   invalidateKalender();
   reval();
   return { ok: true };

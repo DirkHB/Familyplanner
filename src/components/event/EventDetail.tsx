@@ -279,11 +279,13 @@ function CareBlock({ vm }: { vm: DetailVM }) {
               <button
                 disabled={pending}
                 onClick={() =>
-                  start(() => dismissCareAction(vm.uid, vm.occurrenceISO!).then(() => {}))
+                  start(() =>
+                    dismissCareAction(vm.uid, vm.occurrenceISO!, vm.title).then(() => {}),
+                  )
                 }
                 className="text-sm text-ink-muted/70"
               >
-                Braucht keine Betreuung
+                Nicht nötig — Nicolas ist dabei
               </button>
             </div>
           )}

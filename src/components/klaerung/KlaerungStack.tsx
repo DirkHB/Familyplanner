@@ -9,6 +9,7 @@ import {
   stapelErledigtAction,
   stapelMorgenAction,
   stapelBetreuungIchAction,
+  stapelBetreuungUnnoetigAction,
   stapelKannNichtAction,
   stapelAntwortAction,
   stapelEskalationGeklaertAction,
@@ -25,7 +26,16 @@ import {
  * zurück — ohne dass irgendwo etwas zurückgebaut werden muss.
  */
 
-type Decision = { card: KlaerungCard; richtung: "rechts" | "links" | "morgen"; label: string };
+/**
+ * Wischen entscheidet zwei Richtungen; die dritte steht als Knopf auf der
+ * Karte. Was sie bedeutet, hängt von der Karte ab: bei Aufgaben „morgen",
+ * bei Betreuung „nicht nötig".
+ */
+type Decision = {
+  card: KlaerungCard;
+  richtung: "rechts" | "links" | "morgen" | "keine";
+  label: string;
+};
 
 function actionFor(d: Decision): (() => Promise<unknown>) | null {
   const c = d.card;
@@ -35,9 +45,10 @@ function actionFor(d: Decision): (() => Promise<unknown>) | null {
       if (d.richtung === "morgen") return () => stapelMorgenAction(c.id);
       return null; // links = später — bewusst keine Datenänderung
     case "betreuung":
-      return d.richtung === "rechts"
-        ? () => stapelBetreuungIchAction(c.uid, c.occurrenceISO)
-        : () => stapelKannNichtAction(c.uid, c.occurrenceISO, c.title);
+      if (d.richtung === "rechts") return () => stapelBetreuungIchAction(c.uid, c.occurrenceISO);
+      if (d.richtung === "keine")
+        return () => stapelBetreuungUnnoetigAction(c.uid, c.occurrenceISO, c.title);
+      return () => stapelKannNichtAction(c.uid, c.occurrenceISO, c.title);
     case "anfrage":
       return () => stapelAntwortAction(c.id, d.richtung === "rechts" ? "Ja" : "Nein");
     case "eskalation":
@@ -56,6 +67,13 @@ const LABELS: Record<KlaerungCard["kind"], { links: string; rechts: string }> = 
   eskalation: { links: "Später", rechts: "Anders gelöst ✓" },
   parken: { links: "Bleibt liegen", rechts: "Diese Woche ✓" },
 };
+
+/** Was in der Rückgängig-Leiste steht — im Rückblick formuliert. */
+function entscheidungsLabel(card: KlaerungCard, richtung: Decision["richtung"]): string {
+  if (richtung === "morgen") return "Auf morgen geschoben";
+  if (richtung === "keine") return "Als nicht nötig gemerkt";
+  return LABELS[card.kind][richtung === "rechts" ? "rechts" : "links"];
+}
 
 export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClose: () => void }) {
   const [index, setIndex] = useState(0);
@@ -88,7 +106,7 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
   function decide(richtung: Decision["richtung"]) {
     if (!card) return;
     flush();
-    const d: Decision = { card, richtung, label: richtung === "morgen" ? "Auf morgen geschoben" : LABELS[card.kind][richtung === "rechts" ? "rechts" : "links"] };
+    const d: Decision = { card, richtung, label: entscheidungsLabel(card, richtung) };
     const run = actionFor(d);
     if (run) {
       const timer = setTimeout(() => {
@@ -165,7 +183,7 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
   );
 }
 
-function SwipeCard({ card, onDecide }: { card: KlaerungCard; onDecide: (r: "rechts" | "links" | "morgen") => void }) {
+function SwipeCard({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-7, 7]);
   const rechtsOpacity = useTransform(x, [30, 110], [0, 1]);
@@ -252,20 +270,40 @@ function CardBody({ card }: { card: KlaerungCard }) {
   }
 }
 
-function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: "rechts" | "links" | "morgen") => void }) {
+/**
+ * Der dritte Weg, mittig über den beiden Wisch-Knöpfen.
+ *
+ * Mit Rand statt nur mit Flächenfarbe: `bg-surface/10` allein ist auf dem
+ * dunklen Grund so blass, dass der Knopf wie eine Bildunterschrift aussieht.
+ * Bei „Auf morgen schieben" war das zu verschmerzen, bei „Nicht nötig" nicht —
+ * das ist beim Kinderarzt die einzig richtige Antwort.
+ */
+const DRITTER_WEG =
+  "self-center rounded-pill border border-surface/25 bg-surface/10 px-5 py-2.5 text-sm font-medium text-surface";
+
+function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void }) {
   const labels = LABELS[card.kind];
   return (
     <div className="flex flex-col gap-3">
       {card.kind === "aufgabe" && (
-        <button onClick={() => onDecide("morgen")} className="self-center rounded-pill bg-surface/10 px-5 py-2.5 text-sm font-medium text-surface">
+        <button onClick={() => onDecide("morgen")} className={DRITTER_WEG}>
           Auf morgen schieben
         </button>
       )}
+      {/*
+        Der dritte Weg bei Betreuung: Nicolas ist dabei (Kinderarzt), oder die
+        Frage stellt sich hier gar nicht. Ohne ihn blieben nur „ich mach das"
+        — was einen Betreuungsblock über den Termin legt — und „ich kann
+        nicht", was Constanze grundlos fragt. Beides falsch, also musste ein
+        dritter Knopf her.
+      */}
+      {card.kind === "betreuung" && (
+        <button onClick={() => onDecide("keine")} className={DRITTER_WEG}>
+          Nicht nötig — Nicolas ist dabei
+        </button>
+      )}
       {card.kind === "eskalation" && (
-        <Link
-          href={`/termin/${encodeURIComponent(card.uid)}`}
-          className="self-center rounded-pill bg-surface/10 px-5 py-2.5 text-sm font-medium text-surface"
-        >
+        <Link href={`/termin/${encodeURIComponent(card.uid)}`} className={DRITTER_WEG}>
           Termin ansehen
         </Link>
       )}

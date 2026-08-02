@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { redirect } from "next/navigation";
 import { takeCare, requestCare, dismissCare } from "@/lib/care/repository";
+import { dismissTitle } from "@/lib/care/rules";
 import { deleteEvent } from "@/lib/calendar/delete";
 import { updateEvent } from "@/lib/calendar/update";
 import { invalidateKalender } from "@/lib/calendar/range-data";
@@ -100,11 +101,19 @@ export async function requestCareAction(uid: string, occurrenceISO: string, titl
   return { ok: true };
 }
 
-/** „Braucht keine Betreuung" — nimmt den Termin aus der Betreuungslogik. */
-export async function dismissCareAction(uid: string, occurrenceISO: string) {
+/**
+ * „Nicht nötig" — nimmt den Termin aus der Betreuungslogik.
+ *
+ * Merkt sich zusätzlich die Terminart, genau wie im Stapel und im Überblick.
+ * Vorher galt der Knopf hier nur für dieses eine Vorkommen — bei einem
+ * wöchentlichen Termin kam die Frage deshalb jede Woche wieder. Das war keine
+ * Entscheidung, sondern ein Versehen.
+ */
+export async function dismissCareAction(uid: string, occurrenceISO: string, title: string) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   await dismissCare(uid, new Date(occurrenceISO));
+  await dismissTitle(title, session.user.id);
   invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");

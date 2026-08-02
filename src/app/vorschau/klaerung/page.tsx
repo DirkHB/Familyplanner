@@ -9,7 +9,9 @@ import type { KlaerungCard } from "@/lib/klaerung/build";
 const CARDS: KlaerungCard[] = [
   { kind: "eskalation", uid: "e1", title: "Kinderarzt Nicolas | Impfung", when: "heute, 14:00", occurrenceISO: null },
   { kind: "anfrage", id: "q1", question: "Schaffst du Donnerstag den Einkauf?", fromName: "Constanze", eventUid: null },
-  { kind: "betreuung", uid: "b1", title: "Zahnarzt", when: "morgen, 09:00", occurrenceISO: "2026-08-01T07:00:00.000Z" },
+  // Bewusst der Kinderarzt: Hier ist Nicolas dabei, und die Karte muss einen
+  // dritten Weg anbieten. Wer die Vorschau ansieht, soll genau das sehen.
+  { kind: "betreuung", uid: "b1", title: "Kinderarzt · U3", when: "morgen, 09:00", occurrenceISO: "2026-08-01T07:00:00.000Z" },
   { kind: "aufgabe", id: "t1", title: "Kindergeld-Antrag abschicken", dueLabel: "Fr, 31. Juli", overdue: true, shiftCount: 2 },
 ];
 

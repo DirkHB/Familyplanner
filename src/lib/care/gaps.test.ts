@@ -119,6 +119,17 @@ describe("isCareGap", () => {
     expect(isCareGap(block, keine)).toBe(false);
   });
 
+  it("Nicolas ist dabei: gilt für die ganze Terminart, nicht nur für den einen Tag", () => {
+    // Der Fall, der den dritten Knopf nötig gemacht hat: Beim Kinderarzt ist
+    // Nicolas dabei. „Ich mach das" wäre falsch (legt einen Block über den
+    // Termin), „ich kann nicht" auch (fragt Constanze grundlos).
+    const abgewinkt = new Set([titleKey("Kinderarzt U3")]);
+    const naechsteWoche = ev("2026-08-06T12:00:00Z", "2026-08-06T13:00:00Z", {
+      title: "Kinderarzt U3",
+    });
+    expect(isCareGap(naechsteWoche, abgewinkt)).toBe(false);
+  });
+
   it("abgewinkter Titel blockiert andere Termine nicht", () => {
     const abgewinkt = new Set([titleKey("Müllabfuhr")]);
     expect(isCareGap(ev("2026-07-30T12:00:00Z", "2026-07-30T13:00:00Z", { title: "Zahnarzt" }), abgewinkt)).toBe(true);
