@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { TabBar } from "./TabBar";
 import {
@@ -42,6 +42,8 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  // „Nach oben": erscheint erst, wenn man wirklich unterwegs ist.
+  const [zurueckSichtbar, setZurueckSichtbar] = useState(false);
 
   useBrowserLayoutEffect(() => {
     const el = scrollerRef.current;
@@ -69,7 +71,10 @@ export function AppShell({
       frame = requestAnimationFrame(() => {
         frame = 0;
         const node = scrollerRef.current;
-        if (node) rememberScroll(key, node.scrollTop);
+        if (node) {
+          rememberScroll(key, node.scrollTop);
+          setZurueckSichtbar(node.scrollTop > 600);
+        }
       });
     };
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -92,6 +97,25 @@ export function AppShell({
       >
         <div className={`mx-auto max-w-md px-5 pb-24 pt-8 ${contentClassName}`}>{children}</div>
       </div>
+
+      {/* Zurück nach oben — links, der Erfassen-Knopf wohnt rechts. Auf der
+          Woche heißt oben „Heute", überall sonst genügt der Pfeil. */}
+      {zurueckSichtbar && (
+        <button
+          onClick={() => scrollerRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          className="absolute left-5 z-30 flex h-11 items-center gap-1.5 rounded-pill bg-surface/85 px-3.5 text-sm font-medium text-ink shadow-hero"
+          style={{
+            bottom: "calc(6rem + env(safe-area-inset-bottom))",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {pathname === "/woche" ? "Heute" : null}
+        </button>
+      )}
 
       {floating}
       {bottomBar}

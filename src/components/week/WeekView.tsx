@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
@@ -56,11 +56,10 @@ export function WeekView({
           </Link>
         </div>
 
-        {/* Das Briefing in voller Breite: was als Nächstes kommt und was
-            heute noch offen ist — nie eine Aufzählung der Liste darunter. */}
-        {briefing && !naechsteWoche && (
-          <p className="mt-3 text-[15px] leading-snug text-ink">{briefing}</p>
-        )}
+        {/* Das Briefing in voller Breite. Sofort steht die nüchterne
+            Kopfzeile da; der Assistent zieht nach, sobald er geantwortet
+            hat — die Seite wartet nie auf die KI. */}
+        {briefing && !naechsteWoche && <BriefingZeile fallback={briefing} />}
 
         <RequestHero requests={requests} />
 
@@ -75,6 +74,38 @@ export function WeekView({
         )}
       </>
     </AppShell>
+  );
+}
+
+/**
+ * Die Briefing-Zeile: zeigt sofort die berechnete Kopfzeile und tauscht sie
+ * gegen das Assistenten-Briefing, sobald es da ist. Meist kommt es aus dem
+ * Cache und ist schneller da, als man liest.
+ */
+function BriefingZeile({ fallback }: { fallback: string }) {
+  const [text, setText] = useState(fallback);
+  useEffect(() => {
+    let weg = false;
+    fetch("/api/briefing")
+      .then((r) => (r.ok ? r.json() : { text: null }))
+      .then((d) => {
+        if (!weg && typeof d.text === "string" && d.text) setText(d.text);
+      })
+      .catch(() => {});
+    return () => {
+      weg = true;
+    };
+  }, []);
+  return (
+    <motion.p
+      key={text}
+      initial={{ opacity: 0.6 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
+      className="mt-3 text-[15px] leading-snug text-ink"
+    >
+      {text}
+    </motion.p>
   );
 }
 
