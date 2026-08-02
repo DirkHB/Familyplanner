@@ -8,7 +8,6 @@ import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
 import { ALLE_LISTEN, OHNE_LISTE, NEUE_LISTE, type TodoGroup, type TodoVM } from "@/lib/todos/group";
 import { MAX_NAME_LAENGE } from "@/lib/names";
-import type { CareDay } from "@/lib/care/upcoming";
 import Link from "next/link";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
 import { createTodoListAction } from "@/app/einstellungen/actions";
@@ -36,14 +35,12 @@ export function AufgabenClient({
   groups,
   me,
   eventTasks = [],
-  careDays = [],
   einkaufOffen = 0,
   todoLists = [],
 }: {
   groups: TodoGroup[];
   me: Person;
   eventTasks?: EventTasks[];
-  careDays?: CareDay[];
   /** Offene Einkaufsposten — als Zahl am Umschalter. */
   einkaufOffen?: number;
   todoLists?: { id: string; name: string }[];
@@ -177,26 +174,13 @@ export function AufgabenClient({
           />
         )}
 
-        {careDays.length > 0 && filter === "alle" && (
-          <section className="mt-6">
-            <h2 className="eyebrow mb-2 text-ink-muted">Wer ist bei Nicolas?</h2>
-            <div className="flex flex-col gap-4">
-              {careDays.map((d) => (
-                <div key={d.key}>
-                  <p className={`mb-1.5 text-xs font-medium ${d.past ? "text-signal" : "text-ink-muted"}`}>
-                    {d.label}
-                    {d.past ? " · vorbei" : ""}
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {d.slots.map((s) => (
-                      <CareSlotRow key={s.id} slot={s} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Hier stand einmal „Wer ist bei Nicolas?" mit allen Betreuungen der
+            nächsten Tage — gebaut, als Betreuung nur in der App lebte. Seit
+            sie als „👶 Nicolas"-Block im echten Kalender steht, war das
+            dieselbe Information ein drittes Mal, sah aus wie ein Terminplan
+            und begrub die eigentlichen Aufgaben. Betreuung hat ihren Ort am
+            Termin und im Kalender — Aufgaben zeigt nur, was man abhaken
+            kann. */}
 
         {filtered.length === 0 && !showForm ? (
           <div className="mt-10 rounded-card bg-surface p-6 text-center shadow-card">
@@ -236,31 +220,6 @@ export function AufgabenClient({
 }
 
 const CYCLE: (Person | null)[] = ["constanze", "dirk", null];
-
-/**
- * Eine übernommene Betreuung: Zeitraum, Anlass, Person — auf einen Blick.
- * Rechts wischen = erledigt, links = entfernen (wie überall in der App).
- */
-function CareSlotRow({ slot }: { slot: CareDay["slots"][number] }) {
-  return (
-    <Link href={`/termin/${encodeURIComponent(slot.uid)}`} className="block">
-      <div className="rounded-card bg-surface px-4 py-3 shadow-card">
-        <div className="flex items-center justify-between gap-3">
-          <span className="tnum font-medium">{slot.timeLabel ?? "ganztägig"}</span>
-          {slot.person ? (
-            <span className="flex shrink-0 items-center gap-1.5">
-              <Avatar person={slot.person} size={24} />
-              <span className="text-sm font-medium">{slot.person === "constanze" ? "Constanze" : "Dirk"}</span>
-            </span>
-          ) : (
-            <span className="text-sm text-ink-muted/60">offen</span>
-          )}
-        </div>
-        <p className="mt-0.5 truncate text-sm text-ink-muted">{slot.title}</p>
-      </div>
-    </Link>
-  );
-}
 
 function TodoRow({ todo }: { todo: TodoVM }) {
   const [pending, start] = useTransition();

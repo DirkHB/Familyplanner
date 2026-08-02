@@ -5,7 +5,6 @@ import { listTodos } from "@/lib/todos/repository";
 import { buildTodoVM, groupTodos } from "@/lib/todos/group";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatMonthDay } from "@/lib/calendar/format";
-import { getUpcomingCare } from "@/lib/care/upcoming";
 import { getMainListGroups } from "@/lib/shopping/repository";
 import { listTodoLists } from "@/lib/todos/lists";
 import { AufgabenClient, type EventTasks } from "./AufgabenClient";
@@ -54,8 +53,6 @@ export default async function AufgabenPage() {
     .sort((a, b) => a.sort - b.sort)
     .slice(0, 10);
 
-  // Betreuung kommt direkt aus den Zusagen, nicht mehr aus Aufgaben.
-  const careDays = await getUpcomingCare(now);
   // Zahl am Umschalter — damit der Einkauf sichtbar bleibt, obwohl er
   // keinen eigenen Tab mehr hat.
   const einkaufOffen = await getMainListGroups()
@@ -69,7 +66,6 @@ export default async function AufgabenPage() {
       groups={groups}
       me={me}
       eventTasks={eventTasks}
-      careDays={careDays}
       einkaufOffen={einkaufOffen}
       todoLists={todoLists.map((l) => ({ id: l.id, name: l.name }))}
     />
