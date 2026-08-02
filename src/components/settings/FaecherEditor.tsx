@@ -15,7 +15,6 @@ import { MAX_NAME_LAENGE } from "@/lib/names";
 export type Fach = { id: string; name: string; anzahl?: number };
 
 export function FaecherEditor({
-  ueberschrift,
   erklaerung,
   fachWort,
   restFach,
@@ -24,7 +23,6 @@ export function FaecherEditor({
   onRename,
   onDelete,
 }: {
-  ueberschrift: string;
   erklaerung: string;
   /** Wie ein einzelnes Fach heißt — „Liste" oder „Laden". */
   fachWort: string;
@@ -53,12 +51,13 @@ export function FaecherEditor({
     });
   }
 
+  // Kein eigener Karten-Rahmen mehr: Die Einstellungen stellen die Zeile,
+  // dieses Bauteil nur noch den Inhalt.
   return (
-    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
-      <h2 className="font-display text-lg">{ueberschrift}</h2>
-      <p className="mt-1 text-sm text-ink-muted">{erklaerung}</p>
+    <div>
+      <p className="text-sm text-ink-muted">{erklaerung}</p>
 
-      <ul className="mt-4 flex flex-col gap-2">
+      <ul className="mt-3 flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {faecher.map((f) => (
             <motion.li
@@ -105,7 +104,7 @@ export function FaecherEditor({
         </button>
       </div>
       {fehler && <p className="mt-2 text-sm text-signal">{fehler}</p>}
-    </section>
+    </div>
   );
 }
 

@@ -27,16 +27,16 @@ type Liste = {
 };
 
 export function RemindersImport() {
+  // Kein eigener Karten-Rahmen: Die Einstellungen stellen die Zeile.
   return (
-    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
-      <h2 className="font-display text-lg">Liste übernehmen</h2>
-      <p className="mt-1 text-sm text-ink-muted">
+    <div>
+      <p className="text-sm text-ink-muted">
         Aus Apple Erinnerungen oder jeder anderen App: Liste öffnen, alle markieren, kopieren
         — und hier einfügen. Eine Zeile wird eine Aufgabe.
       </p>
       <PasteImport />
       <CaldavImport />
-    </section>
+    </div>
   );
 }
 
@@ -49,7 +49,7 @@ function PasteImport() {
   const zeilen = text.split(/\r?\n/).filter((z) => z.trim()).length;
 
   return (
-    <div className="mt-4 flex flex-col gap-2.5">
+    <div className="mt-3 flex flex-col gap-2.5">
       <input
         value={name}
         onChange={(e) => {
