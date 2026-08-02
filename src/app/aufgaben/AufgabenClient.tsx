@@ -6,7 +6,7 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
-import { ALLE_LISTEN, OHNE_LISTE, NEUE_LISTE, type TodoGroup, type TodoVM } from "@/lib/todos/group";
+import { containersByList, NEUE_LISTE, type TodoVM } from "@/lib/todos/group";
 import { MAX_NAME_LAENGE } from "@/lib/names";
 import Link from "next/link";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
@@ -32,13 +32,13 @@ export type EventTasks = {
 type Filter = "alle" | Person;
 
 export function AufgabenClient({
-  groups,
+  todos,
   me,
   eventTasks = [],
   einkaufOffen = 0,
   todoLists = [],
 }: {
-  groups: TodoGroup[];
+  todos: TodoVM[];
   me: Person;
   eventTasks?: EventTasks[];
   /** Offene Einkaufsposten — als Zahl am Umschalter. */
@@ -46,38 +46,11 @@ export function AufgabenClient({
   todoLists?: { id: string; name: string }[];
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
-  const [liste, setListe] = useState<string>(ALLE_LISTEN);
   const [showForm, setShowForm] = useState(false);
 
-  // Gibt es die gewählte Liste nicht mehr (in einem anderen Gerät gelöscht),
-  // wäre sonst dauerhaft alles leer. Dann lieber wieder alles zeigen.
-  const listeGibtEs =
-    liste === ALLE_LISTEN || liste === OHNE_LISTE || todoLists.some((l) => l.id === liste);
-  const aktiveListe = listeGibtEs ? liste : ALLE_LISTEN;
-
-  const filtered = groups
-    .map((g) => ({
-      ...g,
-      todos: g.todos
-        .filter((t) => filter === "alle" || t.assignee === filter)
-        .filter(
-          (t) =>
-            aktiveListe === ALLE_LISTEN ||
-            (aktiveListe === OHNE_LISTE ? t.listId === null : t.listId === aktiveListe),
-        ),
-    }))
-    .filter((g) => g.todos.length > 0);
-
-  // Zahlen an den Listen-Umschaltern: offene Aufgaben, den Personenfilter
-  // mitgerechnet — sonst stünde dort eine Zahl, die man nicht wiederfindet.
-  const sichtbar = groups.flatMap((g) => g.todos).filter((t) => filter === "alle" || t.assignee === filter);
-  const zahlFuer = (key: string) =>
-    sichtbar.filter(
-      (t) =>
-        !t.done &&
-        (key === ALLE_LISTEN || (key === OHNE_LISTE ? t.listId === null : t.listId === key)),
-    ).length;
-  const ohneListe = sichtbar.some((t) => t.listId === null);
+  const sichtbar = todos.filter((t) => filter === "alle" || t.assignee === filter);
+  const { container, erledigt } = containersByList(sichtbar, todoLists);
+  const nichtsOffen = container.every((c) => c.todos.length === 0);
 
   return (
     <AppShell>
@@ -107,8 +80,10 @@ export function AufgabenClient({
           </button>
         </div>
 
-        {/* Filter: Alle / Constanze / Dirk */}
-        <div className="mt-4 flex gap-2">
+        {/* Personenfilter und „+ Liste" in einer Reihe: Der Chip steht damit
+            an einer festen Stelle ganz oben — nicht mehr am Ende einer
+            wachsenden Umschalter-Reihe, wo man ihm hinterherscrollen muss. */}
+        <div className="mt-4 flex items-center gap-2">
           {(
             [
               ["alle", "Alle"],
@@ -126,83 +101,64 @@ export function AufgabenClient({
               {label}
             </button>
           ))}
+          <span className="ml-auto">
+            <NeuesFachChip label="+ Liste" placeholder="Wie soll sie heißen?" onCreate={createTodoListAction} />
+          </span>
         </div>
 
-        {/* Listen als Umschalter. Gibt es noch keine, bleibt nur der stille
-            „+ Liste"-Chip — er ist der Einstieg, nicht die Einstellungen. */}
-        <div className="-mx-5 mt-3 overflow-x-auto px-5" style={{ touchAction: "pan-x pan-y" }}>
-          <div className="flex w-max items-center gap-2">
-            {todoLists.length > 0 &&
-              [
-                { key: ALLE_LISTEN, name: "Alle Listen" },
-                ...todoLists.map((l) => ({ key: l.id, name: l.name })),
-                ...(ohneListe ? [{ key: OHNE_LISTE, name: "Ohne Liste" }] : []),
-              ].map((l) => {
-                const aktiv = aktiveListe === l.key;
-                const n = zahlFuer(l.key);
-                return (
-                  <button
-                    key={l.key}
-                    onClick={() => setListe(l.key)}
-                    className={`flex shrink-0 items-center gap-2 rounded-pill px-4 py-2 text-sm font-medium transition-colors ${
-                      aktiv ? "bg-accent text-surface" : "bg-surface text-ink shadow-card"
-                    }`}
-                  >
-                    {l.name}
-                    {n > 0 && (
-                      <span className={aktiv ? "text-surface/70" : "text-ink-muted"}>{n}</span>
-                    )}
-                  </button>
-                );
-              })}
-            <NeuesFachChip
-              label="+ Liste"
-              placeholder="Wie soll sie heißen?"
-              onCreate={createTodoListAction}
-              // Gleich hinschalten: Wer eine Liste anlegt, will sie füllen.
-              onCreated={(id) => id && setListe(id)}
-            />
-          </div>
-        </div>
+        {showForm && <CreateForm me={me} todoLists={todoLists} onDone={() => setShowForm(false)} />}
 
-        {showForm && (
-          <CreateForm
-            me={me}
-            todoLists={todoLists}
-            vorauswahl={aktiveListe === ALLE_LISTEN || aktiveListe === OHNE_LISTE ? null : aktiveListe}
-            onDone={() => setShowForm(false)}
-          />
-        )}
-
-        {/* Hier stand einmal „Wer ist bei Nicolas?" mit allen Betreuungen der
-            nächsten Tage — gebaut, als Betreuung nur in der App lebte. Seit
-            sie als „👶 Nicolas"-Block im echten Kalender steht, war das
-            dieselbe Information ein drittes Mal, sah aus wie ein Terminplan
-            und begrub die eigentlichen Aufgaben. Betreuung hat ihren Ort am
-            Termin und im Kalender — Aufgaben zeigt nur, was man abhaken
-            kann. */}
-
-        {filtered.length === 0 && !showForm ? (
-          <div className="mt-10 rounded-card bg-surface p-6 text-center shadow-card">
+        {nichtsOffen && !showForm && (
+          <div className="mt-6 rounded-card bg-surface p-6 text-center shadow-card">
             <p className="font-display text-xl">Nichts offen</p>
             <p className="mt-2 text-ink-muted">Leg oben rechts eine Aufgabe an — für dich oder den anderen.</p>
           </div>
-        ) : (
-          <div className="mt-6 flex flex-col gap-6">
-            {filtered.map((g) => (
-              <section key={g.key}>
-                <h2 className={`eyebrow mb-2 ${g.key === "ueberfaellig" ? "text-signal" : "text-ink-muted"}`}>
-                  {g.label}
-                </h2>
-                <div className="flex flex-col gap-2">
-                  {g.todos.map((t) => (
+        )}
+
+        {/* Die Listen als Container — die Listen SIND die Ordnung. Im
+            Container ordnet der Zeitpunkt; Überfälliges steht oben und der
+            Kopf zählt es rot an. */}
+        <div className="mt-5 flex flex-col gap-4">
+          {container.map((c) => (
+            <section key={c.key} className="overflow-hidden rounded-card bg-surface shadow-card">
+              {c.name && (
+                <header className="flex items-baseline gap-2 px-4 pb-1 pt-3">
+                  <h2 className="min-w-0 truncate font-display text-lg">{c.name}</h2>
+                  {c.todos.length > 0 && (
+                    <span className="text-sm text-ink-muted">{c.todos.length}</span>
+                  )}
+                  {c.ueberfaellig > 0 && (
+                    <span className="ml-auto shrink-0 text-sm font-medium text-signal">
+                      {c.ueberfaellig} überfällig
+                    </span>
+                  )}
+                </header>
+              )}
+              {c.todos.length > 0 ? (
+                <div className="divide-y divide-surface-muted/60">
+                  {c.todos.map((t) => (
                     <TodoRow key={t.id} todo={t} />
                   ))}
                 </div>
-              </section>
-            ))}
-          </div>
-        )}
+              ) : (
+                <p className="px-4 pb-3 pt-1 text-sm text-ink-muted/70">Leer</p>
+              )}
+            </section>
+          ))}
+
+          {erledigt.length > 0 && (
+            <section className="overflow-hidden rounded-card bg-surface shadow-card">
+              <header className="px-4 pb-1 pt-3">
+                <h2 className="font-display text-lg text-ink-muted">Erledigt</h2>
+              </header>
+              <div className="divide-y divide-surface-muted/60">
+                {erledigt.map((t) => (
+                  <TodoRow key={t.id} todo={t} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
 
         {eventTasks.length > 0 && (
           <section className="mt-8">
@@ -238,11 +194,13 @@ function TodoRow({ todo }: { todo: TodoVM }) {
 
   return (
     <SwipeRow
+      flach
       onSwipeRight={() => start(() => toggleTodoAction(todo.id))}
       onSwipeLeft={() => start(async () => { await deleteTodoAction(todo.id); setGone(true); })}
       rightLabel={todo.done ? "Öffnen" : "Erledigt"}
     >
-    <div className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card">
+    {/* Flache Zeile — die Karte stellt der Container. */}
+    <div className="flex items-center gap-3 bg-surface px-4 py-3">
       <button
         onClick={() => start(() => toggleTodoAction(todo.id))}
         disabled={pending}

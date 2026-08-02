@@ -12,12 +12,15 @@ export function SwipeRow({
   onSwipeLeft,
   rightLabel = "Erledigt",
   leftLabel = "Löschen",
+  flach = false,
   children,
 }: {
   onSwipeRight?: () => void;
   onSwipeLeft?: () => void;
   rightLabel?: string;
   leftLabel?: string;
+  /** In einem Container: keine eigenen runden Ecken — die hat die Hülle. */
+  flach?: boolean;
   children: React.ReactNode;
 }) {
   const [dx, setDx] = useState(0);
@@ -63,7 +66,7 @@ export function SwipeRow({
 
   const active = Math.abs(dx) > THRESHOLD;
   return (
-    <div className="relative overflow-hidden rounded-card">
+    <div className={`relative overflow-hidden ${flach ? "" : "rounded-card"}`}>
       {/* Hintergrund-Hinweise */}
       <div className="absolute inset-0 flex items-center justify-between px-5 text-sm font-medium">
         <span style={{ color: "var(--color-accent)", opacity: dx > 12 ? 1 : 0 }}>{rightLabel}</span>

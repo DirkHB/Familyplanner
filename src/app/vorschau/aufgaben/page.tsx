@@ -1,13 +1,13 @@
 import { AufgabenClient } from "@/app/aufgaben/AufgabenClient";
-import { buildTodoVM, groupTodos } from "@/lib/todos/group";
+import { buildTodoVM } from "@/lib/todos/group";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Öffentliche Vorschau der Aufgaben mit Beispieldaten.
  *
- * Zeigt vor allem die Listen-Umschalter über den Fächern — die Stelle, an der
- * sich entscheidet, ob zwei Ordnungen übereinander noch lesbar sind.
+ * Zeigt die Container je Liste — mit Überfälligem, Leerem und Listenlosem,
+ * damit alle Zustände auf einen Blick prüfbar sind.
  */
 export default function VorschauAufgaben() {
   const now = new Date();
@@ -21,11 +21,11 @@ export default function VorschauAufgaben() {
     { id: "t5", title: "Rasen mähen", notes: null, dueDate: null, assignee: "dirk", createdBy: "dirk", status: "offen", remindAt: null, important: false, listId: null },
   ];
 
-  const groups = groupTodos(rows.map((r) => buildTodoVM(r, now)), now);
+  const todos = rows.map((r) => buildTodoVM(r, now));
 
   return (
     <AufgabenClient
-      groups={groups}
+      todos={todos}
       me="dirk"
       einkaufOffen={3}
       todoLists={[

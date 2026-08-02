@@ -20,8 +20,6 @@ export type TodoVM = {
   listId: string | null;
 };
 
-export type TodoGroup = { key: string; label: string; todos: TodoVM[] };
-
 const dueFmt = new Intl.DateTimeFormat("de-DE", {
   weekday: "short",
   day: "numeric",
@@ -62,9 +60,6 @@ export function buildTodoVM(
   };
 }
 
-/** Kennung für „alle Listen zusammen" — der Normalfall beim Öffnen. */
-export const ALLE_LISTEN = "alle";
-
 /**
  * Formular-Kennung für „Neue Liste …" im Anlege-Formular. Kollidiert nie mit
  * echten Listen-Ids (das sind cuids). Formular und Server-Aktion müssen
@@ -75,83 +70,77 @@ export const NEUE_LISTE = "__neu";
 /** Kennung für Aufgaben ohne Liste. Kein Datensatz, sondern die Abwesenheit. */
 export const OHNE_LISTE = "ohne";
 
-/**
- * Aufgaben auf eine Liste einschränken.
- *
- * Die Liste ist ein Filter, keine zweite Ordnung: Innerhalb der Auswahl bleibt
- * die Einteilung nach „wann". Fächer nach Liste UND nach Zeitpunkt gleichzeitig
- * wären zwei Ordnungen übereinander — dann findet man gar nichts mehr.
- */
-export function filterByList(todos: TodoVM[], auswahl: string): TodoVM[] {
-  if (auswahl === ALLE_LISTEN) return todos;
-  if (auswahl === OHNE_LISTE) return todos.filter((t) => t.listId === null);
-  return todos.filter((t) => t.listId === auswahl);
-}
-
-/** Wie viele offene Aufgaben je Liste — für die Zahlen an den Umschaltern. */
-export function countOpenByList(todos: TodoVM[]): Map<string, number> {
-  const m = new Map<string, number>();
-  let alle = 0;
-  for (const t of todos) {
-    if (t.done) continue;
-    alle++;
-    const key = t.listId ?? OHNE_LISTE;
-    m.set(key, (m.get(key) ?? 0) + 1);
-  }
-  m.set(ALLE_LISTEN, alle);
-  return m;
-}
+export type ListenContainer = {
+  key: string;
+  /** `null` heißt: kopflos — es gibt gar keine Listen, nur Aufgaben. */
+  name: string | null;
+  todos: TodoVM[];
+  ueberfaellig: number;
+};
 
 /**
- * Fächer nach „wann", nicht nach „ob".
+ * Aufgaben als Container je Liste — die Listen SIND die Ordnung.
  *
- * Masicampo und Baumeister (2011): Unerledigtes drängt sich ins Bewusstsein,
- * bis ein konkreter Plan existiert — erledigen muss man es dafür nicht. Eine
- * Aufgabe ohne „wann" kostet also weiter Kopf. Deshalb heißt das Fach für
- * Undatiertes „Irgendwann" statt „Ohne Termin": Es ist ein bewusster Parkplatz,
- * kein Ablagestapel, und wird sonntags durchgesehen.
+ * Innerhalb eines Containers ordnet der Zeitpunkt: Datiertes zuerst und
+ * aufsteigend (Überfälliges steht damit von selbst oben), Undatiertes
+ * dahinter mit den wichtigen zuerst. So bleibt das Zeitsignal erhalten,
+ * ohne eine zweite Gliederungsebene aufzumachen.
  *
- * „Überfällig" und „Später" bleiben eigene Fächer, weil das Zusammenlegen
- * Information vernichten würde. Leere Fächer entfallen — im Alltag sieht man
- * darum meist nur zwei oder drei Überschriften.
+ * Leere Listen erscheinen bewusst: Wer eben eine angelegt hat, muss sie
+ * sofort sehen — und eine Liste, die nur bei Inhalt sichtbar ist, wirkt
+ * beim Leeren wie gelöscht. Erledigtes wird separat zurückgegeben.
  */
-export function groupTodos(todos: TodoVM[], now: Date = new Date()): TodoGroup[] {
-  const today = dayKey(now);
-  const weekEnd = dayKey(new Date(now.getTime() + 7 * 86_400_000));
+export function containersByList(
+  todos: TodoVM[],
+  listen: { id: string; name: string }[],
+): { container: ListenContainer[]; erledigt: TodoVM[] } {
+  const offen = todos.filter((t) => !t.done);
+  const erledigt = todos.filter((t) => t.done);
 
-  const buckets: Record<string, TodoVM[]> = {
-    ueberfaellig: [],
-    heute: [],
-    woche: [],
-    spaeter: [],
-    ohne: [],
-    erledigt: [],
-  };
+  const sortiert = (ts: TodoVM[]) =>
+    [...ts].sort((a, b) => {
+      if (a.dueKey && b.dueKey) return a.dueKey.localeCompare(b.dueKey);
+      if (a.dueKey) return -1;
+      if (b.dueKey) return 1;
+      return Number(b.important) - Number(a.important);
+    });
 
-  for (const t of todos) {
-    if (t.done) buckets.erledigt.push(t);
-    else if (!t.dueKey) buckets.ohne.push(t);
-    else if (t.dueKey < today) buckets.ueberfaellig.push(t);
-    else if (t.dueKey === today) buckets.heute.push(t);
-    else if (t.dueKey <= weekEnd) buckets.woche.push(t);
-    else buckets.spaeter.push(t);
+  if (listen.length === 0) {
+    return {
+      container: offen.length
+        ? [
+            {
+              key: OHNE_LISTE,
+              name: null,
+              todos: sortiert(offen),
+              ueberfaellig: offen.filter((t) => t.overdue).length,
+            },
+          ]
+        : [],
+      erledigt,
+    };
   }
 
-  const LABELS: [string, string][] = [
-    ["ueberfaellig", "Überfällig"],
-    ["heute", "Heute"],
-    ["woche", "Diese Woche"],
-    ["spaeter", "Später"],
-    ["ohne", "Irgendwann"],
-    ["erledigt", "Erledigt"],
-  ];
+  const container: ListenContainer[] = listen.map((l) => {
+    const eigene = sortiert(offen.filter((t) => t.listId === l.id));
+    return {
+      key: l.id,
+      name: l.name,
+      todos: eigene,
+      ueberfaellig: eigene.filter((t) => t.overdue).length,
+    };
+  });
 
-  // Im Parkplatz stehen die wichtigen oben — sonst versinken sie.
-  buckets.ohne.sort((a, b) => Number(b.important) - Number(a.important));
+  const ohne = sortiert(offen.filter((t) => t.listId === null || !listen.some((l) => l.id === t.listId)));
+  if (ohne.length > 0) {
+    container.push({
+      key: OHNE_LISTE,
+      name: "Ohne Liste",
+      todos: ohne,
+      ueberfaellig: ohne.filter((t) => t.overdue).length,
+    });
+  }
 
-  return LABELS.filter(([k]) => buckets[k].length > 0).map(([key, label]) => ({
-    key,
-    label,
-    todos: buckets[key],
-  }));
+  return { container, erledigt };
 }
+

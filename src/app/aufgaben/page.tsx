@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { personForEmail } from "@/lib/auth/allowlist";
 import { listTodos } from "@/lib/todos/repository";
-import { buildTodoVM, groupTodos } from "@/lib/todos/group";
+import { buildTodoVM } from "@/lib/todos/group";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatMonthDay } from "@/lib/calendar/format";
 import { getMainListGroups } from "@/lib/shopping/repository";
@@ -18,7 +18,7 @@ export default async function AufgabenPage() {
 
   const now = new Date();
   const rows = await listTodos();
-  const groups = groupTodos(rows.map((r) => buildTodoVM(r, now)), now);
+  const todos = rows.map((r) => buildTodoVM(r, now));
 
   // „Aus Terminen": offene Checklisten der nächsten 30 Tage.
   const from = startOfDayBerlin(now);
@@ -63,7 +63,7 @@ export default async function AufgabenPage() {
 
   return (
     <AufgabenClient
-      groups={groups}
+      todos={todos}
       me={me}
       eventTasks={eventTasks}
       einkaufOffen={einkaufOffen}
