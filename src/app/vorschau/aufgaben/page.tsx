@@ -28,7 +28,6 @@ export default function VorschauAufgaben() {
     <AufgabenClient
       todos={todos}
       me="dirk"
-      einkaufOffen={3}
       todoLists={[
         { id: "l1", name: "Haushalt" },
         { id: "l2", name: "Nicolas" },

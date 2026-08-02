@@ -169,3 +169,38 @@ export async function setTodoListAction(id: string, listId: string | null) {
   revalidatePath("/aufgaben");
   return { ok: true };
 }
+
+/**
+ * Aufgabe bearbeiten — aus dem Blatt, das sich beim Antippen der Zeile
+ * öffnet. Ein Aufruf für alles, was dort steht; nur Angefasstes ändert sich.
+ */
+export async function updateTodoAction(
+  id: string,
+  input: { titel: string; notiz: string; dueRaw: string; listId: string },
+): Promise<{ ok: boolean; grund?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+  const titel = input.titel.trim();
+  if (!titel) return { ok: false, grund: "Der Titel darf nicht leer sein." };
+
+  const { prisma } = await import("@/lib/prisma");
+  const vorher = await prisma.todo.findUnique({ where: { id } });
+  if (!vorher) return { ok: false, grund: "Aufgabe nicht gefunden." };
+
+  const dueDate = input.dueRaw ? new Date(`${input.dueRaw}T09:00:00+02:00`) : null;
+  await prisma.todo.update({
+    where: { id },
+    data: {
+      title: titel,
+      notes: input.notiz.trim() || null,
+      dueDate,
+      listId: input.listId || null,
+      // Erinnerung wandert mit der Fälligkeit, falls eine gesetzt war.
+      ...(vorher.remindAt && dueDate ? { remindAt: dueDate, remindedAt: null } : {}),
+      ...(!dueDate ? { remindAt: null, remindedAt: null } : {}),
+    },
+  });
+  revalidatePath("/aufgaben");
+  revalidatePath("/woche");
+  return { ok: true };
+}

@@ -16,7 +16,8 @@ import type { Person } from "@/lib/auth/allowlist";
 const TABS = [
   { href: "/woche", label: "Woche", auch: ["/termin", "/erfassen"] },
   { href: "/termine", label: "Monat", auch: [] as string[] },
-  { href: "/aufgaben", label: "Aufgaben", auch: ["/einkauf"] },
+  { href: "/aufgaben", label: "Aufgaben", auch: [] as string[] },
+  { href: "/einkauf", label: "Einkauf", auch: [] as string[] },
   { href: "/profil", label: "Profil", auch: ["/einstellungen", "/ideen"] },
 ];
 
@@ -25,6 +26,7 @@ export function TabBar() {
   // Rote Zahl am Aufgaben-Tab + eigene Person für den Profil-Kreis. Wird bei
   // jedem Seitenwechsel aufgefrischt — Erledigtes soll sofort verschwinden.
   const [faellig, setFaellig] = useState(0);
+  const [einkauf, setEinkauf] = useState(0);
   const [person, setPerson] = useState<Person | null>(null);
   useEffect(() => {
     let weg = false;
@@ -33,6 +35,7 @@ export function TabBar() {
       .then((d) => {
         if (weg) return;
         setFaellig(Number(d.aufgaben) || 0);
+        setEinkauf(Number(d.einkauf) || 0);
         if (d.person === "dirk" || d.person === "constanze") setPerson(d.person);
       })
       .catch(() => {});
@@ -73,6 +76,12 @@ export function TabBar() {
                   {faellig > 9 ? "9+" : faellig}
                 </span>
               )}
+              {/* Neutral, nicht rot: offene Einkäufe sind kein Alarm. */}
+              {href === "/einkauf" && einkauf > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-semibold leading-none text-surface">
+                  {einkauf > 9 ? "9+" : einkauf}
+                </span>
+              )}
               {href === "/profil" ? (
                 person ? (
                   <Avatar person={person} size={28} />
@@ -83,6 +92,8 @@ export function TabBar() {
                 <CalendarIcon />
               ) : href === "/termine" ? (
                 <MonthIcon />
+              ) : href === "/einkauf" ? (
+                <CartIcon />
               ) : (
                 <CheckIcon />
               )}
@@ -118,6 +129,15 @@ function CheckIcon() {
     <svg viewBox="0 0 24 24" {...S}>
       <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
       <path d="M8 12.5l2.8 2.8L16.5 9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" {...S}>
+      <path d="M3 4h2.4l2.2 11.2a1.6 1.6 0 0 0 1.6 1.3h8.3a1.6 1.6 0 0 0 1.6-1.2L21 8H6" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9.5" cy="20" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="20" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   );
 }

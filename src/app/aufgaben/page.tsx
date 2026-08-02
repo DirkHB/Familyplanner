@@ -5,7 +5,6 @@ import { listTodos } from "@/lib/todos/repository";
 import { buildTodoVM } from "@/lib/todos/group";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatMonthDay } from "@/lib/calendar/format";
-import { getMainListGroups } from "@/lib/shopping/repository";
 import { listTodoLists } from "@/lib/todos/lists";
 import { AufgabenClient, type EventTasks } from "./AufgabenClient";
 
@@ -53,12 +52,6 @@ export default async function AufgabenPage() {
     .sort((a, b) => a.sort - b.sort)
     .slice(0, 10);
 
-  // Zahl am Umschalter — damit der Einkauf sichtbar bleibt, obwohl er
-  // keinen eigenen Tab mehr hat.
-  const einkaufOffen = await getMainListGroups()
-    .then((r) => r.groups.reduce((n, g) => n + g.items.filter((i) => !i.checked).length, 0))
-    .catch(() => 0);
-
   const todoLists = await listTodoLists();
 
   return (
@@ -66,7 +59,6 @@ export default async function AufgabenPage() {
       todos={todos}
       me={me}
       eventTasks={eventTasks}
-      einkaufOffen={einkaufOffen}
       todoLists={todoLists.map((l) => ({ id: l.id, name: l.name }))}
     />
   );

@@ -40,32 +40,27 @@ export function WeekView({
   return (
     <AppShell floating={<FabErfassen />}>
       <>
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <p className="eyebrow text-ink-muted">{dateLabel}</p>
             <h1 className="mt-1 font-display text-4xl leading-tight">
               {greeting}, {greetingName}
             </h1>
           </div>
-          {/* Das Zahnrad wohnte hier — Einstellungen liegen jetzt unterm Profil
-              in der Tab-Leiste, damit sie von überall erreichbar sind. */}
-        </div>
-
-        {/* Der Monat hat jetzt sein eigenes Symbol in der Leiste; hier bleibt
-            nur das Blättern in die nächste Woche. */}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          {briefing && !naechsteWoche ? (
-            <p className="min-w-0 flex-1 text-sm leading-snug text-ink-muted">{briefing}</p>
-          ) : (
-            <span className="flex-1" />
-          )}
+          {/* Blättern sitzt, wo früher das Zahnrad war. */}
           <Link
             href={naechsteWoche ? "/woche" : "/woche?w=1"}
-            className="shrink-0 rounded-pill bg-surface px-3.5 py-1.5 text-sm font-medium text-ink shadow-card"
+            className="mt-1 shrink-0 rounded-pill bg-surface px-3.5 py-2 text-sm font-medium text-ink shadow-card"
           >
-            {naechsteWoche ? "← Diese Woche" : "Nächste Woche →"}
+            {naechsteWoche ? "← Zurück" : "Nächste →"}
           </Link>
         </div>
+
+        {/* Das Briefing in voller Breite: was als Nächstes kommt und was
+            heute noch offen ist — nie eine Aufzählung der Liste darunter. */}
+        {briefing && !naechsteWoche && (
+          <p className="mt-3 text-[15px] leading-snug text-ink">{briefing}</p>
+        )}
 
         <RequestHero requests={requests} />
 

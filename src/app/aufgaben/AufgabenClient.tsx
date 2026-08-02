@@ -4,7 +4,6 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
-import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
 import { containersByList, NEUE_LISTE, type TodoVM } from "@/lib/todos/group";
 import { MAX_NAME_LAENGE } from "@/lib/names";
@@ -18,11 +17,12 @@ import {
   toggleTodoAction,
   deleteTodoAction,
   setTodoAssigneeAction,
-  setTodoDueAction,
   toggleTodoImportantAction,
   togglePrepItemAction,
   setTodoListAction,
+  updateTodoAction,
 } from "./actions";
+import { motion, AnimatePresence } from "motion/react";
 
 /** Laufende Zieh-Geste: welche Aufgabe, wo ist der Finger, woher kommt sie. */
 type Zug = { id: string; titel: string; x: number; y: number; von: string };
@@ -41,14 +41,11 @@ export function AufgabenClient({
   todos,
   me,
   eventTasks = [],
-  einkaufOffen = 0,
   todoLists = [],
 }: {
   todos: TodoVM[];
   me: Person;
   eventTasks?: EventTasks[];
-  /** Offene Einkaufsposten — als Zahl am Umschalter. */
-  einkaufOffen?: number;
   todoLists?: { id: string; name: string }[];
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
@@ -60,6 +57,7 @@ export function AufgabenClient({
   const containerEls = useRef(new Map<string, HTMLElement>());
   const [zug, setZug] = useState<Zug | null>(null);
   const [zugZiel, setZugZiel] = useState<string | null>(null);
+  const [bearbeite, setBearbeite] = useState<TodoVM | null>(null);
   // Optimistisch: Die Zuordnung gilt sofort, der Server zieht nach.
   const [listeOverride, setListeOverride] = useState<Record<string, string>>({});
 
@@ -107,15 +105,6 @@ export function AufgabenClient({
   return (
     <AppShell>
       <>
-        <div className="mb-4">
-          <SegmentedNav
-            active="/aufgaben"
-            items={[
-              { href: "/aufgaben", label: "Aufgaben" },
-              { href: "/einkauf", label: "Einkauf", badge: einkaufOffen },
-            ]}
-          />
-        </div>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-4xl">Aufgaben</h1>
@@ -211,6 +200,7 @@ export function AufgabenClient({
                       onZugStart={(e) => zugStart(e, t, c.key)}
                       onZugMove={zugMove}
                       onZugEnde={zugEnde}
+                      onBearbeiten={() => setBearbeite(t)}
                     />
                   ))}
                 </div>
@@ -224,6 +214,12 @@ export function AufgabenClient({
 
           {erledigt.length > 0 && <ErledigtContainer erledigt={erledigt} />}
         </div>
+
+        <AnimatePresence>
+          {bearbeite && (
+            <TodoBlatt todo={bearbeite} todoLists={todoLists} onClose={() => setBearbeite(null)} />
+          )}
+        </AnimatePresence>
 
         {/* Geist der gezogenen Aufgabe unterm Finger */}
         {zug && (
@@ -297,20 +293,25 @@ function TodoRow({
   onZugStart,
   onZugMove,
   onZugEnde,
+  onBearbeiten,
 }: {
   todo: TodoVM;
   dragging?: boolean;
   onZugStart?: (e: React.PointerEvent) => void;
   onZugMove?: (e: React.PointerEvent) => void;
   onZugEnde?: () => void;
+  onBearbeiten?: () => void;
 }) {
   const [pending, start] = useTransition();
   const [gone, setGone] = useState(false);
   const [assignee, setAssignee] = useState<Person | null>(todo.assignee);
-  const [editDue, setEditDue] = useState(false);
-  const [due, setDue] = useState(todo.dueKey ?? "");
+  // Optimistisch: Der Haken sitzt sofort, die Zeile bleibt durchgestrichen
+  // stehen, bis der Server sie nach „Erledigt" unten einsortiert. Vorher
+  // verschwand sie wortlos — das las sich wie „weg".
+  const [doneLokal, setDoneLokal] = useState(todo.done);
   const [important, setImportant] = useState(todo.important);
   if (gone) return null;
+  const done = doneLokal;
 
   function cycleAssignee() {
     const next = CYCLE[(CYCLE.indexOf(assignee) + 1) % CYCLE.length];
@@ -321,28 +322,34 @@ function TodoRow({
   return (
     <SwipeRow
       flach
-      onSwipeRight={() => start(() => toggleTodoAction(todo.id))}
+      onSwipeRight={() => {
+        setDoneLokal((d) => !d);
+        start(() => toggleTodoAction(todo.id));
+      }}
       onSwipeLeft={() => start(async () => { await deleteTodoAction(todo.id); setGone(true); })}
-      rightLabel={todo.done ? "Öffnen" : "Erledigt"}
+      rightLabel={done ? "Öffnen" : "Erledigt"}
     >
     {/* Flache Zeile — die Karte stellt der Container. */}
     <div className={`flex items-center gap-3 bg-surface px-4 py-3 ${dragging ? "opacity-40" : ""}`}>
       <button
-        onClick={() => start(() => toggleTodoAction(todo.id))}
+        onClick={() => {
+          setDoneLokal((d) => !d);
+          start(() => toggleTodoAction(todo.id));
+        }}
         disabled={pending}
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
-          todo.done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"
+          done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"
         }`}
-        aria-label={todo.done ? "Wieder öffnen" : "Erledigt"}
+        aria-label={done ? "Wieder öffnen" : "Erledigt"}
       >
-        {todo.done && (
+        {done && (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
       </button>
-      <button onClick={() => setEditDue((e) => !e)} className="min-w-0 flex-1 text-left">
-        <p className={`truncate font-medium ${todo.done ? "text-ink-muted line-through" : ""}`}>{todo.title}</p>
+      <button onClick={onBearbeiten} className="min-w-0 flex-1 text-left">
+        <p className={`truncate font-medium ${done ? "text-ink-muted line-through" : ""}`}>{todo.title}</p>
         {(todo.dueLabel || todo.notes) && (
           <p className="truncate text-xs text-ink-muted">
             {todo.dueLabel && (
@@ -354,7 +361,7 @@ function TodoRow({
           </p>
         )}
       </button>
-      {!todo.dueKey && !todo.done && (
+      {!todo.dueKey && !done && (
         <button
           onClick={() => {
             setImportant((v) => !v);
@@ -418,32 +425,116 @@ function TodoRow({
         </span>
       )}
     </div>
-    {editDue && (
-      <div className="mt-1 flex items-center gap-2 rounded-card bg-surface px-4 py-3 shadow-card">
-        <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-ink-muted">
-          Bis wann?
-          <input
-            type="date"
-            value={due}
-            onChange={(e) => setDue(e.target.value)}
-            className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-bg px-3 py-2 text-base text-ink outline-none focus:border-accent"
-          />
-        </label>
-        <button
-          disabled={pending}
-          onClick={() =>
-            start(async () => {
-              await setTodoDueAction(todo.id, due || null);
-              setEditDue(false);
-            })
-          }
-          className="shrink-0 rounded-pill bg-accent px-4 py-2 text-sm font-medium text-surface disabled:opacity-60"
-        >
-          Sichern
-        </button>
-      </div>
-    )}
     </SwipeRow>
+  );
+}
+
+
+/**
+ * Das Bearbeiten-Blatt: Zeile antippen, alles an einem Ort — der Titel in
+ * voller Länge (mehrzeilig), Notiz, Fälligkeit, Liste. Vorher öffnete der
+ * Tipp nur einen Datums-Editor, und lange Titel blieben für immer „Kinderge…".
+ */
+function TodoBlatt({
+  todo,
+  todoLists,
+  onClose,
+}: {
+  todo: TodoVM;
+  todoLists: { id: string; name: string }[];
+  onClose: () => void;
+}) {
+  const [titel, setTitel] = useState(todo.title);
+  const [notiz, setNotiz] = useState(todo.notes ?? "");
+  const [due, setDue] = useState(todo.dueKey ?? "");
+  const [liste, setListe] = useState(todo.listId ?? "");
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+
+  function speichern() {
+    if (pending) return;
+    start(async () => {
+      const r = await updateTodoAction(todo.id, { titel, notiz, dueRaw: due, listId: liste });
+      if (r.ok) {
+        onClose();
+        router.refresh();
+      } else {
+        setFehler(r.grund ?? "Hat nicht geklappt.");
+      }
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        aria-label="Schließen"
+        onClick={onClose}
+        className="absolute inset-0 bg-ink/30"
+      />
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 420, damping: 40 }}
+        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-bg p-5 shadow-hero"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+      >
+        <textarea
+          value={titel}
+          onChange={(e) => {
+            setTitel(e.target.value);
+            setFehler(null);
+          }}
+          rows={2}
+          aria-label="Titel"
+          className="w-full resize-none rounded-card border border-surface-muted bg-surface px-4 py-3 font-medium outline-none focus:border-accent"
+        />
+        <input
+          value={notiz}
+          onChange={(e) => setNotiz(e.target.value)}
+          placeholder="Notiz (optional)"
+          className="mt-2.5 w-full rounded-card border border-surface-muted bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
+        />
+        <div className="mt-2.5 flex gap-2.5">
+          <label className="block min-w-0 flex-1 text-sm text-ink-muted">
+            Bis wann?
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base text-ink outline-none focus:border-accent"
+            />
+          </label>
+          <label className="block min-w-0 flex-1 text-sm text-ink-muted">
+            Liste
+            <select
+              value={liste}
+              onChange={(e) => setListe(e.target.value)}
+              className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base text-ink outline-none focus:border-accent"
+            >
+              <option value="">Ohne Liste</option>
+              {todoLists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <button
+          onClick={speichern}
+          disabled={pending || !titel.trim()}
+          className="mt-4 w-full rounded-pill bg-accent px-5 py-3.5 font-medium text-surface disabled:opacity-50"
+        >
+          {pending ? "Speichere …" : "Speichern"}
+        </button>
+        {fehler && <p className="mt-2 text-sm text-signal">{fehler}</p>}
+      </motion.div>
+    </div>
   );
 }
 

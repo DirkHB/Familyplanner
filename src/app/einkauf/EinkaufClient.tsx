@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
-import { SegmentedNav } from "@/components/app/SegmentedNav";
 import type { Person } from "@/lib/auth/allowlist";
 import { OHNE_LADEN } from "@/lib/shopping/stores";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
@@ -228,15 +227,6 @@ export function EinkaufClient({
   return (
     <AppShell bottomBar={addBar} floating={drag ? <DragGhost drag={drag} /> : null}>
       <>
-        <div className="mb-4">
-          <SegmentedNav
-            active="/einkauf"
-            items={[
-              { href: "/aufgaben", label: "Aufgaben" },
-              { href: "/einkauf", label: "Einkauf", badge: openCount },
-            ]}
-          />
-        </div>
         <h1 className="font-display text-4xl">Einkaufsliste</h1>
         <p className="mt-2 flex items-center gap-2 text-ink-muted">
           <span className="flex -space-x-1.5">

@@ -2,6 +2,7 @@ import { WeekView } from "@/components/week/WeekView";
 import { buildWeek } from "@/lib/calendar/view-model";
 import { buildSampleWeek } from "@/lib/calendar/sample";
 import { formatDateHeader } from "@/lib/calendar/format";
+import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +23,26 @@ export default function VorschauWoche() {
       overdue: false,
     },
   ];
+  const heute = days[0];
+  const briefing = wochenBriefing({
+    heute: (heute?.events ?? []).map((e) => ({
+      time: e.time,
+      title: e.title,
+      past: e.past,
+      allDay: e.allDay,
+      careOffen: e.care?.status === "offen",
+    })),
+    naechster: null,
+    aufgabenHeute: 2,
+  });
+
   return (
     <WeekView
       greetingName="Dirk"
       dateLabel={`Vorschau · ${formatDateHeader(now)}`}
       days={days}
       requests={requests}
+      briefing={briefing}
     />
   );
 }

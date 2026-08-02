@@ -11,6 +11,10 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ aufgaben: 0 }, { status: 401 });
   const aufgaben = await countTodosDueToday().catch(() => 0);
+  const { prisma } = await import("@/lib/prisma");
+  const einkauf = await prisma.shoppingItem
+    .count({ where: { checkedAt: null, list: { kind: "haupt" } } })
+    .catch(() => 0);
   const person = session.user.email ? personForEmail(session.user.email) : null;
-  return NextResponse.json({ aufgaben, person });
+  return NextResponse.json({ aufgaben, einkauf, person });
 }

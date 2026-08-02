@@ -10,8 +10,8 @@ import { getKlaerungStack } from "@/lib/klaerung/repository";
 import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
 import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
-import { getOverview, defaultHorizon } from "@/lib/overview/repository";
-import { briefingText } from "@/lib/overview/build";
+import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
+import { countTodosDueToday } from "@/lib/klaerung/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -49,13 +49,28 @@ export default async function WochePage({
     ? (await getOpenRequestsForUser(session.user.id)).map((r) => buildRequestVM(r, now))
     : [];
 
-  // Das Briefing wohnte im Überblick; jetzt steht es hier im Kopf — dort,
-  // wo man ohnehin zuerst hinschaut. Immer live gerechnet, nie von 7 Uhr.
-  const briefing = session?.user?.id
-    ? await getOverview(defaultHorizon(now), now)
-        .then((o) => briefingText(o, "morgen"))
-        .catch(() => null)
-    : null;
+  // Das Briefing: was als Nächstes kommt und was heute noch offen ist —
+  // nichts, was die Liste darunter ohnehin zeigt. Immer live gerechnet.
+  const heuteTag = days.find((d) => d.key === dayKey(now));
+  const naechsterTag = days.find((d) => d.key !== dayKey(now) && d.events.some((e) => !e.allDay));
+  const naechsterEv = naechsterTag?.events.find((e) => !e.allDay) ?? null;
+  const briefing =
+    session?.user?.id && !naechste
+      ? wochenBriefing({
+          heute: (heuteTag?.events ?? []).map((e) => ({
+            time: e.time,
+            title: e.title,
+            past: e.past,
+            allDay: e.allDay,
+            careOffen: e.care?.status === "offen",
+          })),
+          naechster:
+            naechsterTag && naechsterEv
+              ? { tagLabel: naechsterTag.weekday, time: naechsterEv.time, title: naechsterEv.title }
+              : null,
+          aufgabenHeute: await countTodosDueToday(now).catch(() => 0),
+        })
+      : null;
 
   // Nächster noch anstehender Termin heute — wird in der Liste hervorgehoben.
   // Eine eigene „Heute"-Karte gab es hier einmal; sie zeigte denselben Termin
