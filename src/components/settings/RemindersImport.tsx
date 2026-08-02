@@ -1,14 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { discoverRemindersAction, importRemindersAction } from "@/app/einstellungen/actions";
+import {
+  discoverRemindersAction,
+  importRemindersAction,
+  importPastedListAction,
+} from "@/app/einstellungen/actions";
+import { MAX_NAME_LAENGE } from "@/lib/names";
 
 /**
- * Erinnerungen aus iCloud übernehmen — einmalig.
+ * Erinnerungen übernehmen — einmalig.
  *
- * Bewusst in zwei Schritten: erst nachsehen, was da ist, dann Liste für Liste
- * übernehmen. Ein Knopf „alles holen" würde beim ersten Tippen Hunderte
- * Aufgaben anlegen, und niemand wüsste vorher, welche.
+ * Hauptweg ist Kopieren und Einfügen: Apple gibt modernisierte
+ * Erinnerungslisten (seit iOS 13) über CalDAV nicht mehr heraus, und eine
+ * andere Schnittstelle gibt es nicht. Die Zwischenablage geht immer — auch
+ * aus jeder anderen Listen-App. Der CalDAV-Blick bleibt als zweiter Weg für
+ * alte, nie umgestellte Listen.
  */
 
 type Liste = {
@@ -20,18 +27,90 @@ type Liste = {
 };
 
 export function RemindersImport() {
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <h2 className="font-display text-lg">Liste übernehmen</h2>
+      <p className="mt-1 text-sm text-ink-muted">
+        Aus Apple Erinnerungen oder jeder anderen App: Liste öffnen, alle markieren, kopieren
+        — und hier einfügen. Eine Zeile wird eine Aufgabe.
+      </p>
+      <PasteImport />
+      <CaldavImport />
+    </section>
+  );
+}
+
+function PasteImport() {
+  const [name, setName] = useState("");
+  const [text, setText] = useState("");
+  const [meldung, setMeldung] = useState<{ gut: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+
+  const zeilen = text.split(/\r?\n/).filter((z) => z.trim()).length;
+
+  return (
+    <div className="mt-4 flex flex-col gap-2.5">
+      <input
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setMeldung(null);
+        }}
+        maxLength={MAX_NAME_LAENGE}
+        placeholder="Name der Liste — z. B. To Do C&D"
+        className="rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-[15px] outline-none focus:border-accent"
+      />
+      <textarea
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setMeldung(null);
+        }}
+        rows={6}
+        placeholder={"Hier einfügen …\nWindeln bestellen\nKindergeld beantragen\n…"}
+        className="rounded-card border border-surface-muted bg-bg px-4 py-3 text-[15px] outline-none focus:border-accent"
+      />
+      <button
+        disabled={pending || !name.trim() || !text.trim()}
+        onClick={() =>
+          start(async () => {
+            const r = await importPastedListAction(name, text);
+            if (r.ok) {
+              setText("");
+              setMeldung({
+                gut: true,
+                text: `${r.uebernommen} übernommen${r.uebersprungen ? `, ${r.uebersprungen} waren schon da` : ""}.`,
+              });
+            } else {
+              setMeldung({ gut: false, text: r.grund ?? "Hat nicht geklappt." });
+            }
+          })
+        }
+        className="rounded-pill bg-accent px-5 py-3 font-medium text-surface disabled:opacity-50"
+      >
+        {pending
+          ? "Übernehme …"
+          : zeilen > 0
+            ? `${zeilen} ${zeilen === 1 ? "Zeile" : "Zeilen"} als Liste übernehmen`
+            : "Als Liste übernehmen"}
+      </button>
+      {meldung && (
+        <p className={`text-sm font-medium ${meldung.gut ? "text-accent" : "text-signal"}`}>
+          {meldung.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Zweiter Weg: alte, nie auf das neue Format umgestellte Listen via CalDAV. */
+function CaldavImport() {
   const [listen, setListen] = useState<Liste[] | null>(null);
   const [ergebnis, setErgebnis] = useState<Record<string, string>>({});
   const [pending, start] = useTransition();
 
   return (
-    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
-      <h2 className="font-display text-lg">Aus iCloud Erinnerungen übernehmen</h2>
-      <p className="mt-1 text-sm text-ink-muted">
-        Holt eure Erinnerungslisten einmalig als Aufgaben herüber. In iCloud wird nichts
-        verändert und nichts gelöscht — abgehaktes bleibt draußen.
-      </p>
-
+    <div className="mt-5 border-t border-surface-muted/60 pt-4">
       {listen === null ? (
         <button
           disabled={pending}
@@ -41,31 +120,20 @@ export function RemindersImport() {
               setListen(r.listen);
             })
           }
-          className="mt-4 w-full rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
+          className="text-sm font-medium text-accent disabled:opacity-60"
         >
-          {pending ? "Suche …" : "Nachsehen, was da ist"}
+          {pending ? "Suche …" : "Alte Erinnerungslisten direkt aus iCloud holen"}
         </button>
       ) : listen.length === 0 || listen.every((l) => l.offen + l.erledigt === 0) ? (
-        <div className="mt-4 text-sm text-ink-muted">
-          <p>
-            {listen.length === 0
-              ? "Keine Erinnerungslisten gefunden."
-              : "Die gefundenen Listen sind über diesen Weg leer."}
-          </p>
-          {/*
-            Ehrlich sein statt ratlos wirken: Seit der Erinnerungen-Umstellung
-            (iOS 13) gibt Apple modernisierte Listen über CalDAV oft nicht
-            mehr heraus. Das ist dann keine Fehlbedienung und kein Fehler der
-            App — es gibt schlicht keinen Apple-Weg von außen.
-          */}
-          <p className="mt-2">
-            Wahrscheinlicher Grund: Apple gibt modernisierte Erinnerungen (seit iOS 13) nach
-            außen nicht mehr heraus. Dann hilft der Umweg über die Stichwort-Erfassung: Liste
-            in Erinnerungen öffnen, alle markieren, kopieren — und unter „Erfassen" einfügen.
-          </p>
-        </div>
+        <p className="text-sm text-ink-muted">
+          {listen.length === 0
+            ? "Über iCloud ist keine Erinnerungsliste erreichbar."
+            : "Die über iCloud erreichbaren Listen sind leer."}{" "}
+          Das ist normal: Apple gibt modernisierte Erinnerungen (seit iOS 13) nach außen nicht
+          mehr heraus. Der Weg oben über Einfügen geht immer.
+        </p>
       ) : (
-        <ul className="mt-4 flex flex-col gap-2">
+        <ul className="flex flex-col gap-2">
           {listen.map((l) => (
             <li key={l.url} className="rounded-card bg-bg p-3">
               <div className="flex items-center gap-3">
@@ -107,6 +175,6 @@ export function RemindersImport() {
           ))}
         </ul>
       )}
-    </section>
+    </div>
   );
 }

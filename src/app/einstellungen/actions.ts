@@ -188,3 +188,52 @@ export async function importRemindersAction(url: string) {
   revalidatePath("/aufgaben");
   return res;
 }
+
+/**
+ * Eine eingefügte Liste als Aufgabenliste übernehmen — der Weg, der immer
+ * geht. Apple gibt modernisierte Erinnerungslisten über CalDAV nicht mehr
+ * heraus; kopieren und einfügen hängt an nichts außer der Zwischenablage.
+ * Schon vorhandene offene Aufgaben gleichen Titels werden übersprungen,
+ * damit doppeltes Einfügen nichts verdoppelt.
+ */
+export async function importPastedListAction(name: string, text: string) {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { ok: false as const, grund: "Nicht angemeldet.", uebernommen: 0, uebersprungen: 0 };
+  }
+  const { parsePastedTasks } = await import("@/lib/todos/paste");
+  const titel = parsePastedTasks(text);
+  if (titel.length === 0) {
+    return { ok: false as const, grund: "Keine Aufgaben im eingefügten Text gefunden.", uebernommen: 0, uebersprungen: 0 };
+  }
+
+  const { createTodoList } = await import("@/lib/todos/lists");
+  const liste = await createTodoList(name);
+  if (!liste.ok || !liste.id) {
+    return { ok: false as const, grund: liste.grund ?? "Liste konnte nicht angelegt werden.", uebernommen: 0, uebersprungen: 0 };
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  const { personForEmail } = await import("@/lib/auth/allowlist");
+  const vorhandene = await prisma.todo.findMany({
+    where: { listId: liste.id, status: "offen" },
+    select: { title: true },
+  });
+  const schonDa = new Set(vorhandene.map((t) => t.title.trim().toLowerCase()));
+
+  const me = personForEmail(session.user.email);
+  let uebernommen = 0;
+  for (const t of titel) {
+    if (schonDa.has(t.toLowerCase())) continue;
+    await prisma.todo.create({ data: { title: t, listId: liste.id, createdBy: me } });
+    uebernommen++;
+  }
+
+  revalidatePath("/einstellungen");
+  revalidatePath("/aufgaben");
+  return {
+    ok: true as const,
+    uebernommen,
+    uebersprungen: titel.length - uebernommen,
+  };
+}
