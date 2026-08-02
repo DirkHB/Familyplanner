@@ -46,6 +46,20 @@ export function isCareBlockUid(uid: string): boolean {
   return uid.startsWith(CARE_UID_PREFIX);
 }
 
+/**
+ * Den Tag aus einer Block-UID zurücklesen.
+ *
+ * Der Anlass selbst lässt sich nicht zurückrechnen — beim Bauen fallen
+ * Sonderzeichen weg. Der Tag genügt aber: Mit ihm findet man die wenigen
+ * Betreuungen dieses Tages und vergleicht deren gebaute UID mit dieser hier.
+ */
+export function dayKeyFromCareBlockUid(uid: string): string | null {
+  if (!isCareBlockUid(uid)) return null;
+  const rest = uid.slice(CARE_UID_PREFIX.length);
+  const m = /^(\d{4}-\d{2}-\d{2})-/.exec(rest);
+  return m ? m[1] : null;
+}
+
 /** Beschreibung: stellt den Zusammenhang zum Anlass her. */
 export function careBlockDescription(anlass: string): string {
   return `Betreuung während: ${anlass}\nAngelegt vom Familienplaner.`;

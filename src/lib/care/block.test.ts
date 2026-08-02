@@ -4,6 +4,7 @@ import {
   careBlockUid,
   isCareBlockUid,
   careBlockDescription,
+  dayKeyFromCareBlockUid,
   CARE_UID_PREFIX,
 } from "./block";
 
@@ -50,6 +51,36 @@ describe("isCareBlockUid", () => {
     expect(isCareBlockUid("irgendwas@icloud.com")).toBe(false);
     // Auch selbst angelegte, normale Termine sind keine Betreuungsblöcke.
     expect(isCareBlockUid("fp-1234@planyourweek.app")).toBe(false);
+  });
+});
+
+describe("dayKeyFromCareBlockUid", () => {
+  it("liest den Tag zurück", () => {
+    expect(dayKeyFromCareBlockUid(careBlockUid("abc@icloud.com", "2026-08-03"))).toBe("2026-08-03");
+  });
+
+  it("verträgt UIDs, in denen der Anlass selbst wie ein Datum aussieht", () => {
+    const uid = careBlockUid("2026-01-01-serie@icloud.com", "2026-08-03");
+    expect(dayKeyFromCareBlockUid(uid)).toBe("2026-08-03");
+  });
+
+  it("gibt bei fremden Terminen nichts zurück", () => {
+    expect(dayKeyFromCareBlockUid("irgendwas@icloud.com")).toBe(null);
+  });
+});
+
+describe("Anlass zu einem Block wiederfinden", () => {
+  it("findet unter den Betreuungen des Tages genau die richtige", () => {
+    // So sucht anlassFuerBlock: Tag aus der UID lesen, dann für jede Betreuung
+    // dieses Tages die UID nachbauen und vergleichen. Ohne diese Runde könnte
+    // man eine Zusage nicht zurücknehmen — der Anlass wäre nicht auffindbar.
+    const tag = "2026-08-03";
+    const kandidaten = ["zahnarzt@icloud.com", "sport/kurs@icloud.com", "abc-123@icloud.com"];
+    const gesucht = careBlockUid("sport/kurs@icloud.com", tag);
+
+    expect(dayKeyFromCareBlockUid(gesucht)).toBe(tag);
+    const treffer = kandidaten.filter((uid) => careBlockUid(uid, tag) === gesucht);
+    expect(treffer).toEqual(["sport/kurs@icloud.com"]);
   });
 });
 

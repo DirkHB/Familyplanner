@@ -8,7 +8,13 @@ import { invalidateKalender } from "@/lib/calendar/range-data";
 import { dayKey } from "@/lib/calendar/format";
 import { personForEmail, type Person } from "@/lib/auth/allowlist";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
-import { CARE_MARKER, careBlockTitle, careBlockUid, careBlockDescription } from "./block";
+import {
+  CARE_MARKER,
+  careBlockTitle,
+  careBlockUid,
+  careBlockDescription,
+  dayKeyFromCareBlockUid,
+} from "./block";
 
 /**
  * Betreuungsblöcke in iCloud anlegen und wieder entfernen.
@@ -121,9 +127,52 @@ export async function upsertCareBlock(
   }
 }
 
+/**
+ * Zu welchem Anlass gehört dieser Block?
+ *
+ * Aus der UID lässt sich nur der Tag zurücklesen. Also: die Betreuungen dieses
+ * Tages holen und für jede prüfen, ob ihre gebaute UID die gesuchte ist. Das
+ * kommt ohne zusätzliche Spalte aus und funktioniert auch für Blöcke, die
+ * schon im Kalender stehen.
+ */
+export async function anlassFuerBlock(
+  blockUid: string,
+): Promise<{ eventUid: string; occurrenceDate: Date; title: string } | null> {
+  const tag = dayKeyFromCareBlockUid(blockUid);
+  if (!tag) return null;
+
+  // Mittags-Anker: Der Tagesschlüssel ist Berliner Ortszeit, gespeichert wird
+  // UTC-Mitternacht. Über die Mitte des Tages zu greifen, hält beides in der
+  // Sommerzeit zusammen.
+  const mittag = new Date(`${tag}T12:00:00Z`);
+  const von = new Date(mittag.getTime() - 86_400_000);
+  const bis = new Date(mittag.getTime() + 86_400_000);
+
+  const kandidaten = await prisma.careAssignment.findMany({
+    where: { occurrenceDate: { gte: von, lte: bis } },
+    select: { eventUid: true, occurrenceDate: true },
+  });
+  const treffer = kandidaten.find((k) => careBlockUid(k.eventUid, tag) === blockUid);
+  if (!treffer) return null;
+
+  const ev = await prisma.event.findFirst({
+    where: { uid: treffer.eventUid, recurrenceId: "" },
+    select: { title: true },
+  });
+  return {
+    eventUid: treffer.eventUid,
+    occurrenceDate: treffer.occurrenceDate,
+    title: ev?.title ?? "diesem Termin",
+  };
+}
+
 /** Block entfernen, wenn die Betreuung zurückgenommen wird. */
 export async function removeCareBlock(eventUid: string, occurrenceDate: Date): Promise<void> {
-  const uid = careBlockUid(eventUid, dayKey(occurrenceDate));
+  return removeCareBlockByUid(careBlockUid(eventUid, dayKey(occurrenceDate)));
+}
+
+/** Dasselbe, wenn man den Block schon in der Hand hat statt seinen Anlass. */
+export async function removeCareBlockByUid(uid: string): Promise<void> {
   const row = await prisma.event.findFirst({
     where: { uid },
     include: { calendar: { include: { account: true } } },

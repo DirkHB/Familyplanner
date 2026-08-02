@@ -1,6 +1,7 @@
 import type { Occurrence } from "./types";
 import { formatTime, groupByDay, formatDateHeader, dayKey } from "./format";
 import { categoryOf, guessCategory } from "./categories";
+import { isCareBlockUid } from "@/lib/care/block";
 
 /** Serialisierbare View-Models für die Client-Komponenten (Server formatiert, Client rendert). */
 
@@ -138,6 +139,12 @@ export type DetailVM = {
   prep: { text: string; done: boolean }[];
   occurrenceISO: string | null;
   care: CareVM;
+  /**
+   * Ein von der App selbst angelegter Betreuungsblock („👶 Nicolas · Dirk").
+   * Der ist die Antwort auf eine Betreuungsfrage, nicht selbst ein Termin —
+   * er braucht weder Betreuung noch Vorbereitung noch Einkauf.
+   */
+  isCareBlock: boolean;
   readOnly?: boolean;
 };
 
@@ -158,6 +165,7 @@ export type DetailInput = {
 
 export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
   const cat = categoryOf(v.category);
+  const istBlock = isCareBlockUid(v.uid);
   return {
     uid: v.uid,
     title: v.title,
@@ -167,12 +175,15 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
     allDay: v.allDay,
     isSeries: v.isSeries ?? false,
     location: v.location,
-    categoryLabel: cat.label,
+    // „Sonstiges" über einem Betreuungsblock sagt nichts. Er hat keine
+    // Kategorie im üblichen Sinn — er ist selbst eine.
+    categoryLabel: istBlock ? "Betreuung" : cat.label,
     dotColor: cat.dotColor,
     notes: v.notes,
     prep: v.prepChecklist,
     occurrenceISO: v.occurrenceISO ?? null,
     care: v.care ?? null,
+    isCareBlock: istBlock,
     readOnly,
   };
 }

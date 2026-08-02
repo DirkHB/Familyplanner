@@ -8,6 +8,7 @@ import {
   takeCareAction,
   requestCareAction,
   dismissCareAction,
+  withdrawCareBlockAction,
   deleteEventAction,
   updateEventAction,
   savePrep,
@@ -90,21 +91,33 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
           </div>
         </div>
 
-        {!vm.allDay && <CareBlock vm={vm} />}
+        {/*
+          Ein Betreuungsblock ist die Antwort auf eine Betreuungsfrage. Ihn
+          nach Betreuung zu fragen wäre absurd, und Vorbereitung, Einkauf und
+          Notizen gehören an den Anlass, nicht an die Zusage. Er zeigt deshalb
+          nur, wozu er gehört — und wie man ihn wieder loswird.
+        */}
+        {vm.isCareBlock ? (
+          <CareBlockInfo vm={vm} />
+        ) : (
+          <>
+            {!vm.allDay && <CareBlock vm={vm} />}
 
-        <PrepChecklist
-          uid={vm.uid}
-          initial={vm.prep}
-          title={title}
-          category={vm.categoryLabel}
-          readOnly={vm.readOnly}
-        />
+            <PrepChecklist
+              uid={vm.uid}
+              initial={vm.prep}
+              title={title}
+              category={vm.categoryLabel}
+              readOnly={vm.readOnly}
+            />
 
-        {shopping && <EventShopping uid={vm.uid} data={shopping} readOnly={vm.readOnly} />}
+            {shopping && <EventShopping uid={vm.uid} data={shopping} readOnly={vm.readOnly} />}
 
-        <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
+            <NotesEditor uid={vm.uid} initial={vm.notes} readOnly={vm.readOnly} />
 
-        {!vm.readOnly && <ManageBlock vm={vm} onTitleChanged={setTitle} />}
+            {!vm.readOnly && <ManageBlock vm={vm} onTitleChanged={setTitle} />}
+          </>
+        )}
       </div>
     </div>
   );
@@ -210,8 +223,54 @@ function ManageBlock({ vm, onTitleChanged }: { vm: DetailVM; onTitleChanged: (t:
   );
 }
 
+/**
+ * Ansicht eines Betreuungsblocks. Er hat genau eine sinnvolle Handlung:
+ * zurücknehmen. Und die fragt sofort den anderen — sonst stünde die Betreuung
+ * wieder offen, ohne dass es jemand mitbekommt.
+ */
+function CareBlockInfo({ vm }: { vm: DetailVM }) {
+  const [pending, start] = useTransition();
+  const [gefragt, setGefragt] = useState(false);
+  const router = useRouter();
+
+  return (
+    <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
+      <h2 className="font-display text-lg">Betreuung für Nicolas</h2>
+      <p className="mt-2 text-sm text-ink-muted">
+        Diesen Eintrag hat der Familienplaner angelegt, weil die Betreuung zugesagt wurde. Er
+        steht im gemeinsamen Kalender, damit ihr beide ihn seht.
+      </p>
+
+      {gefragt ? (
+        <p className="mt-4 text-sm font-medium text-accent">
+          Zurückgenommen — eine Anfrage ist unterwegs.
+        </p>
+      ) : (
+        !vm.readOnly && (
+          <button
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await withdrawCareBlockAction(vm.uid);
+                if (r.ok) {
+                  setGefragt(true);
+                  router.refresh();
+                }
+              })
+            }
+            className="mt-4 w-full rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
+          >
+            Ich kann doch nicht — den anderen fragen
+          </button>
+        )
+      )}
+    </section>
+  );
+}
+
 function CareBlock({ vm }: { vm: DetailVM }) {
   const [pending, start] = useTransition();
+  const [aendern, setAendern] = useState(false);
   const care = vm.care;
   const canAct = !vm.readOnly && !!vm.occurrenceISO;
 
@@ -243,20 +302,35 @@ function CareBlock({ vm }: { vm: DetailVM }) {
             </button>
           )}
         </div>
-      ) : geklaert ? (
+      ) : geklaert && !aendern ? (
         <div className="flex items-center gap-3">
           <Avatar person={care!.responsiblePerson!} size={40} />
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold">{care!.responsibleName} ist da</p>
             <p className="text-sm text-ink-muted">Betreuung geklärt</p>
           </div>
+          {/*
+            Eine Zusage muss zurücknehmbar sein. Ohne diesen Weg blieb sie
+            stehen, auch wenn zwischendurch etwas dazwischenkam — und dann
+            verlässt sich einer auf etwas, das nicht mehr gilt.
+          */}
+          {canAct && (
+            <button
+              onClick={() => setAendern(true)}
+              className="ml-auto shrink-0 text-sm font-medium text-accent"
+            >
+              Ändern
+            </button>
+          )}
         </div>
       ) : (
         <div>
           <p className="mb-3 text-sm text-ink-muted">
-            {care?.status === "offen"
-              ? "Noch offen — eine Anfrage ist unterwegs."
-              : "Noch nicht geklärt."}
+            {aendern
+              ? `Bisher: ${care?.responsibleName} ist da.`
+              : care?.status === "offen"
+                ? "Noch offen — eine Anfrage ist unterwegs."
+                : "Noch nicht geklärt."}
           </p>
           {canAct && (
             <div className="flex flex-col gap-2">

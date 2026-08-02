@@ -7,6 +7,7 @@ import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { redirect } from "next/navigation";
 import { takeCare, requestCare, dismissCare } from "@/lib/care/repository";
 import { dismissTitle } from "@/lib/care/rules";
+import { anlassFuerBlock, removeCareBlockByUid } from "@/lib/care/block-sync";
 import { deleteEvent } from "@/lib/calendar/delete";
 import { updateEvent } from "@/lib/calendar/update";
 import { invalidateKalender } from "@/lib/calendar/range-data";
@@ -99,6 +100,34 @@ export async function requestCareAction(uid: string, occurrenceISO: string, titl
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
   return { ok: true };
+}
+
+/**
+ * „Ich kann doch nicht" — vom Betreuungsblock aus zurücknehmen.
+ *
+ * Der Block verschwindet aus dem Kalender und der Anlass steht wieder offen —
+ * mit einer Anfrage an den anderen. Stillschweigend offen lassen wäre der
+ * schlechteste Ausgang: Dann glaubt einer, es sei geklärt, und niemand ist da.
+ */
+export async function withdrawCareBlockAction(blockUid: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false as const };
+
+  const anlass = await anlassFuerBlock(blockUid);
+  if (!anlass) {
+    // Kein Anlass mehr auffindbar (Termin gelöscht) — dann bleibt nur, den
+    // verwaisten Block wegzuräumen.
+    await removeCareBlockByUid(blockUid);
+    invalidateKalender();
+    revalidatePath("/woche");
+    return { ok: true as const, gefragt: false };
+  }
+
+  await requestCare(anlass.eventUid, anlass.occurrenceDate, session.user.id, anlass.title);
+  invalidateKalender();
+  revalidatePath("/woche");
+  revalidatePath(`/termin/${encodeURIComponent(anlass.eventUid)}`);
+  return { ok: true as const, gefragt: true };
 }
 
 /**
