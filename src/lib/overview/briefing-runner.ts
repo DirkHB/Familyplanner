@@ -31,7 +31,7 @@ export async function runBriefing(
     pushed += await notifyUserId(user.id, {
       title,
       body: summary,
-      url: "/ueberblick",
+      url: "/woche",
       tag: `briefing-${kind}`,
     });
   }

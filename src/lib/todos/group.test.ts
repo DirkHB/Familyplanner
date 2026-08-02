@@ -68,6 +68,14 @@ describe("containersByList", () => {
     expect(ohne.todos.map((t) => t.id)).toEqual(["a", "b"]);
   });
 
+  it("„Ohne Liste“ steht ganz oben — der Eingangskorb zum Zuordnen", () => {
+    const { container } = containersByList(
+      [vm({ id: "a", listId: "l1" }), vm({ id: "b", listId: null })],
+      listen,
+    );
+    expect(container.map((c) => c.key)).toEqual([OHNE_LISTE, "l1", "l2"]);
+  });
+
   it("ordnet im Container: datiert aufsteigend, dann Undatiertes mit wichtig zuerst", () => {
     const { container } = containersByList(
       [

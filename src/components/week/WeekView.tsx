@@ -6,7 +6,6 @@ import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BabyIcon } from "@/components/ui/BabyIcon";
 import { AppShell } from "@/components/app/AppShell";
-import { SegmentedNav } from "@/components/app/SegmentedNav";
 import { RequestHero } from "@/components/requests/RequestHero";
 import type { DayVM, EventVM } from "@/lib/calendar/view-model";
 import { STANDARD_FENSTER, type TagesFenster } from "@/lib/calendar/zeitstrahl";
@@ -21,6 +20,8 @@ export function WeekView({
   requests = [],
   nextTodayKey = null,
   fenster = STANDARD_FENSTER,
+  briefing = null,
+  naechsteWoche = false,
 }: {
   greetingName: string;
   greeting?: string;
@@ -31,6 +32,9 @@ export function WeekView({
   nextTodayKey?: string | null;
   /** Tagesfenster für die Randmarken des Zeitstrahls (je Person einstellbar). */
   fenster?: TagesFenster;
+  /** Der Zwei-Zeilen-Blick auf den Tag — lebte früher im Überblick. */
+  briefing?: string | null;
+  naechsteWoche?: boolean;
 }) {
   const empty = days.length === 0;
   return (
@@ -47,14 +51,20 @@ export function WeekView({
               in der Tab-Leiste, damit sie von überall erreichbar sind. */}
         </div>
 
-        <div className="mt-4">
-          <SegmentedNav
-            active="/woche"
-            items={[
-              { href: "/woche", label: "Woche" },
-              { href: "/termine", label: "Monat" },
-            ]}
-          />
+        {/* Der Monat hat jetzt sein eigenes Symbol in der Leiste; hier bleibt
+            nur das Blättern in die nächste Woche. */}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          {briefing && !naechsteWoche ? (
+            <p className="min-w-0 flex-1 text-sm leading-snug text-ink-muted">{briefing}</p>
+          ) : (
+            <span className="flex-1" />
+          )}
+          <Link
+            href={naechsteWoche ? "/woche" : "/woche?w=1"}
+            className="shrink-0 rounded-pill bg-surface px-3.5 py-1.5 text-sm font-medium text-ink shadow-card"
+          >
+            {naechsteWoche ? "← Diese Woche" : "Nächste Woche →"}
+          </Link>
         </div>
 
         <RequestHero requests={requests} />

@@ -10,17 +10,25 @@ import { getKlaerungStack } from "@/lib/klaerung/repository";
 import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
 import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
+import { getOverview, defaultHorizon } from "@/lib/overview/repository";
+import { briefingText } from "@/lib/overview/build";
 
 export const dynamic = "force-dynamic";
 
 /** Startbildschirm: Heute-Fokus + vertikale Wochenliste (Abschnitt 6.1). */
-export default async function WochePage() {
+export default async function WochePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ w?: string }>;
+}) {
   const session = await auth();
   const name = displayNameForEmail(session?.user?.email);
 
   const now = new Date();
-  const from = startOfDayBerlin(now);
-  const to = new Date(from.getTime() + 10 * 86_400_000);
+  // ?w=1 blättert eine Woche vor — der Nachfolger des alten Überblick-Umschalters.
+  const naechste = (await searchParams).w === "1";
+  const from = new Date(startOfDayBerlin(now).getTime() + (naechste ? 7 * 86_400_000 : 0));
+  const to = new Date(from.getTime() + (naechste ? 7 : 10) * 86_400_000);
 
   // Tagesfenster der angemeldeten Person — der Zeitstrahl rechnet damit.
   const ich = session?.user?.id
@@ -41,6 +49,14 @@ export default async function WochePage() {
     ? (await getOpenRequestsForUser(session.user.id)).map((r) => buildRequestVM(r, now))
     : [];
 
+  // Das Briefing wohnte im Überblick; jetzt steht es hier im Kopf — dort,
+  // wo man ohnehin zuerst hinschaut. Immer live gerechnet, nie von 7 Uhr.
+  const briefing = session?.user?.id
+    ? await getOverview(defaultHorizon(now), now)
+        .then((o) => briefingText(o, "morgen"))
+        .catch(() => null)
+    : null;
+
   // Nächster noch anstehender Termin heute — wird in der Liste hervorgehoben.
   // Eine eigene „Heute"-Karte gab es hier einmal; sie zeigte denselben Termin
   // ein zweites Mal direkt über der Liste und ist ersatzlos entfallen.
@@ -52,7 +68,7 @@ export default async function WochePage() {
   const nextTodayKey = nextToday ? `${nextToday.uid}:${nextToday.recurrenceId}` : null;
 
   // Klärungs-Stapel: nur hier auf der Woche, nie über einem Direkteinstieg.
-  const stack = session?.user?.id ? await getKlaerungStack(session.user.id, now) : [];
+  const stack = session?.user?.id && !naechste ? await getKlaerungStack(session.user.id, now) : [];
 
   return (
     <>
@@ -62,10 +78,12 @@ export default async function WochePage() {
         dateLabel={formatDateHeader(now)}
         days={days}
         requests={requests}
-        nextTodayKey={nextTodayKey}
+        nextTodayKey={naechste ? null : nextTodayKey}
         fenster={fenster}
+        briefing={briefing}
+        naechsteWoche={naechste}
       />
-      <KlaerungGate cards={stack} todayKey={todayKey} />
+      {!naechste && <KlaerungGate cards={stack} todayKey={todayKey} />}
     </>
   );
 }

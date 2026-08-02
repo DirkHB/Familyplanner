@@ -131,9 +131,12 @@ export function containersByList(
     };
   });
 
+  // Nicht Zugeordnetes steht GANZ OBEN — es ist der Eingangskorb. Wer die
+  // Seite öffnet, soll zuerst sehen, was noch keiner Liste gehört, und es
+  // wegsortieren, statt dass es unten unbemerkt liegen bleibt.
   const ohne = sortiert(offen.filter((t) => t.listId === null || !listen.some((l) => l.id === t.listId)));
   if (ohne.length > 0) {
-    container.push({
+    container.unshift({
       key: OHNE_LISTE,
       name: "Ohne Liste",
       todos: ohne,

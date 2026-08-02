@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { personForEmail, type Person } from "@/lib/auth/allowlist";
-import { createTodo, toggleTodo, deleteTodo } from "@/lib/todos/repository";
+import { createTodo, toggleTodo, deleteTodo, setTodoList } from "@/lib/todos/repository";
 import { createTodoList } from "@/lib/todos/lists";
 import { NEUE_LISTE } from "@/lib/todos/group";
 
@@ -157,6 +157,15 @@ export async function toggleTodoImportantAction(id: string) {
   const todo = await prisma.todo.findUnique({ where: { id }, select: { important: true } });
   if (!todo) return { ok: false };
   await prisma.todo.update({ where: { id }, data: { important: !todo.important } });
+  revalidatePath("/aufgaben");
+  return { ok: true };
+}
+
+/** Aufgabe per Ziehen in eine andere Liste legen (`null` = ohne Liste). */
+export async function setTodoListAction(id: string, listId: string | null) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await setTodoList(id, listId);
   revalidatePath("/aufgaben");
   return { ok: true };
 }

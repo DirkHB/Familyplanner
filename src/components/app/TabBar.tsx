@@ -14,10 +14,10 @@ import type { Person } from "@/lib/auth/allowlist";
  * Woche kein Zahnrad mehr braucht.
  */
 const TABS = [
-  { href: "/woche", label: "Woche", auch: ["/termine", "/termin", "/erfassen"] },
-  { href: "/ueberblick", label: "Überblick", auch: ["/ideen"] },
+  { href: "/woche", label: "Woche", auch: ["/termin", "/erfassen"] },
+  { href: "/termine", label: "Monat", auch: [] as string[] },
   { href: "/aufgaben", label: "Aufgaben", auch: ["/einkauf"] },
-  { href: "/profil", label: "Profil", auch: ["/einstellungen"] },
+  { href: "/profil", label: "Profil", auch: ["/einstellungen", "/ideen"] },
 ];
 
 export function TabBar() {
@@ -47,7 +47,12 @@ export function TabBar() {
       className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center"
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
-      <div className="pointer-events-auto flex items-center gap-1 rounded-pill border border-surface-muted/50 bg-surface/85 p-1.5 shadow-hero backdrop-blur-md">
+      {/* Glas wie bei den großen Apps: viel Durchsicht, kräftiger Blur mit
+          angehobener Sättigung, eine Lichtkante statt harter Linie. */}
+      <div
+        className="pointer-events-auto flex items-center gap-1 rounded-pill border border-white/45 bg-surface/55 p-1.5 shadow-hero"
+        style={{ backdropFilter: "blur(20px) saturate(1.6)", WebkitBackdropFilter: "blur(20px) saturate(1.6)" }}
+      >
         {TABS.map(({ href, label, auch }) => {
           const active =
             path === href ||
@@ -76,8 +81,8 @@ export function TabBar() {
                 )
               ) : href === "/woche" ? (
                 <CalendarIcon />
-              ) : href === "/ueberblick" ? (
-                <CompassIcon />
+              ) : href === "/termine" ? (
+                <MonthIcon />
               ) : (
                 <CheckIcon />
               )}
@@ -99,11 +104,12 @@ function CalendarIcon() {
     </svg>
   );
 }
-function CompassIcon() {
+function MonthIcon() {
   return (
     <svg viewBox="0 0 24 24" {...S}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" strokeLinejoin="round" />
+      <rect x="3" y="4.5" width="18" height="16" rx="3" />
+      <path d="M3 9h18" strokeLinecap="round" />
+      <path d="M7.5 12.5h.01M12 12.5h.01M16.5 12.5h.01M7.5 16.5h.01M12 16.5h.01M16.5 16.5h.01" strokeWidth="2.6" strokeLinecap="round" />
     </svg>
   );
 }

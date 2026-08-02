@@ -27,7 +27,6 @@ type Ergebnis = { ok: boolean; undo?: StapelUndo };
 function reval() {
   revalidatePath("/woche");
   revalidatePath("/aufgaben");
-  revalidatePath("/ueberblick");
 }
 
 /** Stand der Betreuungsentscheidung vor der Änderung — für die Gegenbuchung. */
