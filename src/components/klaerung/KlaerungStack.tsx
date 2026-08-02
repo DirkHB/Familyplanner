@@ -15,15 +15,19 @@ import {
   stapelEskalationGeklaertAction,
   stapelParkenDieseWocheAction,
   stapelParkenBleibtAction,
+  stapelRueckgaengigAction,
 } from "@/app/klaerung/actions";
+import type { StapelUndo } from "@/lib/klaerung/undo";
 
 /**
  * Der Kartenstapel: eine Entscheidung pro Karte, einhändig wischbar.
  * Rechts heißt immer „ich / erledigt", links immer „nicht ich / nicht jetzt".
  *
- * Rückgängig: Die Server-Aktion feuert erst nach 3 Sekunden. Wer sich
- * verwischt (Nicolas auf dem Arm), tippt „Rückgängig" und die Karte kommt
- * zurück — ohne dass irgendwo etwas zurückgebaut werden muss.
+ * Jede Antwort wird SOFORT geschrieben; „Rückgängig" ist eine Gegenbuchung
+ * über die von der Aktion zurückgegebene Undo-Beschreibung. Der erste Bau
+ * hielt die Aktion 3 Sekunden zurück — wer nach dem letzten Wisch die App
+ * wechselte, verlor die Antwort und bekam dieselbe Frage später wieder.
+ * Sonst niemand: Antworten dürfen nie am Weiterleben des Tabs hängen.
  */
 
 /**
@@ -37,7 +41,9 @@ type Decision = {
   label: string;
 };
 
-function actionFor(d: Decision): (() => Promise<unknown>) | null {
+type Ergebnis = { ok: boolean; undo?: StapelUndo };
+
+function actionFor(d: Decision): (() => Promise<Ergebnis>) | null {
   const c = d.card;
   switch (c.kind) {
     case "aufgabe":
@@ -78,42 +84,32 @@ function entscheidungsLabel(card: KlaerungCard, richtung: Decision["richtung"]):
 export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClose: () => void }) {
   const [index, setIndex] = useState(0);
   const [undo, setUndo] = useState<Decision | null>(null);
-  const pendingRef = useRef<{ timer: ReturnType<typeof setTimeout>; run: () => void } | null>(null);
+  /**
+   * Die Gegenbuchung zur letzten Antwort — als Promise, weil „Rückgängig"
+   * schneller getippt sein kann, als die Antwort des Servers zurück ist.
+   */
+  const undoRef = useRef<Promise<StapelUndo | null> | null>(null);
 
   const card = cards[index] ?? null;
   const fertig = index >= cards.length;
 
-  /** Ausstehende Aktion sofort ausführen (nächster Wisch, Schließen, Verlassen). */
-  function flush() {
-    const p = pendingRef.current;
-    if (p) {
-      clearTimeout(p.timer);
-      pendingRef.current = null;
-      p.run();
-    }
-  }
-  useEffect(() => () => flush(), []);
   useEffect(() => {
     if (fertig) {
-      const t = setTimeout(() => {
-        flush();
-        onClose();
-      }, 1200);
+      const t = setTimeout(onClose, 1200);
       return () => clearTimeout(t);
     }
   }, [fertig, onClose]);
 
   function decide(richtung: Decision["richtung"]) {
     if (!card) return;
-    flush();
     const d: Decision = { card, richtung, label: entscheidungsLabel(card, richtung) };
     const run = actionFor(d);
     if (run) {
-      const timer = setTimeout(() => {
-        pendingRef.current = null;
-        run();
-      }, 3000);
-      pendingRef.current = { timer, run: () => run() };
+      // Sofort schreiben. Die Rückgängig-Leiste bleibt trotzdem 3 Sekunden —
+      // sie nimmt jetzt zurück, statt den Versand aufzuhalten.
+      undoRef.current = run()
+        .then((r) => r.undo ?? null)
+        .catch(() => null);
       setUndo(d);
       setTimeout(() => setUndo((u) => (u === d ? null : u)), 3000);
     }
@@ -121,13 +117,13 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
   }
 
   function undoLast() {
-    const p = pendingRef.current;
-    if (p) {
-      clearTimeout(p.timer);
-      pendingRef.current = null;
-    }
+    const p = undoRef.current;
+    undoRef.current = null;
     setUndo(null);
     setIndex((i) => Math.max(0, i - 1));
+    if (p) {
+      void p.then((u) => (u ? stapelRueckgaengigAction(u) : null)).catch(() => null);
+    }
   }
 
   return (
@@ -137,7 +133,7 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
         <p className="eyebrow text-ink-muted">
           {fertig ? "Geschafft" : `Kurz klären · ${index + 1} von ${cards.length}`}
         </p>
-        <button onClick={() => { flush(); onClose(); }} className="rounded-pill bg-surface px-4 py-2 text-sm font-medium shadow-card">
+        <button onClick={onClose} className="rounded-pill bg-surface px-4 py-2 text-sm font-medium shadow-card">
           Später
         </button>
       </div>
@@ -161,9 +157,10 @@ export function KlaerungStack({ cards, onClose }: { cards: KlaerungCard[]; onClo
         </AnimatePresence>
       </div>
 
-      {/* Rückgängig — drei Sekunden Zeit, dann feuert die Entscheidung.
-          Zentriert über einen Flex-Container: Motion setzt selbst transform,
-          ein -translate-x-1/2 in der Klasse würde dabei verloren gehen. */}
+      {/* Rückgängig — drei Sekunden sichtbar; die Entscheidung ist längst
+          geschrieben, der Knopf bucht sie zurück. Zentriert über einen
+          Flex-Container: Motion setzt selbst transform, ein -translate-x-1/2
+          in der Klasse würde dabei verloren gehen. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
         <AnimatePresence>
           {undo && (

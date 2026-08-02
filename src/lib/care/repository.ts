@@ -71,13 +71,17 @@ export async function requestCare(
 
   const partner = await resolvePartner(fromUserId);
   if (partner) {
-    await createRequest({
+    const req = await createRequest({
       fromUserId,
       question: `Kannst du bei „${eventTitle}" aufs Baby aufpassen?`,
       type: "yes_no",
       eventUid,
     });
+    // Die Kennung braucht der Stapel, um die Anfrage bei „Rückgängig"
+    // wieder einzusammeln, bevor sie beantwortet wird.
+    return req.id;
   }
+  return null;
 }
 
 /** Anzeigename + Person für die UI. */

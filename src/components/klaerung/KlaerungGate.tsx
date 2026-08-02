@@ -43,7 +43,14 @@ function writeState(s: StackState) {
 }
 
 export function KlaerungGate({ cards, todayKey }: { cards: KlaerungCard[]; todayKey: string }) {
-  const [visible, setVisible] = useState(false);
+  /**
+   * Schnappschuss statt Live-Daten: Jede Antwort rendert die Woche darunter
+   * sofort neu, und mit ihr käme ein kleinerer Kartenstapel herein — der
+   * Zeiger im Stapel spränge dann über die nächste Karte hinweg. Der Stapel
+   * arbeitet deshalb auf dem Stand vom Moment des Öffnens; was beantwortet
+   * ist, ist in den Daten längst weg.
+   */
+  const [offen, setOffen] = useState<KlaerungCard[] | null>(null);
 
   // Bewusst erst nach dem ersten Rendern entscheiden: localStorage gibt es
   // nur im Browser, und die Woche darunter ist sofort da, falls nichts kommt.
@@ -52,17 +59,20 @@ export function KlaerungGate({ cards, todayKey }: { cards: KlaerungCard[]; today
     const state = readState();
     if (shouldShowStack(cards.length, state, new Date(), todayKey)) {
       writeState(markShown(state, todayKey));
-      setVisible(true);
+      setOffen(cards);
     }
+    // `cards` absichtlich nicht in den Abhängigkeiten: Nach dem Öffnen darf
+    // kein Server-Update den Stapel neu starten oder erweitern.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards.length, todayKey]);
 
-  if (!visible) return null;
+  if (!offen) return null;
   return (
     <KlaerungStack
-      cards={cards}
+      cards={offen}
       onClose={() => {
         writeState(markLater(readState(), new Date()));
-        setVisible(false);
+        setOffen(null);
       }}
     />
   );
