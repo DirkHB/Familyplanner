@@ -45,6 +45,14 @@ export function AppShell({
   const scrollerRef = useRef<HTMLDivElement>(null);
   // „Nach oben": erscheint erst, wenn man wirklich unterwegs ist.
   const [zurueckSichtbar, setZurueckSichtbar] = useState(false);
+  /**
+   * Die Tab-Leiste macht sich beim Runterscrollen klein und wächst beim
+   * ersten Zug nach oben wieder — wie bei Instagram. Lesen braucht Platz,
+   * Navigieren braucht die Leiste; die Scrollrichtung verrät, was gerade
+   * dran ist.
+   */
+  const [leisteKlein, setLeisteKlein] = useState(false);
+  const letzterTop = useRef(0);
 
   /**
    * Beim Zurückkommen in die App die Server-Daten neu holen. Die Seiten sind
@@ -90,6 +98,10 @@ export function AppShell({
       apply();
     }
 
+    // Neue Seite, voller Auftritt der Leiste.
+    setLeisteKlein(false);
+    letzterTop.current = el.scrollTop;
+
     let frame = 0;
     const onScroll = () => {
       if (frame) return;
@@ -99,6 +111,13 @@ export function AppShell({
         if (node) {
           rememberScroll(key, node.scrollTop);
           setZurueckSichtbar(node.scrollTop > 600);
+          // Richtung mit kleiner Schwelle, damit das Gummiband am Rand und
+          // Zitterbewegungen die Leiste nicht flackern lassen.
+          const delta = node.scrollTop - letzterTop.current;
+          letzterTop.current = node.scrollTop;
+          if (node.scrollTop < 80) setLeisteKlein(false);
+          else if (delta > 6) setLeisteKlein(true);
+          else if (delta < -6) setLeisteKlein(false);
         }
       });
     };
@@ -138,13 +157,14 @@ export function AppShell({
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          {pathname === "/woche" ? "Heute" : null}
+          {/* Woche und Monat beginnen beide beim Jetzt — dort heißt oben „Heute". */}
+          {pathname === "/woche" || pathname === "/termine" ? "Heute" : null}
         </button>
       )}
 
       {floating}
       {bottomBar}
-      <TabBar />
+      <TabBar klein={leisteKlein} />
     </div>
   );
 }

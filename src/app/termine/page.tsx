@@ -1,20 +1,26 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app/AppShell";
-import { BabyIcon } from "@/components/ui/BabyIcon";
-import { buildWeek, type DayVM, type EventVM } from "@/lib/calendar/view-model";
+import { FabErfassen } from "@/components/app/FabErfassen";
+import { buildWeek } from "@/lib/calendar/view-model";
 import { getRangeData } from "@/lib/calendar/range-data";
-import { MonthShell } from "@/components/termine/MonthShell";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
-import { buildMonthMatrix, monthTitle, shiftMonth, isMonthKey } from "@/lib/calendar/month";
+import { buildMonthMatrix, shiftMonth, isMonthKey } from "@/lib/calendar/month";
 import { shortLabel } from "@/lib/calendar/keyword";
-import { MonatsRaster, type RasterEvent } from "@/components/termine/MonatsRaster";
+import { MonatsStrom, type StromMonat, type TagInfo } from "@/components/termine/MonatsRaster";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Termine: schnelle Monatsansicht (Raster) + Tagesliste des Monats darunter.
- * Tag antippen springt zur Tagesgruppe (Anker — kein Server-Roundtrip).
+ * Termine: der Monatsstrom. Beginnt beim aktuellen Monat und läuft ein Jahr
+ * nach vorn — durchgehend scrollbar wie im Apple Kalender, ohne Blättern.
+ * Ein Tipp auf einen Tag öffnet das Tages-Blatt (Termine + Neuer Termin).
+ * In die Vergangenheit führt der leise Link über dem ersten Monat (?m=…).
  */
+
+const MONATE_IM_STROM = 12;
+
+const monatFmt = new Intl.DateTimeFormat("de-DE", { month: "long", timeZone: "UTC" });
+
 export default async function TerminePage({
   searchParams,
 }: {
@@ -23,125 +29,53 @@ export default async function TerminePage({
   const { m } = await searchParams;
   const now = new Date();
   const todayKey = dayKey(now);
-  const monthKey = isMonthKey(m) ? m : todayKey.slice(0, 7);
+  const startKey = isMonthKey(m) ? m : todayKey.slice(0, 7);
 
-  // Monatsfenster in Berliner Zeit (DST-sicher über Mittags-Anker).
-  const from = startOfDayBerlin(new Date(`${monthKey}-01T12:00:00Z`));
-  const to = startOfDayBerlin(new Date(`${shiftMonth(monthKey, 1)}-01T12:00:00Z`));
+  // Fenster in Berliner Zeit (DST-sicher über Mittags-Anker).
+  const from = startOfDayBerlin(new Date(`${startKey}-01T12:00:00Z`));
+  const to = startOfDayBerlin(new Date(`${shiftMonth(startKey, MONATE_IM_STROM)}-01T12:00:00Z`));
 
   const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
-  const days = buildWeek(occurrences, metaByUid, now, careByOcc).filter((d) => d.key.startsWith(monthKey));
-  const eventsByDay = new Map(days.map((d) => [d.key, d.events]));
+  const days = buildWeek(occurrences, metaByUid, now, careByOcc);
 
-  const weeks = buildMonthMatrix(monthKey);
-
-  // Fürs Client-Raster serialisiert; die Kurzformen rechnet der Server.
-  const rasterEvents: Record<string, RasterEvent[]> = {};
-  const kurzTitel: Record<string, string> = {};
+  // Fürs Raster reichen Kurzformen und Farben — die vollen Termine holt das
+  // Tages-Blatt frisch. Das hält ein ganzes Jahr Kalender leicht.
+  const eventsByDay: Record<string, TagInfo> = {};
   for (const d of days) {
-    rasterEvents[d.key] = d.events.map((ev) => ({ key: ev.key, title: ev.title, dotColor: ev.dotColor }));
-    for (const ev of d.events) kurzTitel[ev.key] = shortLabel(ev.title);
+    eventsByDay[d.key] = {
+      chips: d.events.slice(0, 3).map((ev) => ({ t: shortLabel(ev.title), c: ev.dotColor })),
+      n: d.events.length,
+    };
   }
 
+  const monate: StromMonat[] = Array.from({ length: MONATE_IM_STROM }, (_, i) => {
+    const key = shiftMonth(startKey, i);
+    return {
+      key,
+      monat: monatFmt.format(new Date(`${key}-01T00:00:00Z`)),
+      jahr: key.slice(0, 4),
+      weeks: buildMonthMatrix(key),
+    };
+  });
+
+  const vorher = shiftMonth(startKey, -1);
+
   return (
-    <AppShell>
+    <AppShell floating={<FabErfassen />}>
       <>
-        <MonthShell
-          prevHref={`/termine?m=${shiftMonth(monthKey, -1)}`}
-          nextHref={`/termine?m=${shiftMonth(monthKey, 1)}`}
-          todayId={monthKey === todayKey.slice(0, 7) ? todayKey : null}
+        {/* Zurück in die Vergangenheit — selten gebraucht, deshalb leise. */}
+        <Link
+          href={`/termine?m=${vorher}`}
+          className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-ink-muted"
         >
-        {/* Der Monat hat sein eigenes Symbol in der Leiste — der Umschalter
-            zur Woche ist damit überflüssig. */}
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-3xl">{monthTitle(monthKey)}</h1>
-          <div className="flex gap-2">
-            <MonthNav href={`/termine?m=${shiftMonth(monthKey, -1)}`} label="Voriger Monat" dir="left" />
-            <MonthNav href={`/termine?m=${shiftMonth(monthKey, 1)}`} label="Nächster Monat" dir="right" />
-            <Link
-              href="/erfassen"
-              aria-label="Schnell erfassen"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-surface shadow-card"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
-            </Link>
-          </div>
-        </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {monatFmt.format(new Date(`${vorher}-01T00:00:00Z`))}
+        </Link>
 
-        {/* Monatsraster: 1. Tipp springt zur Tagesgruppe, 2. Tipp auf
-            denselben Tag öffnet das Anlege-Blatt (leere Tage sofort). */}
-        <MonatsRaster
-          weeks={weeks}
-          todayKey={todayKey}
-          eventsByDay={rasterEvents}
-          kurz={kurzTitel}
-        />
-        </MonthShell>
-
-        {/* Tagesliste des Monats */}
-        {days.length === 0 ? (
-          <div className="mt-8 rounded-card bg-surface p-6 text-center shadow-card">
-            <p className="font-display text-xl">Nichts geplant</p>
-            <p className="mt-2 text-ink-muted">In diesem Monat ist bisher alles frei.</p>
-          </div>
-        ) : (
-          <div className="mt-8 flex flex-col gap-5">
-            {days.map((day) => (
-              <DayBlock key={day.key} day={day} />
-            ))}
-          </div>
-        )}
+        <MonatsStrom monate={monate} eventsByDay={eventsByDay} todayKey={todayKey} />
       </>
     </AppShell>
-  );
-}
-
-function MonthNav({ href, label, dir }: { href: string; label: string; dir: "left" | "right" }) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card"
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={dir === "right" ? { transform: "scaleX(-1)" } : undefined}>
-        <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </Link>
-  );
-}
-
-function DayBlock({ day }: { day: DayVM }) {
-  return (
-    <div id={day.key} className="flex scroll-mt-4 gap-4">
-      <div className="w-12 shrink-0 pt-1 text-center">
-        <p className={`tnum font-display text-2xl leading-none ${day.isToday ? "text-accent" : ""}`}>
-          {day.dayNumber}
-        </p>
-        <p className="mt-1 text-xs text-ink-muted">{day.weekday.slice(0, 2)}</p>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        {day.events.map((ev) => (
-          <EventLine key={ev.key} ev={ev} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EventLine({ ev }: { ev: EventVM }) {
-  return (
-    <Link
-      href={ev.href}
-      className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
-    >
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor }} />
-      <span className="min-w-0 flex-1 truncate font-medium">{ev.title}</span>
-      {ev.care && <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />}
-      <span className="tnum shrink-0 text-sm text-ink-muted">
-        {ev.allDay ? "ganztägig" : ev.time}
-      </span>
-    </Link>
   );
 }

@@ -21,7 +21,7 @@ const TABS = [
   { href: "/profil", label: "Profil", auch: ["/einstellungen", "/ideen"] },
 ];
 
-export function TabBar() {
+export function TabBar({ klein = false }: { klein?: boolean }) {
   const path = usePathname();
   // Rote Zahl am Aufgaben-Tab + eigene Person für den Profil-Kreis. Wird bei
   // jedem Seitenwechsel aufgefrischt — Erledigtes soll sofort verschwinden.
@@ -51,10 +51,18 @@ export function TabBar() {
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
       {/* Glas wie bei den großen Apps: viel Durchsicht, kräftiger Blur mit
-          angehobener Sättigung, eine Lichtkante statt harter Linie. */}
+          angehobener Sättigung, eine Lichtkante statt harter Linie.
+          Beim Runterscrollen duckt sich die Leiste (klein), beim Hochscrollen
+          wächst sie zurück — eine Kurve, die schnell startet und weich landet. */}
       <div
         className="pointer-events-auto flex items-center gap-1 rounded-pill border border-white/45 bg-surface/55 p-1.5 shadow-hero"
-        style={{ backdropFilter: "blur(20px) saturate(1.6)", WebkitBackdropFilter: "blur(20px) saturate(1.6)" }}
+        style={{
+          backdropFilter: "blur(20px) saturate(1.6)",
+          WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+          transform: klein ? "scale(0.78) translateY(6px)" : "scale(1) translateY(0)",
+          transformOrigin: "50% 100%",
+          transition: "transform 420ms cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
       >
         {TABS.map(({ href, label, auch }) => {
           const active =

@@ -1,133 +1,150 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { neuerTerminAction } from "@/app/termine/actions";
+import { BabyIcon } from "@/components/ui/BabyIcon";
+import type { MonthCell } from "@/lib/calendar/month";
 
 /**
- * Das Monatsraster mit zwei Tipp-Stufen:
+ * Der Monatsstrom: alle Monate untereinander, durchgehend scrollbar wie im
+ * Apple Kalender. Kein Blättern, keine Karten-Boxen — ein flaches Raster mit
+ * Haarlinien, die Wochentagszeile klebt oben, die Monatstitel ziehen im
+ * Fluss vorbei.
  *
- *   1. Tipp auf einen Tag → weich zur Tagesgruppe darunter springen.
- *   2. Tipp auf DENSELBEN Tag → das Anlege-Blatt öffnet sich, Tag vorbelegt.
+ * Ein Tipp auf einen Tag öffnet das Tages-Blatt: die Termine des Tages und
+ * der Weg zu „Neuer Termin". Das ersetzt die alte Zwei-Tipp-Logik — im
+ * Endlos-Strom gibt es keine Tagesliste mehr, zu der man springen könnte.
  *
- * Ein leerer Tag hat nichts, wohin man springen könnte — dort öffnet der
- * erste Tipp gleich das Blatt. Anlegen ist das Einzige, was man mit einem
- * leeren Tag tun kann.
+ * Für die Flüssigkeit rendert der Browser nur, was im Bild ist:
+ * content-visibility überspringt Monate außerhalb des Ausschnitts, die
+ * geschätzte Höhe hält die Scrollleiste ruhig.
  */
 
-export type RasterEvent = { key: string; title: string; dotColor: string };
-export type RasterZelle = { key: string; day: number; inMonth: boolean };
+export type TagInfo = { chips: { t: string; c: string }[]; n: number };
+export type StromMonat = { key: string; monat: string; jahr: string; weeks: MonthCell[][] };
 
-export function MonatsRaster({
-  weeks,
+const ZEILEN_HOEHE = 76; // eine Rasterzeile inkl. Haarlinie
+const TITEL_HOEHE = 64; // Monatstitel mit Abstand
+
+export function MonatsStrom({
+  monate,
   eventsByDay,
   todayKey,
-  kurz,
 }: {
-  weeks: RasterZelle[][];
-  eventsByDay: Record<string, RasterEvent[]>;
+  monate: StromMonat[];
+  eventsByDay: Record<string, TagInfo>;
   todayKey: string;
-  /** Kurzform der Termintitel, serverseitig gerechnet. */
-  kurz: Record<string, string>;
 }) {
-  const [auswahl, setAuswahl] = useState<string | null>(null);
   const [blattTag, setBlattTag] = useState<string | null>(null);
-
-  function springeZu(key: string) {
-    const el = document.getElementById(key);
-    if (!el) return false;
-    const scroller = el.closest(".overflow-y-auto") as HTMLElement | null;
-    const kopf = document.querySelector("[data-monatskopf]") as HTMLElement | null;
-    const offset = (kopf?.offsetHeight ?? 0) + 12;
-    if (scroller) {
-      const y =
-        el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - offset;
-      scroller.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-      return true;
-    }
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    return true;
-  }
-
-  function tipp(zelle: RasterZelle) {
-    if (!zelle.inMonth) return;
-    const hatTermine = (eventsByDay[zelle.key] ?? []).length > 0;
-    if (auswahl === zelle.key || !hatTermine) {
-      setBlattTag(zelle.key);
-      return;
-    }
-    setAuswahl(zelle.key);
-    springeZu(zelle.key);
-  }
 
   return (
     <>
-      <div className="mt-4 overflow-hidden rounded-card bg-surface shadow-card">
-        <div className="grid grid-cols-7 border-b border-surface-muted/60 text-center">
-          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => (
-            <span key={w} className="py-1.5 text-[10px] font-medium text-ink-muted">
+      {/* Die Wochentage bleiben oben stehen — sonst weiß man drei Monate
+          tiefer nicht mehr, welche Spalte der Samstag ist. */}
+      <div className="sticky top-0 z-20 -mx-5 border-b border-surface-muted/70 bg-bg/90 px-5" style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+        <div className="grid grid-cols-7 py-2 text-center">
+          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w, i) => (
+            <span
+              key={w}
+              className="text-[11px] font-medium text-ink-muted"
+              style={i >= 5 ? { opacity: 0.6 } : undefined}
+            >
               {w}
             </span>
           ))}
         </div>
-        {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b border-surface-muted/40 last:border-0">
-            {week.map((cell) => {
-              const events = cell.inMonth ? (eventsByDay[cell.key] ?? []) : [];
-              const isToday = cell.key === todayKey;
-              const shown = events.slice(0, 3);
-              const more = events.length - shown.length;
-              return (
-                <button
-                  key={cell.key}
-                  onClick={() => tipp(cell)}
-                  disabled={!cell.inMonth}
-                  aria-label={cell.inMonth ? `Tag ${cell.day}` : undefined}
-                  className={`min-w-0 border-r border-surface-muted/40 text-left last:border-r-0 ${
-                    auswahl === cell.key ? "bg-accent-light/40" : ""
-                  }`}
-                >
-                  <div
-                    className={`flex min-h-[68px] flex-col gap-0.5 px-0.5 pb-1 pt-0.5 ${
-                      cell.inMonth ? "" : "opacity-30"
-                    } ${isToday ? "bg-accent-light/60" : ""}`}
-                  >
-                    <span
-                      className={`tnum self-end px-0.5 text-[10px] leading-tight ${
-                        isToday
-                          ? "flex h-4 w-4 items-center justify-center self-end rounded-full bg-accent font-semibold text-surface"
-                          : "text-ink-muted"
-                      }`}
-                    >
-                      {cell.day}
-                    </span>
-                    {shown.map((ev) => (
-                      <span
-                        key={ev.key}
-                        className="block truncate rounded-[3px] pl-0.5 text-left text-[8px] font-medium leading-[1.35] text-ink"
-                        style={{ borderLeft: `2px solid ${ev.dotColor}`, background: "var(--color-bg)" }}
-                      >
-                        {kurz[ev.key] ?? ev.title}
-                      </span>
-                    ))}
-                    {more > 0 && (
-                      <span className="pl-1 text-left text-[8px] leading-none text-ink-muted">+{more}</span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        ))}
       </div>
 
+      {monate.map((m) => (
+        <section
+          key={m.key}
+          style={{
+            contentVisibility: "auto",
+            containIntrinsicSize: `auto ${TITEL_HOEHE + m.weeks.length * ZEILEN_HOEHE}px`,
+          }}
+        >
+          <h2 className="pb-2 pt-6 font-display text-2xl">
+            {m.monat} <span className="text-ink-muted">{m.jahr}</span>
+          </h2>
+          {m.weeks.map((week, wi) => (
+            <div key={wi} className="grid grid-cols-7 border-t border-surface-muted/60">
+              {week.map((cell) =>
+                cell.inMonth ? (
+                  <TagZelle
+                    key={cell.key}
+                    cell={cell}
+                    info={eventsByDay[cell.key]}
+                    heute={cell.key === todayKey}
+                    onTipp={() => setBlattTag(cell.key)}
+                  />
+                ) : (
+                  // Randtage gehören dem Nachbarmonat — hier bleibt Luft,
+                  // genau wie im Apple Kalender.
+                  <span key={cell.key} aria-hidden className="min-h-[75px]" />
+                ),
+              )}
+            </div>
+          ))}
+        </section>
+      ))}
+
       <AnimatePresence>
-        {blattTag && <NeuerTerminBlatt tag={blattTag} onClose={() => setBlattTag(null)} />}
+        {blattTag && (
+          <TagesBlatt
+            tag={blattTag}
+            erwartet={eventsByDay[blattTag]?.n ?? 0}
+            onClose={() => setBlattTag(null)}
+          />
+        )}
       </AnimatePresence>
     </>
   );
 }
+
+function TagZelle({
+  cell,
+  info,
+  heute,
+  onTipp,
+}: {
+  cell: MonthCell;
+  info: TagInfo | undefined;
+  heute: boolean;
+  onTipp: () => void;
+}) {
+  const chips = info?.chips ?? [];
+  const mehr = (info?.n ?? 0) - chips.length;
+  return (
+    <button
+      onClick={onTipp}
+      aria-label={`Tag ${cell.day}`}
+      className="flex min-h-[75px] min-w-0 flex-col gap-[3px] px-[3px] pb-1.5 pt-1 text-left"
+    >
+      <span
+        className={`tnum grid h-[22px] w-[22px] shrink-0 place-items-center self-center rounded-full text-[12px] leading-none ${
+          heute ? "bg-accent font-semibold text-surface" : "text-ink"
+        }`}
+      >
+        {cell.day}
+      </span>
+      {chips.map((chip, i) => (
+        <span
+          key={i}
+          className="block truncate rounded-[4px] bg-surface pl-1 pr-0.5 text-[9px] font-medium leading-[1.5] text-ink"
+          style={{ boxShadow: `inset 2px 0 0 ${chip.c}` }}
+        >
+          {chip.t}
+        </span>
+      ))}
+      {mehr > 0 && <span className="pl-1 text-[9px] leading-none text-ink-muted">+{mehr}</span>}
+    </button>
+  );
+}
+
+/* ------------------------------- Tages-Blatt ------------------------------- */
 
 const tagFmt = new Intl.DateTimeFormat("de-DE", {
   weekday: "long",
@@ -136,8 +153,110 @@ const tagFmt = new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin",
 });
 
-/** Das Anlege-Blatt: Titel, Zeit, fertig — der Tag ist schon gewählt. */
-function NeuerTerminBlatt({ tag, onClose }: { tag: string; onClose: () => void }) {
+type TagEvent = {
+  href: string;
+  title: string;
+  time: string;
+  allDay: boolean;
+  dotColor: string;
+  care: "offen" | "da" | null;
+};
+
+/**
+ * Das Tages-Blatt: erst die Termine des Tages (frisch vom Server, das Raster
+ * kennt nur Kurzformen), dann der Weg zum Anlegen. Beides in einem Blatt —
+ * mit einem Daumen erreichbar, ohne die Ansicht zu verlassen.
+ */
+function TagesBlatt({
+  tag,
+  erwartet,
+  onClose,
+}: {
+  tag: string;
+  erwartet: number;
+  onClose: () => void;
+}) {
+  const [events, setEvents] = useState<TagEvent[] | null>(null);
+  const [anlegen, setAnlegen] = useState(false);
+
+  useEffect(() => {
+    let weg = false;
+    setEvents(null);
+    fetch(`/api/tag?d=${tag}`)
+      .then((r) => (r.ok ? r.json() : { events: [] }))
+      .then((d) => {
+        if (!weg) setEvents(Array.isArray(d.events) ? d.events : []);
+      })
+      .catch(() => {
+        if (!weg) setEvents([]);
+      });
+    return () => {
+      weg = true;
+    };
+  }, [tag]);
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        aria-label="Schließen"
+        onClick={onClose}
+        className="absolute inset-0 bg-ink/30"
+      />
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 420, damping: 40 }}
+        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-bg p-5 shadow-hero"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+      >
+        <h2 className="font-display text-2xl">{tagFmt.format(new Date(`${tag}T12:00:00Z`))}</h2>
+
+        {anlegen ? (
+          <NeuerTerminFelder tag={tag} onClose={onClose} />
+        ) : (
+          <>
+            <div className="mt-4 flex max-h-[45dvh] flex-col gap-2 overflow-y-auto">
+              {events === null &&
+                Array.from({ length: Math.max(1, Math.min(erwartet, 4)) }, (_, i) => (
+                  <div key={i} className="h-[46px] animate-pulse rounded-card bg-surface" />
+                ))}
+              {events?.map((ev) => (
+                <Link
+                  key={ev.href + ev.time}
+                  href={ev.href}
+                  className="flex items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-card"
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor }} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{ev.title}</span>
+                  {ev.care && <BabyIcon tone={ev.care} />}
+                  <span className="tnum shrink-0 text-sm text-ink-muted">
+                    {ev.allDay ? "ganztägig" : ev.time}
+                  </span>
+                </Link>
+              ))}
+              {events?.length === 0 && (
+                <p className="py-2 text-ink-muted">Noch nichts geplant — der Tag gehört euch.</p>
+              )}
+            </div>
+            <button
+              onClick={() => setAnlegen(true)}
+              className="mt-4 w-full rounded-pill bg-accent px-5 py-3.5 font-medium text-surface"
+            >
+              Neuer Termin
+            </button>
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+/** Titel, Zeit, fertig — der Tag ist schon gewählt. */
+function NeuerTerminFelder({ tag, onClose }: { tag: string; onClose: () => void }) {
   const [titel, setTitel] = useState("");
   const [von, setVon] = useState("09:00");
   const [bis, setBis] = useState("10:00");
@@ -159,62 +278,43 @@ function NeuerTerminBlatt({ tag, onClose }: { tag: string; onClose: () => void }
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        aria-label="Schließen"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/30"
+    <>
+      <input
+        autoFocus
+        value={titel}
+        onChange={(e) => {
+          setTitel(e.target.value);
+          setFehler(null);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && anlegen()}
+        placeholder="Was steht an?"
+        className="mt-4 w-full rounded-card border border-surface-muted bg-surface px-4 py-3 outline-none focus:border-accent"
       />
-      <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 420, damping: 40 }}
-        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-bg p-5 shadow-hero"
-        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
-      >
-        <p className="text-sm text-ink-muted">Neuer Termin am</p>
-        <h2 className="font-display text-2xl">{tagFmt.format(new Date(`${tag}T12:00:00Z`))}</h2>
+      <div className="mt-3 flex items-center gap-2">
         <input
-          autoFocus
-          value={titel}
-          onChange={(e) => {
-            setTitel(e.target.value);
-            setFehler(null);
-          }}
-          onKeyDown={(e) => e.key === "Enter" && anlegen()}
-          placeholder="Was steht an?"
-          className="mt-4 w-full rounded-card border border-surface-muted bg-surface px-4 py-3 outline-none focus:border-accent"
+          type="time"
+          value={von}
+          onChange={(e) => setVon(e.target.value)}
+          aria-label="Beginn"
+          className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base outline-none focus:border-accent"
         />
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            type="time"
-            value={von}
-            onChange={(e) => setVon(e.target.value)}
-            aria-label="Beginn"
-            className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base outline-none focus:border-accent"
-          />
-          <span className="text-ink-muted">bis</span>
-          <input
-            type="time"
-            value={bis}
-            onChange={(e) => setBis(e.target.value)}
-            aria-label="Ende"
-            className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base outline-none focus:border-accent"
-          />
-        </div>
-        <button
-          onClick={anlegen}
-          disabled={pending || !titel.trim()}
-          className="mt-4 w-full rounded-pill bg-accent px-5 py-3.5 font-medium text-surface disabled:opacity-50"
-        >
-          {pending ? "Lege an …" : "In den Kalender"}
-        </button>
-        {fehler && <p className="mt-2 text-sm text-signal">{fehler}</p>}
-      </motion.div>
-    </div>
+        <span className="text-ink-muted">bis</span>
+        <input
+          type="time"
+          value={bis}
+          onChange={(e) => setBis(e.target.value)}
+          aria-label="Ende"
+          className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base outline-none focus:border-accent"
+        />
+      </div>
+      <button
+        onClick={anlegen}
+        disabled={pending || !titel.trim()}
+        className="mt-4 w-full rounded-pill bg-accent px-5 py-3.5 font-medium text-surface disabled:opacity-50"
+      >
+        {pending ? "Lege an …" : "In den Kalender"}
+      </button>
+      {fehler && <p className="mt-2 text-sm text-signal">{fehler}</p>}
+    </>
   );
 }
