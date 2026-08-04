@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
@@ -21,7 +21,9 @@ import {
   togglePrepItemAction,
   setTodoListAction,
   updateTodoAction,
+  type EinkaufTreffer,
 } from "./actions";
+import { toggleItemAction } from "@/app/einkauf/actions";
 import { motion, AnimatePresence } from "motion/react";
 
 /** Laufende Zieh-Geste: welche Aufgabe, wo ist der Finger, woher kommt sie. */
@@ -42,11 +44,14 @@ export function AufgabenClient({
   me,
   eventTasks = [],
   todoLists = [],
+  einkaufFrageStart = null,
 }: {
   todos: TodoVM[];
   me: Person;
   eventTasks?: EventTasks[];
   todoLists?: { id: string; name: string }[];
+  /** Nur für die Design-Vorschau: zeigt die Einkaufs-Nachfrage sofort. */
+  einkaufFrageStart?: EinkaufTreffer | null;
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
   const [showForm, setShowForm] = useState(false);
@@ -58,6 +63,12 @@ export function AufgabenClient({
   const [zug, setZug] = useState<Zug | null>(null);
   const [zugZiel, setZugZiel] = useState<string | null>(null);
   const [bearbeite, setBearbeite] = useState<TodoVM | null>(null);
+  /**
+   * „Steht auch im Einkauf" — erscheint nur, wenn beim Abhaken wirklich ein
+   * passender offener Eintrag gefunden wurde. Ohne Fund passiert nichts;
+   * eine Frage, die immer kommt, wird sofort weggeklickt.
+   */
+  const [einkaufFrage, setEinkaufFrage] = useState<EinkaufTreffer | null>(einkaufFrageStart);
   // Optimistisch: Die Zuordnung gilt sofort, der Server zieht nach.
   const [listeOverride, setListeOverride] = useState<Record<string, string>>({});
 
@@ -103,7 +114,15 @@ export function AufgabenClient({
   const nichtsOffen = container.every((c) => c.todos.length === 0);
 
   return (
-    <AppShell>
+    <AppShell
+      floating={
+        <AnimatePresence>
+          {einkaufFrage && (
+            <EinkaufNachfrage treffer={einkaufFrage} onWeg={() => setEinkaufFrage(null)} />
+          )}
+        </AnimatePresence>
+      }
+    >
       <>
         <div className="flex items-start justify-between">
           <div>
@@ -201,6 +220,7 @@ export function AufgabenClient({
                       onZugMove={zugMove}
                       onZugEnde={zugEnde}
                       onBearbeiten={() => setBearbeite(t)}
+                      onEinkaufTreffer={setEinkaufFrage}
                     />
                   ))}
                 </div>
@@ -285,6 +305,74 @@ function ErledigtContainer({ erledigt }: { erledigt: TodoVM[] }) {
   );
 }
 
+/**
+ * Die Nachfrage nach dem Abhaken: Derselbe Vorgang steht noch offen im
+ * Einkauf. Ein Tipp streicht ihn dort auch — sonst verschwindet die Leiste
+ * nach ein paar Sekunden von selbst und es bleibt alles, wie es war.
+ *
+ * Sie liegt in der App-Hülle statt im Inhalt: In der iOS-PWA löst sich
+ * `position: fixed` beim Gummiband-Scrollen vom Viewport.
+ */
+function EinkaufNachfrage({ treffer, onWeg }: { treffer: EinkaufTreffer; onWeg: () => void }) {
+  const [erledigt, setErledigt] = useState(false);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+
+  useEffect(() => {
+    const t = setTimeout(onWeg, erledigt ? 2000 : 9000);
+    return () => clearTimeout(t);
+  }, [erledigt, onWeg]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
+      className="absolute inset-x-0 z-30 flex justify-center px-5"
+      style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+    >
+      <div className="flex max-w-full items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-hero">
+        {erledigt ? (
+          <p className="text-sm font-medium">Auch vom Einkaufszettel gestrichen ✓</p>
+        ) : (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{treffer.text}</p>
+              <p className="truncate text-xs text-ink-muted">
+                steht noch im Einkauf{treffer.laden ? ` · ${treffer.laden}` : ""}
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                start(async () => {
+                  const r = await toggleItemAction(treffer.id);
+                  // Nur melden, was wirklich passiert ist. Ging es schief,
+                  // schließt die Leiste — der Eintrag steht dann noch da.
+                  if (r?.ok) {
+                    setErledigt(true);
+                    router.refresh();
+                  } else {
+                    onWeg();
+                  }
+                })
+              }
+              disabled={pending}
+              className="shrink-0 rounded-pill bg-accent px-4 py-2 text-sm font-medium text-surface disabled:opacity-60"
+            >
+              Auch abhaken
+            </button>
+            <button onClick={onWeg} aria-label="Schließen" className="shrink-0 text-ink-muted">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 const CYCLE: (Person | null)[] = ["constanze", "dirk", null];
 
 function TodoRow({
@@ -294,6 +382,7 @@ function TodoRow({
   onZugMove,
   onZugEnde,
   onBearbeiten,
+  onEinkaufTreffer,
 }: {
   todo: TodoVM;
   dragging?: boolean;
@@ -301,6 +390,8 @@ function TodoRow({
   onZugMove?: (e: React.PointerEvent) => void;
   onZugEnde?: () => void;
   onBearbeiten?: () => void;
+  /** Dieselbe Sache steht noch offen im Einkauf — die Leiste fragt nach. */
+  onEinkaufTreffer?: (t: EinkaufTreffer) => void;
 }) {
   const [pending, start] = useTransition();
   const [gone, setGone] = useState(false);
@@ -319,23 +410,27 @@ function TodoRow({
     start(() => setTodoAssigneeAction(todo.id, next));
   }
 
+  // Abhaken über Wischen und über den Kreis — beides derselbe Weg, damit die
+  // Nachfrage zum Einkauf nicht von der Geste abhängt.
+  function umschalten() {
+    setDoneLokal((d) => !d);
+    start(async () => {
+      const r = await toggleTodoAction(todo.id);
+      if (r?.einkauf) onEinkaufTreffer?.(r.einkauf);
+    });
+  }
+
   return (
     <SwipeRow
       flach
-      onSwipeRight={() => {
-        setDoneLokal((d) => !d);
-        start(() => toggleTodoAction(todo.id));
-      }}
+      onSwipeRight={umschalten}
       onSwipeLeft={() => start(async () => { await deleteTodoAction(todo.id); setGone(true); })}
       rightLabel={done ? "Öffnen" : "Erledigt"}
     >
     {/* Flache Zeile — die Karte stellt der Container. */}
     <div className={`flex items-center gap-3 bg-surface px-4 py-3 ${dragging ? "opacity-40" : ""}`}>
       <button
-        onClick={() => {
-          setDoneLokal((d) => !d);
-          start(() => toggleTodoAction(todo.id));
-        }}
+        onClick={umschalten}
         disabled={pending}
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
           done ? "border-accent bg-accent text-surface" : "border-ink-muted/40"

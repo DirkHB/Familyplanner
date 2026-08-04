@@ -51,11 +51,46 @@ export async function createTodoAction(
   return { error: null };
 }
 
-export async function toggleTodoAction(id: string) {
+/** Ein offener Einkaufs-Eintrag, der dieselbe Sache meint wie die Aufgabe. */
+export type EinkaufTreffer = { id: string; text: string; laden: string | null };
+
+/**
+ * Aufgabe abhaken — und nachsehen, ob derselbe Vorgang noch auf dem
+ * Einkaufszettel steht.
+ *
+ * Hintergrund: „Abschiedsgeschenk für Regina" war als Aufgabe erledigt, lag
+ * aber weiter offen im Einkauf. Das Briefing liest beide Orte zusammen und
+ * erzählte am nächsten Morgen von einem Geschenk, das längst gekauft war.
+ * Abgehakt wird trotzdem nichts von allein — gefragt wird, geantwortet wird
+ * mit einem Tipp.
+ */
+export async function toggleTodoAction(
+  id: string,
+): Promise<{ ok: boolean; einkauf?: EinkaufTreffer }> {
   const session = await auth();
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) return { ok: false };
+
+  const { prisma } = await import("@/lib/prisma");
+  const vorher = await prisma.todo.findUnique({ where: { id }, select: { title: true, status: true } });
   await toggleTodo(id);
   revalidatePath("/aufgaben");
+
+  // Nur beim Abhaken fragen, nicht beim Wiederöffnen.
+  if (!vorher || vorher.status === "erledigt") return { ok: true };
+
+  const { findeEinkaufTreffer } = await import("@/lib/todos/einkauf-match");
+  const offene = await prisma.shoppingItem.findMany({
+    where: { checkedAt: null, list: { kind: "haupt" } },
+    select: { id: true, text: true, store: { select: { name: true } } },
+    take: 100,
+  });
+  const treffer = findeEinkaufTreffer(vorher.title, offene);
+  if (!treffer) return { ok: true };
+
+  return {
+    ok: true,
+    einkauf: { id: treffer.id, text: treffer.text, laden: treffer.store?.name ?? null },
+  };
 }
 
 export async function deleteTodoAction(id: string) {
