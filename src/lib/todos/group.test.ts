@@ -99,6 +99,49 @@ describe("containersByList", () => {
     expect(erledigt.map((t) => t.id)).toEqual(["fertig"]);
   });
 
+  /**
+   * Der Grund für diese Tests: Beim Wechsel der Zuständigkeit sprang die
+   * Aufgabe in der Liste umher. Nach oben rücken darf sie nur durch den
+   * Stern — sonst verliert man beim Antippen die Stelle, an der man war.
+   */
+  it("hält die Reihenfolge, wenn sich nur die Zuständigkeit ändert", () => {
+    const vorher = [vm({ id: "a", listId: "l1" }), vm({ id: "b", listId: "l1" }), vm({ id: "c", listId: "l1" })];
+    const nachher = [
+      vm({ id: "b", listId: "l1", assignee: "dirk" }),
+      vm({ id: "c", listId: "l1" }),
+      vm({ id: "a", listId: "l1" }),
+    ];
+    const reihe = (ts: TodoVM[]) => containersByList(ts, listen).container[0].todos.map((t) => t.id);
+    // Auch wenn die Datenbank die geänderte Zeile woanders zurückgibt.
+    expect(reihe(nachher)).toEqual(reihe(vorher));
+  });
+
+  it("lässt nur den Stern nach oben rücken", () => {
+    const reihe = (ts: TodoVM[]) => containersByList(ts, listen).container[0].todos.map((t) => t.id);
+    expect(reihe([vm({ id: "a", listId: "l1" }), vm({ id: "b", listId: "l1" })])).toEqual(["a", "b"]);
+    expect(
+      reihe([vm({ id: "a", listId: "l1" }), vm({ id: "b", listId: "l1", important: true })]),
+    ).toEqual(["b", "a"]);
+  });
+
+  it("lässt den Stern datierte Aufgaben nicht überholen — dort zählt der Zeitpunkt", () => {
+    const { container } = containersByList(
+      [
+        vm({ id: "wichtig", listId: "l1", important: true }),
+        vm({ id: "morgen", listId: "l1", dueKey: "2026-07-31" }),
+      ],
+      listen,
+    );
+    expect(container[0].todos.map((t) => t.id)).toEqual(["morgen", "wichtig"]);
+  });
+
+  it("ordnet gleiche Fälligkeit immer gleich — egal wie die Daten hereinkommen", () => {
+    const reihe = (ts: TodoVM[]) => containersByList(ts, listen).container[0].todos.map((t) => t.id);
+    const eins = vm({ id: "eins", listId: "l1", dueKey: "2026-08-01" });
+    const zwei = vm({ id: "zwei", listId: "l1", dueKey: "2026-08-01" });
+    expect(reihe([eins, zwei])).toEqual(reihe([zwei, eins]));
+  });
+
   it("ohne Listen: ein kopfloser Container — kein leeres Gerippe", () => {
     const voll = containersByList([vm({ id: "a" })], []);
     expect(voll.container).toHaveLength(1);

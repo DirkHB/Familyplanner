@@ -97,12 +97,20 @@ export function containersByList(
   const offen = todos.filter((t) => !t.done);
   const erledigt = todos.filter((t) => t.done);
 
+  /**
+   * Die Reihenfolge muss vollständig aus der Aufgabe selbst folgen — sonst
+   * hängt sie an der Reihenfolge, in der die Daten hereinkommen, und die
+   * verschiebt sich bei jeder Änderung. Deshalb entscheidet am Ende immer
+   * die Kennung. Nach oben rutscht eine Aufgabe damit nur noch durch den
+   * Stern, nicht mehr durch einen Wechsel der Zuständigkeit.
+   */
   const sortiert = (ts: TodoVM[]) =>
     [...ts].sort((a, b) => {
-      if (a.dueKey && b.dueKey) return a.dueKey.localeCompare(b.dueKey);
-      if (a.dueKey) return -1;
-      if (b.dueKey) return 1;
-      return Number(b.important) - Number(a.important);
+      if (a.dueKey && b.dueKey && a.dueKey !== b.dueKey) return a.dueKey.localeCompare(b.dueKey);
+      if (a.dueKey && !b.dueKey) return -1;
+      if (!a.dueKey && b.dueKey) return 1;
+      if (!a.dueKey && !b.dueKey && a.important !== b.important) return a.important ? -1 : 1;
+      return a.id.localeCompare(b.id);
     });
 
   if (listen.length === 0) {

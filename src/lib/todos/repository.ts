@@ -6,9 +6,25 @@ import { sendPushToUser } from "@/lib/push/webpush";
 
 /** Gemeinsame Aufgaben (To-Dos) mit ETA, Verantwortlichen und Erinnerungen. */
 
+/**
+ * Alle Aufgaben in fester Reihenfolge.
+ *
+ * Das `id` am Ende ist kein Schmuck, sondern der Grund, warum die Liste
+ * stillhält: Die 49 übernommenen Aufgaben haben durch `CURRENT_TIMESTAMP`
+ * alle denselben `createdAt` — das ist in Postgres der Zeitpunkt der
+ * Transaktion, nicht der Zeile. Bei Gleichstand liefert die Datenbank die
+ * Zeilen in physischer Lage, und ein `UPDATE` (Zuständigkeit wechseln)
+ * schreibt die Zeile neu ans Ende. Ohne eindeutiges letztes Kriterium
+ * sprang deshalb genau die Aufgabe weg, die man gerade angefasst hatte.
+ */
 export async function listTodos() {
   return prisma.todo.findMany({
-    orderBy: [{ status: "asc" }, { dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+    orderBy: [
+      { status: "asc" },
+      { dueDate: { sort: "asc", nulls: "last" } },
+      { createdAt: "asc" },
+      { id: "asc" },
+    ],
     take: 200,
   });
 }

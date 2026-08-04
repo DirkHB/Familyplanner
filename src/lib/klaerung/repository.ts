@@ -121,9 +121,12 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
 
   // Aufgaben für heute, Überfälliges zuerst.
   const heuteEnde = new Date(heuteStart.getTime() + 86_400_000);
+  // Die Kennung als letztes Kriterium: Bei gleicher Fälligkeit entschiede
+  // sonst die physische Lage der Zeile, und `take` griffe je nach letzter
+  // Änderung andere Aufgaben heraus — der Stapel zeigte andere Karten.
   const rows = await prisma.todo.findMany({
     where: { status: "offen", dueDate: { not: null, lt: heuteEnde } },
-    orderBy: { dueDate: "asc" },
+    orderBy: [{ dueDate: "asc" }, { id: "asc" }],
     take: 20,
   });
   const aufgaben: Extract<KlaerungCard, { kind: "aufgabe" }>[] = rows.map((t) => ({
@@ -142,7 +145,7 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
   if (berlinWeekday(now) === 6) {
     const ohneTermin = await prisma.todo.findMany({
       where: { status: "offen", dueDate: null },
-      orderBy: [{ important: "desc" }, { createdAt: "asc" }],
+      orderBy: [{ important: "desc" }, { createdAt: "asc" }, { id: "asc" }],
       take: 3,
     });
     parken = ohneTermin.map((t) => ({
