@@ -88,6 +88,38 @@ export async function sendTestPushAction(): Promise<{ devices: number; sent: num
  * Standard ist aus — das ist die erste Funktion, die selbstaendig Eintraege
  * im gemeinsamen Kalender anlegt.
  */
+/**
+ * Einzelne Mitteilungsarten an- und abschalten.
+ *
+ * Bewusst nur die beiden, die wirklich etwas auslösen — ein Schalter, der
+ * nichts bewirkt, ist schlimmer als keiner. Die Ruhezeiten gelten davon
+ * unabhängig weiter.
+ */
+export type PushArt = "requests" | "taskWindow";
+
+export async function setPushPrefAction(art: PushArt, an: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  if (art !== "requests" && art !== "taskWindow") return { ok: false };
+
+  const { prisma } = await import("@/lib/prisma");
+  const { mergePrefs } = await import("@/lib/push/quiet-hours");
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { notificationPrefs: true },
+  });
+  if (!user) return { ok: false };
+
+  // Über die zusammengeführten Vorgaben schreiben, damit eine alte Zeile ohne
+  // den Schlüssel nicht plötzlich alles andere verliert.
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notificationPrefs: { ...mergePrefs(user.notificationPrefs), [art]: an } },
+  });
+  revalidatePath("/einstellungen");
+  return { ok: true };
+}
+
 export async function setCareBlocksAction(an: boolean) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };

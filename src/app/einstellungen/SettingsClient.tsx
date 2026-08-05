@@ -11,6 +11,7 @@ import {
   disconnectAction,
   sendTestPushAction,
   setCareBlocksAction,
+  setPushPrefAction,
   setTagesfensterAction,
   createTodoListAction,
   renameTodoListAction,
@@ -61,6 +62,7 @@ export function SettingsClient({
   stores = [],
   tagVon = null,
   tagBis = null,
+  pushPrefs = { requests: true, taskWindow: true },
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -70,6 +72,8 @@ export function SettingsClient({
   stores?: Fach[];
   tagVon?: number | null;
   tagBis?: number | null;
+  /** Welche der beiden selbsttätigen Mitteilungen eingeschaltet sind. */
+  pushPrefs?: { requests: boolean; taskWindow: boolean };
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -104,13 +108,31 @@ export function SettingsClient({
           </Zeile>
           <Zeile titel="Mitteilungen" status="Ruhe 21–7 Uhr">
             <p className="text-sm text-ink-muted">
-              Damit ihr erfahrt, was euch betrifft, ohne die App zu öffnen: wenn eine Frage
-              bis morgen entschieden sein muss, wenn niemand bei Nicolas eingetragen ist —
-              und einmal am Tag zu den offenen Aufgaben, sobald wirklich Zeit dafür ist.
-              Nachts ist Ruhe.
+              Damit ihr erfahrt, was euch betrifft, ohne die App zu öffnen. Nachts ist Ruhe —
+              von 21 bis 7 Uhr wird nichts zugestellt, sondern nachgeholt.
             </p>
             <div className="mt-3">
               <EnableNotifications />
+            </div>
+            {/* Die beiden Arten, die von selbst etwas verschicken. Alles
+                andere hängt an einer Handlung und braucht keinen Schalter. */}
+            <div className="mt-3 divide-y divide-surface-muted/60 border-t border-surface-muted/60">
+              <SchalterZeile
+                flach
+                titel="Fragen mit Frist"
+                ariaLabel="Mitteilung bei Fragen mit Frist"
+                an={pushPrefs.requests}
+                onSchalten={(neu) => setPushPrefAction("requests", neu)}
+                hinweis="Wenn eine Frage an dich offen ist und der Termin dazu bald beginnt — dann meldet sich die App, statt bis zum nächsten Morgen zu warten."
+              />
+              <SchalterZeile
+                flach
+                titel="Aufgaben, wenn Zeit ist"
+                ariaLabel="Täglicher Anstoß zu offenen Aufgaben"
+                an={pushPrefs.taskWindow}
+                onSchalten={(neu) => setPushPrefAction("taskWindow", neu)}
+                hinweis="Einmal am Tag, sobald eine echte Lücke in deinem Tag beginnt — mit einem Vorschlag, was jetzt hineinpasst."
+              />
             </div>
             <TestPush />
           </Zeile>
@@ -229,28 +251,44 @@ function Zeile({
 }
 
 /**
- * Betreuung als echter Kalendereintrag. Der Schalter sitzt direkt in der
- * Zeile — ein Schalter IST die Handlung, da gibt es nichts aufzuklappen.
- * Standardmäßig aus: die einzige Funktion, die von sich aus Einträge im
- * gemeinsamen Kalender anlegt.
+ * Ein Schalter mit Beschriftung und Erklärung darunter. Der Schalter IST die
+ * Handlung — es gibt nichts aufzuklappen, und er kippt sofort, statt auf den
+ * Server zu warten.
+ *
+ * `flach` lässt den seitlichen Rand weg: Steht der Schalter schon in einer
+ * aufgeklappten Zeile, bringt die ihren eigenen mit.
  */
-function CareBlocksZeile({ an }: { an: boolean }) {
+function SchalterZeile({
+  titel,
+  hinweis,
+  an,
+  ariaLabel,
+  onSchalten,
+  flach = false,
+}: {
+  titel: string;
+  hinweis: React.ReactNode;
+  an: boolean;
+  ariaLabel: string;
+  onSchalten: (neu: boolean) => Promise<unknown>;
+  flach?: boolean;
+}) {
   const [pending, start] = useTransition();
   const [aktiv, setAktiv] = useState(an);
   return (
-    <div className="px-4 py-3">
+    <div className={`py-3 ${flach ? "" : "px-4"}`}>
       <div className="flex items-center gap-3">
-        <span className="min-w-0 flex-1 font-medium">Eintrag im Kalender</span>
+        <span className="min-w-0 flex-1 font-medium">{titel}</span>
         <button
           role="switch"
           aria-checked={aktiv}
-          aria-label="Betreuung im Kalender eintragen"
+          aria-label={ariaLabel}
           disabled={pending}
           onClick={() => {
             const neu = !aktiv;
             setAktiv(neu);
             start(async () => {
-              await setCareBlocksAction(neu);
+              await onSchalten(neu);
             });
           }}
           className={`relative h-7 w-12 shrink-0 rounded-pill transition-colors ${
@@ -265,11 +303,29 @@ function CareBlocksZeile({ an }: { an: boolean }) {
           />
         </button>
       </div>
-      <p className="mt-1 text-sm text-ink-muted">
-        Wer übernimmt, bekommt „👶 Nicolas · Name" in den gemeinsamen Kalender — sichtbar auf
-        dem Sperrbildschirm.{aktiv && " Nimmst du eine Zusage zurück, verschwindet der Eintrag."}
-      </p>
+      <p className="mt-1 text-sm text-ink-muted">{hinweis}</p>
     </div>
+  );
+}
+
+/**
+ * Betreuung als echter Kalendereintrag. Standardmäßig aus: die einzige
+ * Funktion, die von sich aus Einträge im gemeinsamen Kalender anlegt.
+ */
+function CareBlocksZeile({ an }: { an: boolean }) {
+  return (
+    <SchalterZeile
+      titel="Eintrag im Kalender"
+      ariaLabel="Betreuung im Kalender eintragen"
+      an={an}
+      onSchalten={setCareBlocksAction}
+      hinweis={
+        <>
+          Wer übernimmt, bekommt „👶 Nicolas · Name" in den gemeinsamen Kalender — sichtbar auf
+          dem Sperrbildschirm. Nimmst du eine Zusage zurück, verschwindet der Eintrag.
+        </>
+      }
+    />
   );
 }
 

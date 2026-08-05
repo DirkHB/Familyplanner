@@ -6,6 +6,7 @@ import { listDismissed } from "@/lib/care/rules";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import { listTodoLists, countOpenPerList } from "@/lib/todos/lists";
 import { listStores } from "@/lib/shopping/repository";
+import { mergePrefs } from "@/lib/push/quiet-hours";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,10 @@ export default async function EinstellungenPage() {
   const ich = userId
     ? await prisma.user.findUnique({
         where: { id: userId },
-        select: { tagVonStunde: true, tagBisStunde: true },
+        select: { tagVonStunde: true, tagBisStunde: true, notificationPrefs: true },
       })
     : null;
+  const prefs = mergePrefs(ich?.notificationPrefs);
 
   const account = userId
     ? await prisma.calendarAccount.findFirst({
@@ -85,6 +87,7 @@ export default async function EinstellungenPage() {
       }))}
       tagVon={ich?.tagVonStunde ?? null}
       tagBis={ich?.tagBisStunde ?? null}
+      pushPrefs={{ requests: prefs.requests, taskWindow: prefs.taskWindow }}
     />
   );
 }
