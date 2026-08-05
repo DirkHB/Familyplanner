@@ -110,6 +110,42 @@ async function triggerCareAbend() {
 
 cron.schedule("0 18 * * *", triggerCareAbend, { timezone: TZ });
 
+// --- Anfragen mit Frist: stündlich. Wessen Termin in <24 h beginnt, braucht
+//     jetzt eine Entscheidung — nicht erst beim nächsten Tages-Nudge. ---
+async function triggerFrist() {
+  if (!process.env.WORKER_SECRET) return;
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/frist`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (body?.pushed > 0 || !res.ok) log("frist", `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log("frist", `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("0 * * * *", triggerFrist, { timezone: TZ });
+
+// --- Aufgaben-Anstoß: alle 15 Minuten prüfen, ob gerade ein freies Fenster
+//     beginnt. Verschickt höchstens einmal am Tag je Person. ---
+async function triggerAufgabenFenster() {
+  if (!process.env.WORKER_SECRET) return;
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/aufgaben-fenster`, {
+      method: "POST",
+      headers: { "x-worker-secret": process.env.WORKER_SECRET },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (body?.pushed > 0 || !res.ok) log("aufgaben-fenster", `Status ${res.status} · ${JSON.stringify(body)}`);
+  } catch (err) {
+    log("aufgaben-fenster", `Fehler: ${err?.message ?? err}`);
+  }
+}
+
+cron.schedule("*/15 * * * *", triggerAufgabenFenster, { timezone: TZ });
+
 // Mini-HTTP-Server nur für den Sliplane-Healthcheck: Sliplane verlangt von jedem
 // Service eine HTTP-Antwort auf "/", sonst landet er in einer Redeploy-Schleife
 // (gelernt am Postgres-Container). Antwortet 200 mit Status der Jobs.

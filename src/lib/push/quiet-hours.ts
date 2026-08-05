@@ -42,6 +42,8 @@ export type NotificationPrefs = {
   eventReminders: boolean;
   careGaps: boolean;
   weeklyPlanning: boolean;
+  /** Einmal am Tag: offene Aufgaben, sobald ein freies Fenster beginnt. */
+  taskWindow: boolean;
   quietStart: string;
   quietEnd: string;
 };
@@ -51,6 +53,7 @@ export const DEFAULT_PREFS: NotificationPrefs = {
   eventReminders: true,
   careGaps: true,
   weeklyPlanning: true,
+  taskWindow: true,
   quietStart: "21:00",
   quietEnd: "07:00",
 };

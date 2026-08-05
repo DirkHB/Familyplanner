@@ -104,8 +104,10 @@ export function SettingsClient({
           </Zeile>
           <Zeile titel="Mitteilungen" status="Ruhe 21–7 Uhr">
             <p className="text-sm text-ink-muted">
-              Für Anfragen und Erinnerungen — damit ihr erfahrt, was euch betrifft, ohne die
-              App zu öffnen.
+              Damit ihr erfahrt, was euch betrifft, ohne die App zu öffnen: wenn eine Frage
+              bis morgen entschieden sein muss, wenn niemand bei Nicolas eingetragen ist —
+              und einmal am Tag zu den offenen Aufgaben, sobald wirklich Zeit dafür ist.
+              Nachts ist Ruhe.
             </p>
             <div className="mt-3">
               <EnableNotifications />

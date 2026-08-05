@@ -30,6 +30,21 @@ export async function runCareAbend(now: Date = new Date()): Promise<AbendSummary
   });
   if (offene.length === 0) return summary;
 
+  /**
+   * Läuft zu diesem Termin noch eine unbeantwortete Frage, kümmert sich der
+   * Frist-Anstoß darum — der geht gezielt an die Person, die antworten soll,
+   * statt beide anzustupsen. Sonst läse einer von beiden abends zweimal
+   * dasselbe, und das ist der schnellste Weg, Mitteilungen abzuschalten.
+   */
+  const mitOffenerFrage = new Set(
+    (
+      await prisma.request.findMany({
+        where: { status: "open", eventUid: { in: offene.map((a) => a.eventUid) } },
+        select: { eventUid: true },
+      })
+    ).map((r) => r.eventUid!),
+  );
+
   const { occurrences } = await getRangeData(now, bis);
 
   // Beide Nutzerzeilen sicherstellen — Pushes dürfen nie ins Leere gehen.
@@ -44,6 +59,7 @@ export async function runCareAbend(now: Date = new Date()): Promise<AbendSummary
   );
 
   for (const a of offene) {
+    if (mitOffenerFrage.has(a.eventUid)) continue;
     const occ = occurrences.find(
       (o) => o.uid === a.eventUid && dayKey(o.start) === dayKey(a.occurrenceDate),
     );

@@ -50,15 +50,9 @@ export function dauerLabel(minuten: number): string {
   return `${rest ? `${ganz}½` : ganz} Std`;
 }
 
-export function buildStrahl(
-  events: { key: string; start: Date; end: Date }[],
-  tag: string,
-  fenster: TagesFenster = STANDARD_FENSTER,
-): StrahlSegment[] {
+/** Überschneidende Termine zu einer Gruppe zusammenfassen, zeitlich sortiert. */
+function gruppiere(events: { key: string; start: Date; end: Date }[]) {
   const sortiert = [...events].sort((a, b) => a.start.getTime() - b.start.getTime());
-  const segmente: StrahlSegment[] = [];
-
-  // Überschneidungen zu Gruppen zusammenfassen.
   const gruppen: { keys: string[]; start: Date; end: Date }[] = [];
   for (const e of sortiert) {
     const letzte = gruppen[gruppen.length - 1];
@@ -69,7 +63,46 @@ export function buildStrahl(
       gruppen.push({ keys: [e.key], start: e.start, end: e.end });
     }
   }
+  return gruppen;
+}
 
+/** Ein Stück freie Zeit mit echten Uhrzeiten. */
+export type FreiBlock = { von: Date; bis: Date; minuten: number };
+
+/**
+ * Die freien Blöcke eines Tages — dieselbe Rechnung wie im Zeitstrahl, aber
+ * mit Uhrzeiten statt Beschriftung. Der Zeitstrahl zeigt sie an; der Worker
+ * braucht sie, um im richtigen Moment an die Aufgaben zu erinnern.
+ */
+export function freieBloecke(
+  events: { key: string; start: Date; end: Date }[],
+  tag: string,
+  fenster: TagesFenster = STANDARD_FENSTER,
+): FreiBlock[] {
+  const fensterVon = berlinStunde(tag, fenster.vonStunde);
+  const fensterBis = berlinStunde(tag, fenster.bisStunde);
+  const bloecke: FreiBlock[] = [];
+
+  const nimm = (von: Date, bis: Date) => {
+    const minuten = (bis.getTime() - von.getTime()) / 60_000;
+    if (minuten >= MIN_FREI_MINUTEN) bloecke.push({ von, bis, minuten });
+  };
+
+  let zeiger = fensterVon;
+  for (const g of gruppiere(events)) {
+    nimm(zeiger, g.start);
+    if (g.end > zeiger) zeiger = g.end;
+  }
+  nimm(zeiger, fensterBis);
+  return bloecke;
+}
+
+export function buildStrahl(
+  events: { key: string; start: Date; end: Date }[],
+  tag: string,
+  fenster: TagesFenster = STANDARD_FENSTER,
+): StrahlSegment[] {
+  const segmente: StrahlSegment[] = [];
   const fensterVon = berlinStunde(tag, fenster.vonStunde);
   const fensterBis = berlinStunde(tag, fenster.bisStunde);
 
@@ -79,7 +112,7 @@ export function buildStrahl(
   };
 
   let zeiger = fensterVon;
-  for (const g of gruppen) {
+  for (const g of gruppiere(events)) {
     // Termine vor dem Fenster zählen keine Morgenlücke an; das Fenster
     // begrenzt nur die freie Zeit, nie die Termine selbst.
     frei(zeiger, g.start);
