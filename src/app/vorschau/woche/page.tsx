@@ -21,6 +21,7 @@ export default function VorschauWoche() {
       fromPerson: "constanze" as const,
       ageLabel: "vor 20 Min.",
       overdue: false,
+      whenLabel: "Do, 6. August, 16:00",
     },
   ];
   const heute = days[0];

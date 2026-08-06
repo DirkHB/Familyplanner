@@ -9,6 +9,7 @@ import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { getKlaerungStack } from "@/lib/klaerung/repository";
 import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
+import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
 import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
 import { countTodosDueToday } from "@/lib/klaerung/repository";
@@ -45,9 +46,11 @@ export default async function WochePage({
   const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
   const days = buildWeek(occurrences, metaByUid, now, careByOcc, fenster);
 
-  const requests = session?.user?.id
-    ? (await getOpenRequestsForUser(session.user.id)).map((r) => buildRequestVM(r, now))
-    : [];
+  const offeneAnfragen = session?.user?.id ? await getOpenRequestsForUser(session.user.id) : [];
+  // Wann der Termin dazu ist, gehört auf die Karte — sonst sagt man Ja, ohne
+  // zu wissen, worauf.
+  const anfrageTermine = await terminLabelsFuerAnfragen(offeneAnfragen, now);
+  const requests = offeneAnfragen.map((r) => buildRequestVM(r, now, anfrageTermine.get(r.id) ?? null));
 
   // Das Briefing: was als Nächstes kommt und was heute noch offen ist —
   // nichts, was die Liste darunter ohnehin zeigt. Immer live gerechnet.

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { listRequests } from "@/lib/requests/repository";
 import { buildRequestVM, relativeTime } from "@/lib/requests/view-model";
+import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { RequestsClient, type HistoryItem } from "./RequestsClient";
 
@@ -14,9 +15,9 @@ export default async function AnfragenPage() {
   const now = new Date();
   const all = await listRequests(userId);
 
-  const incoming = all
-    .filter((r) => r.toUserId === userId && r.status === "open")
-    .map((r) => buildRequestVM(r, now));
+  const offen = all.filter((r) => r.toUserId === userId && r.status === "open");
+  const anfrageTermine = await terminLabelsFuerAnfragen(offen, now);
+  const incoming = offen.map((r) => buildRequestVM(r, now, anfrageTermine.get(r.id) ?? null));
 
   const history: HistoryItem[] = all
     .filter((r) => !(r.toUserId === userId && r.status === "open"))

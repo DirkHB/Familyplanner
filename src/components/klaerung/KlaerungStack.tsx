@@ -358,6 +358,8 @@ function CardBody({ card }: { card: KlaerungCard }) {
         <div className="mt-10">
           <p className="eyebrow text-accent-light">{card.fromName} fragt</p>
           <p className="mt-3 font-display text-3xl leading-tight">{card.question}</p>
+          {/* Wann — sonst sagt man Ja, ohne zu wissen, worauf. */}
+          {card.when && <p className="mt-3 text-surface/70">{card.when}</p>}
         </div>
       );
     case "parken":

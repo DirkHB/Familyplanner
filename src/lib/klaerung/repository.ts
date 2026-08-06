@@ -1,10 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getRangeData } from "@/lib/calendar/range-data";
-import { startOfDayBerlin, dayKey, formatTime, formatWeekday, formatMonthDay } from "@/lib/calendar/format";
+import { startOfDayBerlin, dayKey, wannLabel } from "@/lib/calendar/format";
 import { isCareGap } from "@/lib/care/gaps";
 import { getDismissedTitleKeys } from "@/lib/care/rules";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
+import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { berlinWeekday } from "@/lib/overview/horizon";
 import { buildStack, type KlaerungCard } from "./build";
@@ -35,10 +36,7 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
     getOpenRequestsForUser(userId),
   ]);
 
-  const wann = (start: Date, allDay: boolean) => {
-    const tag = dayKey(start) === todayKey ? "heute" : `${formatWeekday(start).slice(0, 2)}, ${formatMonthDay(start)}`;
-    return allDay ? tag : `${tag}, ${formatTime(start)}`;
-  };
+  const wann = (start: Date, allDay: boolean) => wannLabel(start, allDay, now);
 
   // Unbesprochene Betreuung heute/morgen.
   const betreuung: Extract<KlaerungCard, { kind: "betreuung" }>[] = [];
@@ -62,15 +60,20 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
   }
 
   // Anfragen an mich (Ja/Nein direkt wischbar; alles andere führt zur Anfrage).
-  const anfragen: Extract<KlaerungCard, { kind: "anfrage" }>[] = offeneAnfragen
-    .filter((r) => r.type === "yes_no")
-    .map((r) => ({
-      kind: "anfrage" as const,
-      id: r.id,
-      question: r.question,
-      fromName: r.fromUser.name ?? displayNameForEmail(r.fromUser.email),
-      eventUid: r.eventUid,
-    }));
+  const anfragenRoh = offeneAnfragen.filter((r) => r.type === "yes_no");
+
+  // Die Frage kann weiter vorausgreifen als die zwei Tage oben — der Termin
+  // dazu wird deshalb eigens nachgeschlagen.
+  const terminLabels = await terminLabelsFuerAnfragen(anfragenRoh, now);
+
+  const anfragen: Extract<KlaerungCard, { kind: "anfrage" }>[] = anfragenRoh.map((r) => ({
+    kind: "anfrage" as const,
+    id: r.id,
+    question: r.question,
+    fromName: r.fromUser.name ?? displayNameForEmail(r.fromUser.email),
+    eventUid: r.eventUid,
+    when: terminLabels.get(r.id) ?? null,
+  }));
 
   // Eskalation: eine Betreuungsanfrage wurde mit Nein beantwortet und die
   // Betreuung ist weiterhin offen — ihr könnt beide nicht. Das darf nicht im

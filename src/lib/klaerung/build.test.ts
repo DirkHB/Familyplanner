@@ -25,7 +25,9 @@ describe("buildStack", () => {
   it("sortiert nach Dringlichkeit: Eskalation, Anfrage, Betreuung, Aufgaben", () => {
     const stack = buildStack({
       eskalationen: [{ kind: "eskalation", uid: "e", title: "E", when: "heute", occurrenceISO: null }],
-      anfragen: [{ kind: "anfrage", id: "q", question: "F?", fromName: "Constanze", eventUid: null }],
+      anfragen: [
+        { kind: "anfrage", id: "q", question: "F?", fromName: "Constanze", eventUid: null, when: null },
+      ],
       betreuung: [betreuung("b")],
       aufgaben: [aufgabe("t")],
     });

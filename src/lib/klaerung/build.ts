@@ -25,7 +25,18 @@ export type KlaerungCard =
       when: string;
       occurrenceISO: string | null;
     }
-  | { kind: "anfrage"; id: string; question: string; fromName: string; eventUid: string | null }
+  | {
+      kind: "anfrage";
+      id: string;
+      question: string;
+      fromName: string;
+      eventUid: string | null;
+      /**
+       * Wann der Termin ist, um den es geht. Ohne das muss man raten oder die
+       * App wechseln — und „Ja" sagt man nicht auf gut Glück.
+       */
+      when: string | null;
+    }
   | { kind: "betreuung"; uid: string; title: string; when: string; occurrenceISO: string }
   | {
       kind: "aufgabe";

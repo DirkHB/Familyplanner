@@ -69,6 +69,8 @@ export function RequestHero({ requests }: { requests: RequestVM[] }) {
               />
             </div>
             <p className="mt-3 font-display text-2xl leading-snug">{req.question}</p>
+            {/* Wann — sonst antwortet man auf gut Glück. */}
+            {req.whenLabel && <p className="mt-2 text-surface/70">{req.whenLabel}</p>}
             <p className="mt-3 flex items-center gap-2 text-sm text-surface/70">
               <Avatar person={req.fromPerson} size={22} /> {req.fromName} fragt · {req.ageLabel}
               {requests.length > 1 && <span className="ml-auto">{index + 1} / {requests.length}</span>}

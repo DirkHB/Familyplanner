@@ -8,7 +8,14 @@ import type { KlaerungCard } from "@/lib/klaerung/build";
 /** Öffentliche Design-Vorschau des Klärungs-Stapels mit Beispieldaten. */
 const CARDS: KlaerungCard[] = [
   { kind: "eskalation", uid: "e1", title: "Kinderarzt Nicolas | Impfung", when: "heute, 14:00", occurrenceISO: null },
-  { kind: "anfrage", id: "q1", question: "Schaffst du Donnerstag den Einkauf?", fromName: "Constanze", eventUid: null },
+  {
+    kind: "anfrage",
+    id: "q1",
+    question: "Kannst du bei „André Termin Constanze 16:00\" aufs Baby aufpassen?",
+    fromName: "Constanze",
+    eventUid: "e-andre",
+    when: "morgen, 16:00",
+  },
   // Bewusst der Kinderarzt: Hier ist Nicolas dabei, und die Karte muss einen
   // dritten Weg anbieten. Wer die Vorschau ansieht, soll genau das sehen.
   { kind: "betreuung", uid: "b1", title: "Kinderarzt · U3", when: "morgen, 09:00", occurrenceISO: "2026-08-01T07:00:00.000Z" },

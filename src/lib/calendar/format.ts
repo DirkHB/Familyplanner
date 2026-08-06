@@ -42,6 +42,27 @@ export function dayKey(d: Date): string {
 }
 
 /** UTC-Instant der Berliner Mitternacht des Tages von `now` (DST-sicher). */
+/**
+ * „heute, 16:00", „morgen, 09:00", „Di, 4. August, 16:00".
+ *
+ * Der Bezugspunkt für alles, was zur Entscheidung ansteht: Karten im
+ * Klärungs-Stapel, die Anfrage auf der Woche, die Anfragen-Liste. Er gehört
+ * an eine Stelle — sonst sagt eine Ansicht „morgen" und die nächste
+ * „Di, 4. August" für denselben Termin.
+ */
+export function wannLabel(start: Date, allDay: boolean, now: Date = new Date()): string {
+  const k = dayKey(start);
+  // Mittags-Anker: über die Sommerzeitgrenze kippt sonst der Tag.
+  const morgenKey = dayKey(new Date(startOfDayBerlin(now).getTime() + 86_400_000 + 43_200_000));
+  const tag =
+    k === dayKey(now)
+      ? "heute"
+      : k === morgenKey
+        ? "morgen"
+        : `${formatWeekday(start).slice(0, 2)}, ${formatMonthDay(start)}`;
+  return allDay ? tag : `${tag}, ${formatTime(start)}`;
+}
+
 export function startOfDayBerlin(now: Date = new Date()): Date {
   const key = keyFmt.format(now);
   for (const off of ["+02:00", "+01:00"]) {

@@ -90,6 +90,7 @@ function IncomingCard({ req }: { req: RequestVM }) {
   return (
     <div className="rounded-card bg-ink p-5 text-surface shadow-card">
       <p className="font-display text-xl">{req.question}</p>
+      {req.whenLabel && <p className="mt-1 text-surface/70">{req.whenLabel}</p>}
       <p className="mt-1 text-sm text-surface/70">{req.fromName} fragt · {req.ageLabel}</p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         {req.type === "yes_no" ? (

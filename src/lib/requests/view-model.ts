@@ -12,6 +12,8 @@ export type RequestVM = {
   fromPerson: Person;
   ageLabel: string;
   overdue: boolean;
+  /** Wann der Termin ist, um den es geht („morgen, 16:00") — sonst null. */
+  whenLabel: string | null;
 };
 
 /** Freundliche relative Zeit auf Deutsch. */
@@ -36,9 +38,14 @@ type RequestRow = {
   fromUser: { email: string; name: string | null };
 };
 
-export function buildRequestVM(req: RequestRow, now: Date = new Date()): RequestVM {
+export function buildRequestVM(
+  req: RequestRow,
+  now: Date = new Date(),
+  whenLabel: string | null = null,
+): RequestVM {
   const options = Array.isArray(req.options) ? (req.options as string[]) : [];
   return {
+    whenLabel,
     id: req.id,
     question: req.question,
     type: (req.type as RequestType) ?? "yes_no",
