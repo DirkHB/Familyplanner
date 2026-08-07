@@ -385,14 +385,16 @@ model Todo {
  */
 
 model Briefing {
-  id        String   @id @default(cuid())
-  kind      String // morgen | woche
-  dayKey    String // YYYY-MM-DD (Berlin) — ein Briefing je Art und Tag
-  summary   String   @db.Text
-  payload   Json     @default("{}")
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  /// Wem gehört das? Solange eine Datenbank einem Haushalt gehört, immer '1'.
+  householdId String   @default("1") @map("household_id")
+  kind        String // morgen | woche
+  dayKey      String // YYYY-MM-DD (Berlin) — ein Briefing je Art und Tag
+  summary     String   @db.Text
+  payload     Json     @default("{}")
+  createdAt   DateTime @default(now())
 
-  @@unique([kind, dayKey])
+  @@unique([householdId, kind, dayKey])
   @@map("briefings")
 }
 
@@ -406,12 +408,15 @@ model Briefing {
  * abwinken. Der Schlüssel kommt aus titleKey() in lib/care/gaps.ts.
  */
 model CareRule {
-  id        String   @id @default(cuid())
-  titleKey  String   @unique @map("title_key")
-  decision  String   @default("keine") // keine = nicht nach Betreuung fragen
-  createdBy String?  @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  /// Wem gehört das? Solange eine Datenbank einem Haushalt gehört, immer '1'.
+  householdId String   @default("1") @map("household_id")
+  titleKey    String   @map("title_key")
+  decision    String   @default("keine") // keine = nicht nach Betreuung fragen
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
 
+  @@unique([householdId, titleKey])
   @@map("care_rules")
 }
 

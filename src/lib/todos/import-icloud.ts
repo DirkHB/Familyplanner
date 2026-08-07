@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "@/lib/calendar/tsdav-client";
+import { kalenderzugang } from "@/lib/haushalt/singletons";
 import { parseTodos, type ParsedTodo } from "@/lib/calendar/vtodo";
 import { createTodoList } from "./lists";
 import type { Person } from "@/lib/auth/allowlist";
@@ -26,10 +26,9 @@ export type RemindersList = {
 };
 
 async function icloud() {
-  const account = await prisma.calendarAccount.findFirst({ where: { provider: "icloud" } });
-  if (!account) return null;
-  const password = decryptSecret(account.credentialsEncrypted);
-  return createICloudClient({ username: account.username ?? "", password });
+  const ziel = await kalenderzugang();
+  if (!ziel) return null;
+  return createICloudClient({ username: ziel.username, password: ziel.password });
 }
 
 /**

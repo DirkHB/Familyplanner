@@ -7,6 +7,7 @@ import { personForEmail, type Person } from "@/lib/auth/allowlist";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
 import { careWindow } from "@/lib/care/gaps";
+import { haushaltId } from "@/lib/haushalt/id";
 
 /**
  * Gebündelte, kurz gecachte Bereichsdaten für Woche/Monat: Vorkommen + Zusatzdaten
@@ -15,10 +16,20 @@ import { careWindow } from "@/lib/care/gaps";
  * ohne je veraltet zu wirken.
  */
 
-export const KALENDER_TAG = "kalender";
+/**
+ * Der Tag trägt den Haushalt: Sonst würde ein Haushalt beim Ändern eines
+ * Termins den Zwischenspeicher aller anderen leeren — und schlimmer, alle
+ * würden sich denselben Eintrag teilen.
+ */
+export function kalenderTag(haushalt: string = haushaltId()): string {
+  return `kalender:${haushalt}`;
+}
+
+/** Beibehalten für Aufrufer, die nur den Tag dieses Haushalts meinen. */
+export const KALENDER_TAG = kalenderTag();
 
 export function invalidateKalender() {
-  revalidateTag(KALENDER_TAG);
+  revalidateTag(kalenderTag());
 }
 
 type Wire = {
@@ -27,7 +38,24 @@ type Wire = {
   care: { eventUid: string; day: string; status: string; email: string | null; note: string | null }[];
 };
 
-const load = unstable_cache(
+/**
+ * Ein Lader je Haushalt. Der Haushalt steckt im Schlüssel und im Tag —
+ * ohne ihn teilten sich zwei Haushalte, die dieselbe Woche laden, denselben
+ * Eintrag. Das wäre kein Fehler, den man sieht, sondern einer, der fremde
+ * Termine ausliefert.
+ */
+const lader = new Map<string, (fromISO: string, toISO: string) => Promise<Wire>>();
+
+function ladeFuer(haushalt: string) {
+  const vorhanden = lader.get(haushalt);
+  if (vorhanden) return vorhanden;
+  const neu = baueLader(haushalt);
+  lader.set(haushalt, neu);
+  return neu;
+}
+
+const baueLader = (haushalt: string) =>
+  unstable_cache(
   async (fromISO: string, toISO: string): Promise<Wire> => {
     const from = new Date(fromISO);
     const to = new Date(toISO);
@@ -79,14 +107,14 @@ const load = unstable_cache(
       })),
     };
   },
-  ["kalender-range"],
-  { revalidate: 60, tags: [KALENDER_TAG] },
-);
+    ["kalender-range", haushalt],
+    { revalidate: 60, tags: [kalenderTag(haushalt)] },
+  );
 
 export type CareOcc = { status: string; person: Person | null; externName?: string | null };
 
 export async function getRangeData(from: Date, to: Date) {
-  const d = await load(from.toISOString(), to.toISOString());
+  const d = await ladeFuer(haushaltId())(from.toISOString(), to.toISOString());
   const occurrences: Occurrence[] = d.occ.map((o) => ({
     ...o,
     start: new Date(o.start),

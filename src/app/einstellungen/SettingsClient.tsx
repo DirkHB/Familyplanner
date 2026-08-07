@@ -63,6 +63,7 @@ export function SettingsClient({
   tagVon = null,
   tagBis = null,
   pushPrefs = { requests: true, taskWindow: true },
+  fremdeVerbindung = null,
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -74,6 +75,8 @@ export function SettingsClient({
   tagBis?: number | null;
   /** Welche der beiden selbsttätigen Mitteilungen eingeschaltet sind. */
   pushPrefs?: { requests: boolean; taskWindow: boolean };
+  /** Kein eigenes iCloud-Konto, aber der Haushalt hat eins — wessen? */
+  fremdeVerbindung?: { name: string } | null;
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -98,10 +101,33 @@ export function SettingsClient({
               steht die Zeile offen. Verbunden reicht die eine Statuszeile. */}
           <Zeile
             titel="iCloud-Kalender"
-            status={account ? account.username : "Nicht verbunden"}
-            defaultOffen={!account}
+            status={
+              account ? account.username : fremdeVerbindung ? "Über den Haushalt" : "Nicht verbunden"
+            }
+            defaultOffen={!account && !fremdeVerbindung}
           >
-            {account ? <Connected account={account} /> : <ConnectForm />}
+            {account ? (
+              <Connected account={account} />
+            ) : fremdeVerbindung ? (
+              <>
+                <p className="text-sm text-ink-muted">
+                  Der gemeinsame Kalender hängt an der Verbindung von{" "}
+                  <span className="font-medium text-ink">{fremdeVerbindung.name}</span>. Du siehst
+                  alle Termine und kannst welche anlegen — ein eigenes iCloud-Konto brauchst du
+                  dafür nicht.
+                </p>
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-sm font-medium text-accent">
+                    Eigenes Konto verbinden
+                  </summary>
+                  <div className="mt-3">
+                    <ConnectForm />
+                  </div>
+                </details>
+              </>
+            ) : (
+              <ConnectForm />
+            )}
           </Zeile>
           <Zeile titel="Dein Tag" status={`${tagVon ?? 7}–${tagBis ?? 21} Uhr`}>
             <TagesfensterInhalt von={tagVon ?? 7} bis={tagBis ?? 21} />

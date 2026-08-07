@@ -1,6 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { haushaltId } from "@/lib/haushalt/id";
+import { HAUPTLISTE_FILTER } from "@/lib/haushalt/singletons";
 import { getAnthropic, aiConfigured, AI_MODEL } from "./client";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey, formatTime, formatWeekday } from "@/lib/calendar/format";
@@ -40,7 +42,7 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
       select: { title: true, dueDate: true, listId: true, assignee: true },
     }),
     prisma.shoppingItem.findMany({
-      where: { checkedAt: null, list: { kind: "haupt" } },
+      where: { checkedAt: null, ...HAUPTLISTE_FILTER },
       take: 20,
       select: { text: true, storeId: true },
     }),
@@ -145,7 +147,7 @@ export async function generiereAssistentBriefing(now: Date = new Date()): Promis
     const tag = dayKey(now);
 
     const cached = await prisma.briefing.findUnique({
-      where: { kind_dayKey: { kind: KIND, dayKey: tag } },
+      where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND, dayKey: tag } },
     });
     if (cached) {
       try {
@@ -159,8 +161,8 @@ export async function generiereAssistentBriefing(now: Date = new Date()): Promis
     const text = await frageAssistent(kontext);
     if (!text) return null;
     await prisma.briefing.upsert({
-      where: { kind_dayKey: { kind: KIND, dayKey: tag } },
-      create: { kind: KIND, dayKey: tag, summary: JSON.stringify({ hash, text }) },
+      where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND, dayKey: tag } },
+      create: { householdId: haushaltId(), kind: KIND, dayKey: tag, summary: JSON.stringify({ hash, text }) },
       update: { summary: JSON.stringify({ hash, text }) },
     });
     return text;

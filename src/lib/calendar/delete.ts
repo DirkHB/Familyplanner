@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
+import { gehoertZumHaushalt } from "@/lib/haushalt/singletons";
 import { removeCareBlocksForEvent } from "@/lib/care/block-sync";
 
 /** App→iCloud: Termin (bzw. ganze Serie) löschen und lokal aufräumen. */
@@ -16,12 +17,14 @@ export async function deleteEvent(userId: string, uid: string): Promise<DeleteEv
   if (!master) return { deleted: false, reason: "Termin nicht gefunden." };
 
   const account = master.calendar.account;
-  if (account.userId !== userId) {
-    // Termin gehört zum Kalender des anderen — löschen nur über dessen Konto.
-    const own = await prisma.calendarAccount.findFirst({ where: { userId, provider: "icloud" } });
-    if (!own || own.id !== account.id) {
-      return { deleted: false, reason: "Dieser Termin liegt im Kalender des anderen." };
-    }
+  /**
+   * Gelöscht wird immer über das Konto, dem der Kalender gehört — die
+   * Zugangsdaten müssen zum Kalender passen. Die Erlaubnis richtet sich
+   * dagegen nach dem Haushalt: Ein gemeinsamer Kalender gehört beiden, auch
+   * wenn nur einer von ihnen ein iCloud-Konto verbunden hat.
+   */
+  if (!(await gehoertZumHaushalt(account.id))) {
+    return { deleted: false, reason: "Dieser Termin gehört nicht zu eurem Kalender." };
   }
 
   const password = decryptSecret(account.credentialsEncrypted);

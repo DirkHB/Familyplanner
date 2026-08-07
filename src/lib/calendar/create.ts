@@ -1,8 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
+import { kalenderzugang } from "@/lib/haushalt/singletons";
 import { buildIcs } from "./ics-builder";
 import { requestCare } from "@/lib/care/repository";
 import { invalidateKalender } from "./range-data";
@@ -28,16 +28,16 @@ export async function createEvent(
   userId: string,
   input: CreateEventInput,
 ): Promise<CreateEventResult> {
-  const account = await prisma.calendarAccount.findFirst({
-    where: { userId, provider: "icloud" },
-    include: { calendars: { where: { isSynced: true }, orderBy: { name: "asc" } } },
-  });
-  if (!account) return { created: false, reason: "Kein iCloud-Konto verbunden." };
-  const calendar = account.calendars[0];
-  if (!calendar) return { created: false, reason: "Kein synchronisierter Kalender." };
+  /**
+   * Das eigene Konto zuerst, sonst das des Haushalts. Vorher stand hier nur
+   * das eigene — wer kein iCloud-Konto verbunden hatte (etwa mit einem
+   * Android-Gerät), konnte in den gemeinsamen Kalender nichts eintragen,
+   * obwohl er ihm gehört.
+   */
+  const ziel = await kalenderzugang(userId);
+  if (!ziel) return { created: false, reason: "Kein iCloud-Kalender verbunden." };
 
-  const password = decryptSecret(account.credentialsEncrypted);
-  const client = await createICloudClient({ username: account.username ?? "", password });
+  const client = await createICloudClient({ username: ziel.username, password: ziel.password });
 
   const uid = `fp-${randomUUID()}@planyourweek.app`;
   const ics = buildIcs({
@@ -49,13 +49,13 @@ export async function createEvent(
     location: input.location ?? null,
     description: input.description ?? null,
   });
-  const href = calendar.url.replace(/\/$/, "") + "/" + uid + ".ics";
+  const href = ziel.calendarUrl.replace(/\/$/, "") + "/" + uid + ".ics";
 
-  const put = await client.putEvent(calendar.url, href, ics, null);
+  const put = await client.putEvent(ziel.calendarUrl, href, ics, null);
 
   await prisma.event.create({
     data: {
-      calendarId: calendar.id,
+      calendarId: ziel.calendarId,
       uid,
       recurrenceId: "",
       href,

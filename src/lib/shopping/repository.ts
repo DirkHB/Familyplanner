@@ -9,15 +9,15 @@ import {
   nameVergeben,
 } from "./stores";
 import type { Person } from "@/lib/auth/allowlist";
+import { hauptliste } from "@/lib/haushalt/singletons";
 
 /** Gemeinsame Haupt-Einkaufsliste (Singleton), gruppiert nach Läden. */
 
 const CHECKED_TTL_MS = 60 * 60_000; // abgehakte Artikel verschwinden nach ~1 h
 
+/** Die Hauptliste dieses Haushalts — die Frage „welche?" wohnt in haushalt/. */
 export async function getOrCreateMainList() {
-  const existing = await prisma.shoppingList.findFirst({ where: { kind: "haupt" } });
-  if (existing) return existing;
-  return prisma.shoppingList.create({ data: { kind: "haupt", name: "Einkaufsliste" } });
+  return hauptliste();
 }
 
 export type ItemVM = {

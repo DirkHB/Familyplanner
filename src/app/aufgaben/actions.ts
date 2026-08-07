@@ -6,6 +6,7 @@ import { personForEmail, type Person } from "@/lib/auth/allowlist";
 import { createTodo, toggleTodo, deleteTodo, setTodoList } from "@/lib/todos/repository";
 import { createTodoList } from "@/lib/todos/lists";
 import { NEUE_LISTE } from "@/lib/todos/group";
+import { HAUPTLISTE_FILTER } from "@/lib/haushalt/singletons";
 
 export async function createTodoAction(
   _prev: { error: string | null } | null,
@@ -80,7 +81,7 @@ export async function toggleTodoAction(
 
   const { findeEinkaufTreffer } = await import("@/lib/todos/einkauf-match");
   const offene = await prisma.shoppingItem.findMany({
-    where: { checkedAt: null, list: { kind: "haupt" } },
+    where: { checkedAt: null, ...HAUPTLISTE_FILTER },
     select: { id: true, text: true, store: { select: { name: true } } },
     take: 100,
   });

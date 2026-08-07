@@ -1,7 +1,13 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { getHaushaltFlag, setHaushaltFlag } from "@/lib/haushalt/singletons";
 
-/** Schalter, die für die App als Ganzes gelten. */
+/**
+ * Schalter des Haushalts.
+ *
+ * Sie liegen in `AppSetting`, aber der Schlüssel trägt den Haushalt — sonst
+ * legte ein Haushalt den Schalter für alle um. Die Ablage selbst steckt in
+ * `haushalt/singletons`, damit es genau eine Stelle gibt, die das weiß.
+ */
 
 /**
  * Schreibt die App Betreuungsblöcke in den echten iCloud-Kalender?
@@ -13,19 +19,9 @@ import { prisma } from "@/lib/prisma";
 export const CARE_BLOCKS = "care.blocks";
 
 export async function getFlag(key: string, fallback = false): Promise<boolean> {
-  try {
-    const row = await prisma.appSetting.findUnique({ where: { key } });
-    return row ? row.value === "an" : fallback;
-  } catch {
-    return fallback;
-  }
+  return getHaushaltFlag(key, fallback);
 }
 
 export async function setFlag(key: string, value: boolean): Promise<void> {
-  const v = value ? "an" : "aus";
-  await prisma.appSetting.upsert({
-    where: { key },
-    create: { key, value: v },
-    update: { value: v },
-  });
+  return setHaushaltFlag(key, value);
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { haushaltId } from "@/lib/haushalt/id";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import { freieBloecke, berlinStunde, dauerLabel, STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
@@ -60,7 +61,7 @@ export async function runAufgabenFenster(now: Date = new Date()): Promise<Fenste
 
     // Schon gesendet heute? Dann ist für heute Schluss.
     const schon = await prisma.briefing.findUnique({
-      where: { kind_dayKey: { kind: KIND(person), dayKey: heute } },
+      where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND(person), dayKey: heute } },
     });
     if (schon) continue;
 
@@ -125,6 +126,8 @@ export async function runAufgabenFenster(now: Date = new Date()): Promise<Fenste
       await prisma.briefing
         .create({
           data: {
+            householdId: haushaltId(),
+
             kind: KIND(person),
             dayKey: heute,
             summary: text,

@@ -6,6 +6,7 @@ import { listDismissed } from "@/lib/care/rules";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import { listTodoLists, countOpenPerList } from "@/lib/todos/lists";
 import { listStores } from "@/lib/shopping/repository";
+import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { mergePrefs } from "@/lib/push/quiet-hours";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,19 @@ export default async function EinstellungenPage() {
 
   // Was steht in den Terminen? Entscheidet, ob wir die Zuordnung „wer ist
   // gebunden?" von Hand pflegen müssen oder ob sie schon in den Daten steckt.
+  /**
+   * Kein eigenes Konto heißt nicht „kein Kalender": Die App schreibt über den
+   * Zugang des Haushalts. Ohne diesen Hinweis stünde hier „Nicht verbunden",
+   * während das Anlegen von Terminen längst funktioniert.
+   */
+  const fremdeVerbindung =
+    !account && userId
+      ? await prisma.calendarAccount.findFirst({
+          where: { provider: "icloud" },
+          select: { username: true, user: { select: { name: true, email: true } } },
+        })
+      : null;
+
   const [diagnose, abgewinkt] = userId
     ? await Promise.all([diagnoseCalendars(), listDismissed()])
     : [[], []];
@@ -88,6 +102,15 @@ export default async function EinstellungenPage() {
       tagVon={ich?.tagVonStunde ?? null}
       tagBis={ich?.tagBisStunde ?? null}
       pushPrefs={{ requests: prefs.requests, taskWindow: prefs.taskWindow }}
+      fremdeVerbindung={
+        fremdeVerbindung
+          ? {
+              name:
+                fremdeVerbindung.user?.name ??
+                displayNameForEmail(fremdeVerbindung.user?.email ?? ""),
+            }
+          : null
+      }
     />
   );
 }

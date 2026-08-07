@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { kalenderzugang } from "@/lib/haushalt/singletons";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "@/lib/calendar/tsdav-client";
 import { buildIcs } from "@/lib/calendar/ics-builder";
@@ -26,22 +27,8 @@ import {
  * iCloud gerade erreichbar ist.
  */
 
-type Ziel = { calendarId: string; calendarUrl: string; username: string; password: string };
-
-async function schreibziel(): Promise<Ziel | null> {
-  const account = await prisma.calendarAccount.findFirst({
-    where: { provider: "icloud" },
-    include: { calendars: { where: { isSynced: true }, orderBy: { name: "asc" } } },
-  });
-  const calendar = account?.calendars[0];
-  if (!account || !calendar) return null;
-  return {
-    calendarId: calendar.id,
-    calendarUrl: calendar.url,
-    username: account.username ?? "",
-    password: decryptSecret(account.credentialsEncrypted),
-  };
-}
+/** Wohin der Block geschrieben wird — die Frage beantwortet der Haushalt. */
+const schreibziel = () => kalenderzugang();
 
 /** Zeitfenster des Vorkommens, aus dem der Block entsteht. */
 async function fenster(eventUid: string, occurrenceDate: Date) {
