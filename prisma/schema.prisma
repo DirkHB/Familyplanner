@@ -23,6 +23,9 @@ model User {
   email             String    @unique
   emailVerified     DateTime?
   image             String?
+  /// Platz im Haushalt. Die Werte sind historisch ("dirk"/"constanze") und
+  /// bedeuten nur noch Platz A und Platz B — der Name steht in `name`.
+  slot              String?
   notificationPrefs Json      @default("{}")
   // Tagesfenster für den Zeitstrahl (7–21, wenn leer). Je Person, weil
   // Constanze und Dirk unterschiedlich takten.

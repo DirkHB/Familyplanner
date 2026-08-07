@@ -9,21 +9,14 @@ import {
 } from "./block";
 
 describe("careBlockTitle", () => {
-  it("trägt das Baby-Zeichen und den Namen", () => {
-    expect(careBlockTitle("dirk")).toBe("👶 Nicolas · Dirk");
-    expect(careBlockTitle("constanze")).toBe("👶 Nicolas · Constanze");
+  it("trägt das Baby-Zeichen, den Namen des Kindes und den der Person", () => {
+    expect(careBlockTitle("Nicolas", "Dirk")).toBe("👶 Nicolas · Dirk");
+    expect(careBlockTitle("Nicolas", "Constanze")).toBe("👶 Nicolas · Constanze");
   });
 
-  it("kennt den Babysitter, wenn beide nicht können", () => {
-    expect(careBlockTitle("extern")).toBe("👶 Nicolas · Babysitter");
-  });
-
-  it("nennt Oma beim Namen, wenn sie es ist", () => {
-    expect(careBlockTitle("extern", "Oma")).toBe("👶 Nicolas · Oma");
-    // Leerer Name fällt sauber auf den Babysitter zurück.
-    expect(careBlockTitle("extern", "  ")).toBe("👶 Nicolas · Babysitter");
-    // Für Constanze und Dirk zählt weiter ihr eigener Name.
-    expect(careBlockTitle("dirk", "Oma")).toBe("👶 Nicolas · Dirk");
+  it("nimmt jeden Namen — auch Oma oder einen anderen Haushalt", () => {
+    expect(careBlockTitle("Nicolas", "Oma")).toBe("👶 Nicolas · Oma");
+    expect(careBlockTitle("Mia", "Thomas")).toBe("👶 Mia · Thomas");
   });
 });
 

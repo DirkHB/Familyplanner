@@ -12,6 +12,7 @@ import {
   sendTestPushAction,
   setCareBlocksAction,
   setPushPrefAction,
+  setHaushaltNamenAction,
   setTagesfensterAction,
   createTodoListAction,
   renameTodoListAction,
@@ -64,6 +65,7 @@ export function SettingsClient({
   tagBis = null,
   pushPrefs = { requests: true, taskWindow: true },
   fremdeVerbindung = null,
+  haushalt = { erwachsene: [], kind: "das Baby" },
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -77,6 +79,8 @@ export function SettingsClient({
   pushPrefs?: { requests: boolean; taskWindow: boolean };
   /** Kein eigenes iCloud-Konto, aber der Haushalt hat eins — wessen? */
   fremdeVerbindung?: { name: string } | null;
+  /** Die beiden Erwachsenen und der Name des Kindes. */
+  haushalt?: { erwachsene: { email: string; name: string }[]; kind: string };
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -164,6 +168,12 @@ export function SettingsClient({
           </Zeile>
         </Gruppe>
 
+        <Gruppe titel="Wer wohnt hier">
+          <Zeile titel="Namen" status={haushalt.kind}>
+            <NamenInhalt haushalt={haushalt} />
+          </Zeile>
+        </Gruppe>
+
         <Gruppe titel="Betreuung">
           <CareBlocksZeile an={careBlocks} />
           {abgewinkt.length > 0 && (
@@ -172,7 +182,7 @@ export function SettingsClient({
               status={`${abgewinkt.length} ${abgewinkt.length === 1 ? "Terminart" : "Terminarten"}`}
             >
               <p className="text-sm text-ink-muted">
-                Bei diesen Terminen fragt die App nicht mehr, wer bei Nicolas ist:
+                Bei diesen Terminen fragt die App nicht mehr, wer beim Kind ist:
               </p>
               <p className="mt-2 text-sm">{abgewinkt.join(" · ")}</p>
             </Zeile>
@@ -338,6 +348,69 @@ function SchalterZeile({
  * Betreuung als echter Kalendereintrag. Standardmäßig aus: die einzige
  * Funktion, die von sich aus Einträge im gemeinsamen Kalender anlegt.
  */
+/**
+ * Namen des Haushalts. Sie stehen bewusst ganz oben unter „Wer wohnt hier":
+ * Ohne sie spricht die App — und jeder KI-Text — von fremden Leuten.
+ */
+function NamenInhalt({
+  haushalt,
+}: {
+  haushalt: { erwachsene: { email: string; name: string }[]; kind: string };
+}) {
+  const [namen, setNamen] = useState(haushalt.erwachsene);
+  const [kind, setKind] = useState(haushalt.kind);
+  const [pending, start] = useTransition();
+  const [gesagt, setGesagt] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-ink-muted">
+        So nennt euch die App — in den Karten, im Kalendereintrag und in jedem Text, den der
+        Assistent schreibt.
+      </p>
+      {namen.map((p, i) => (
+        <label key={p.email} className="block">
+          <span className="text-xs text-ink-muted">{p.email}</span>
+          <input
+            value={p.name}
+            onChange={(e) => {
+              const wert = e.target.value;
+              setNamen((alt) => alt.map((x, j) => (j === i ? { ...x, name: wert } : x)));
+              setGesagt(null);
+            }}
+            className="mt-1 w-full rounded-card border border-surface-muted bg-bg px-4 py-2.5 outline-none focus:border-accent"
+          />
+        </label>
+      ))}
+      <label className="block">
+        <span className="text-xs text-ink-muted">Name des Kindes</span>
+        <input
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value);
+            setGesagt(null);
+          }}
+          placeholder="wie das Kind heißt"
+          className="mt-1 w-full rounded-card border border-surface-muted bg-bg px-4 py-2.5 outline-none focus:border-accent"
+        />
+      </label>
+      <button
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const r = await setHaushaltNamenAction({ kind, namen });
+            setGesagt(r.ok ? "Gespeichert ✓" : (r.grund ?? "Hat nicht geklappt."));
+          })
+        }
+        className="rounded-pill bg-accent px-5 py-3 font-medium text-surface disabled:opacity-60"
+      >
+        {pending ? "Speichere …" : "Namen speichern"}
+      </button>
+      {gesagt && <p className="text-sm text-ink-muted">{gesagt}</p>}
+    </div>
+  );
+}
+
 function CareBlocksZeile({ an }: { an: boolean }) {
   return (
     <SchalterZeile
@@ -347,7 +420,7 @@ function CareBlocksZeile({ an }: { an: boolean }) {
       onSchalten={setCareBlocksAction}
       hinweis={
         <>
-          Wer übernimmt, bekommt „👶 Nicolas · Name" in den gemeinsamen Kalender — sichtbar auf
+          Wer übernimmt, bekommt „👶 Kind · Name" in den gemeinsamen Kalender — sichtbar auf
           dem Sperrbildschirm. Nimmst du eine Zusage zurück, verschwindet der Eintrag.
         </>
       }

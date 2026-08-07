@@ -50,7 +50,16 @@ function BackButton() {
   );
 }
 
-export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventShoppingData | null }) {
+export function EventDetail({
+  vm,
+  shopping,
+  kind = "dem Kind",
+}: {
+  vm: DetailVM;
+  shopping?: EventShoppingData | null;
+  /** Wie das Kind heißt — aus dem Haushaltsprofil, nicht aus dem Code. */
+  kind?: string;
+}) {
   // Der Titel wird hier gespiegelt, damit die Überschrift sofort nach dem
   // Speichern stimmt und nicht erst nach dem nächsten Laden. Sobald der Server
   // einen neuen Wert liefert (Bearbeiten, Sync mit iCloud), gewinnt der Server.
@@ -98,10 +107,10 @@ export function EventDetail({ vm, shopping }: { vm: DetailVM; shopping?: EventSh
           nur, wozu er gehört — und wie man ihn wieder loswird.
         */}
         {vm.isCareBlock ? (
-          <CareBlockInfo vm={vm} />
+          <CareBlockInfo vm={vm} kind={kind} />
         ) : (
           <>
-            {!vm.allDay && <CareBlock vm={vm} />}
+            {!vm.allDay && <CareBlock vm={vm} kind={kind} />}
 
             <PrepChecklist
               uid={vm.uid}
@@ -228,13 +237,13 @@ function ManageBlock({ vm, onTitleChanged }: { vm: DetailVM; onTitleChanged: (t:
  * zurücknehmen. Und die fragt sofort den anderen — sonst stünde die Betreuung
  * wieder offen, ohne dass es jemand mitbekommt.
  */
-function CareBlockInfo({ vm }: { vm: DetailVM }) {
+function CareBlockInfo({ vm, kind }: { vm: DetailVM; kind: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
 
   return (
     <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
-      <h2 className="font-display text-lg">Betreuung für Nicolas</h2>
+      <h2 className="font-display text-lg">Betreuung für {kind}</h2>
       {vm.careBlockAnlass ? (
         <p className="mt-2 text-sm text-ink-muted">
           Während <span className="font-medium text-ink">{vm.careBlockAnlass}</span>. Diesen
@@ -271,7 +280,7 @@ function CareBlockInfo({ vm }: { vm: DetailVM }) {
   );
 }
 
-function CareBlock({ vm }: { vm: DetailVM }) {
+function CareBlock({ vm, kind }: { vm: DetailVM; kind: string }) {
   const [pending, start] = useTransition();
   const [aendern, setAendern] = useState(false);
   const care = vm.care;
@@ -380,7 +389,7 @@ function CareBlock({ vm }: { vm: DetailVM }) {
                 }
                 className="text-sm text-ink-muted/70"
               >
-                Nicht nötig — Nicolas ist dabei
+                Nicht nötig — {kind} ist dabei
               </button>
             </div>
           )}

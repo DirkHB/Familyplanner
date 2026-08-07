@@ -21,14 +21,19 @@ export const CARE_MARKER = "X-PLANYOURWEEK-BETREUUNG";
 export const CARE_UID_PREFIX = "fp-care-";
 
 /**
- * Wer beim Baby ist: Constanze, Dirk — oder jemand von außen (Oma, Opa,
- * Babysitter), wenn beide nicht können.
+ * Wer beim Kind ist: einer der beiden Plätze im Haushalt — oder jemand von
+ * außen (Oma, Opa, Babysitter), wenn beide nicht können.
  */
 export type CarePerson = Person | "extern";
 
+/**
+ * Nur noch Rückfall: Die echten Namen stehen im Haushaltsprofil. Die
+ * Platz-Werte heißen historisch „dirk" und „constanze" — sie bedeuten
+ * Platz A und Platz B, sonst nichts.
+ */
 const NAME: Record<CarePerson, string> = {
-  constanze: "Constanze",
-  dirk: "Dirk",
+  constanze: "Person B",
+  dirk: "Person A",
   extern: "Babysitter",
 };
 
@@ -37,10 +42,20 @@ const NAME: Record<CarePerson, string> = {
  * unterscheidbar von allem anderen im gemeinsamen Kalender. Bei externer
  * Betreuung darf ein Name dabei sein — „👶 Nicolas · Oma" sagt mehr als
  * „Babysitter", und meistens ist es Oma oder Opa.
+ *
+ * Die Namen kommen von außen: Wer hier wohnt und wie das Kind heißt, steht
+ * im Haushaltsprofil, nicht im Code.
  */
-export function careBlockTitle(person: CarePerson, externName?: string | null): string {
-  if (person === "extern" && externName?.trim()) return `👶 Nicolas · ${externName.trim()}`;
-  return `👶 Nicolas · ${NAME[person]}`;
+export function careBlockTitle(
+  kind: string,
+  wer: string,
+): string {
+  return `👶 ${kind} · ${wer}`;
+}
+
+/** Anzeigename für einen Platz — Rückfall, wenn kein Profil zur Hand ist. */
+export function nameFuerPlatz(person: CarePerson): string {
+  return NAME[person];
 }
 
 /**

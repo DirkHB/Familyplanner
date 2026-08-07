@@ -15,7 +15,7 @@ export default function VorschauBetreuung() {
   const start = new Date(base + 86_400_000 + 18 * 3_600_000);
   const vm = buildDetailVM({
     uid: careBlockUid("s-abendtermin@icloud.com", "2026-08-03"),
-    title: careBlockTitle("dirk"),
+    title: careBlockTitle("Nicolas", "Dirk"),
     location: null,
     start,
     end: new Date(start.getTime() + 3_600_000),

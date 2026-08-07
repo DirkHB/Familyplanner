@@ -1,6 +1,7 @@
 import "server-only";
 import { getAnthropic, aiConfigured, AI_MODEL } from "./client";
 import { nuechternerVorschlag, kontextText, type VorschlagKontext } from "./vorschlag-text";
+import { haushaltProfil, beideNamen } from "@/lib/haushalt/profil";
 
 /**
  * Der Text für den täglichen Aufgaben-Anstoß.
@@ -16,7 +17,7 @@ import { nuechternerVorschlag, kontextText, type VorschlagKontext } from "./vors
 
 export type { VorschlagKontext };
 
-const ANWEISUNG = `Du bist der stille Familienassistent von Constanze und Dirk (Baby: Nicolas).
+const anweisung = (leute: string) => `Du bist der stille Familienassistent von ${leute}.
 Schreibe den Text EINER Mitteilung auf dem Handy zu den offenen Aufgaben.
 
 Regeln:
@@ -36,7 +37,7 @@ export async function generiereAufgabenVorschlag(k: VorschlagKontext): Promise<s
       model: AI_MODEL,
       max_tokens: 200,
       thinking: { type: "disabled" },
-      system: ANWEISUNG,
+      system: anweisung(beideNamen(await haushaltProfil())),
       messages: [{ role: "user", content: `Stand jetzt:\n\n${kontextText(k)}\n\nSchreibe die Mitteilung.` }],
     });
     const text = res.content

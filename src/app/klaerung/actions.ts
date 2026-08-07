@@ -15,6 +15,7 @@ import { dismissTitle, undismissTitle } from "@/lib/care/rules";
 import { answerRequest, resolvePartner } from "@/lib/requests/repository";
 import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
 import { notifyUserId } from "@/lib/push/notify";
+import { haushaltProfil } from "@/lib/haushalt/profil";
 import { removeCareBlock } from "@/lib/care/block-sync";
 import { frageFaellig } from "@/lib/care/frage-zeit";
 import { invalidateKalender } from "@/lib/calendar/range-data";
@@ -32,6 +33,8 @@ import type { StapelUndo } from "@/lib/klaerung/undo";
  */
 
 type Ergebnis = { ok: boolean; undo?: StapelUndo; schon?: string };
+
+const kindName = async () => (await haushaltProfil()).kind;
 
 function reval() {
   revalidatePath("/woche");
@@ -63,7 +66,7 @@ async function schonGeklaert(
         select: { email: true, name: true },
       });
       const name = wer ? (wer.name ?? displayNameForEmail(wer.email)) : "Der andere";
-      return `${name} ist schon bei Nicolas ✓`;
+      return `${name} ist schon bei ${await kindName()} ✓`;
     }
     return "Schon geklärt ✓";
   }
@@ -176,11 +179,11 @@ export async function stapelBetreuungUnnoetigAction(
   if (anfrage) {
     await prisma.request.update({
       where: { id: anfrage.id },
-      data: { status: "answered", answer: "Nicht nötig — Nicolas ist dabei" },
+      data: { status: "answered", answer: `Nicht nötig — ${await kindName()} ist dabei` },
     });
     await notifyUserId(anfrage.fromUserId, {
       title: "Keine Betreuung nötig",
-      body: `${title} — Nicolas ist dabei.`,
+      body: `${title} — ${await kindName()} ist dabei.`,
       url: `/termin/${encodeURIComponent(uid)}`,
       tag: `care-${anfrage.id}`,
     }).catch(() => {});
@@ -257,7 +260,7 @@ export async function stapelBabysitterAction(
     const partner = await resolvePartner(session.user.id);
     if (partner) {
       await notifyUserId(partner.id, {
-        title: `✓ ${name} ist bei Nicolas`,
+        title: `✓ ${name} ist bei ${await kindName()}`,
         body: event?.title ?? "Betreuung ist organisiert.",
         url: `/termin/${encodeURIComponent(uid)}`,
         tag: `care-extern-${uid}`,

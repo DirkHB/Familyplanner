@@ -46,10 +46,12 @@ export function KlaerungGate({
   cards,
   todayKey,
   briefing = null,
+  kind = "dem Baby",
 }: {
   cards: KlaerungCard[];
   todayKey: string;
   briefing?: string | null;
+  kind?: string;
 }) {
   /**
    * Schnappschuss statt Live-Daten: Jede Antwort rendert die Woche darunter
@@ -79,6 +81,7 @@ export function KlaerungGate({
     <KlaerungStack
       cards={offen}
       briefing={briefing}
+      kind={kind}
       onClose={() => {
         writeState(markLater(readState(), new Date()));
         setOffen(null);

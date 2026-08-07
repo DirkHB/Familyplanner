@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/event/EventDetail";
 import { getEventView } from "@/lib/calendar/repository";
+import { haushaltProfil } from "@/lib/haushalt/profil";
 import { buildDetailVM } from "@/lib/calendar/view-model";
 import { getEventItems, getLinkableItems } from "@/lib/shopping/repository";
 import { isCareBlockUid } from "@/lib/care/block";
@@ -16,6 +17,7 @@ export default async function TerminPage({
   const { uid } = await params;
   const decoded = decodeURIComponent(uid);
   const view = await getEventView(decoded);
+  const kind = (await haushaltProfil()).kind;
   if (!view) notFound();
 
   // Bei einem Betreuungsblock zählt nur, wozu er gehört — Einkauf und
@@ -24,6 +26,7 @@ export default async function TerminPage({
     const anlass = await anlassFuerBlock(decoded);
     return (
       <EventDetail
+        kind={kind}
         vm={buildDetailVM({ ...view, careBlockAnlass: anlass?.title ?? null })}
         shopping={null}
       />
@@ -36,5 +39,5 @@ export default async function TerminPage({
     linkable,
   };
 
-  return <EventDetail vm={buildDetailVM(view)} shopping={shopping} />;
+  return <EventDetail vm={buildDetailVM(view)} shopping={shopping} kind={kind} />;
 }

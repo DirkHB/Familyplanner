@@ -10,6 +10,7 @@ import { getKlaerungStack } from "@/lib/klaerung/repository";
 import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
 import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
+import { haushaltProfil } from "@/lib/haushalt/profil";
 import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
 import { countTodosDueToday } from "@/lib/klaerung/repository";
@@ -26,6 +27,7 @@ export default async function WochePage({
   const name = displayNameForEmail(session?.user?.email);
 
   const now = new Date();
+  const profil = await haushaltProfil();
   // ?w=1 blättert eine Woche vor — der Nachfolger des alten Überblick-Umschalters.
   const naechste = (await searchParams).w === "1";
   const from = new Date(startOfDayBerlin(now).getTime() + (naechste ? 7 * 86_400_000 : 0));
@@ -101,7 +103,7 @@ export default async function WochePage({
         briefing={briefing}
         naechsteWoche={naechste}
       />
-      {!naechste && <KlaerungGate cards={stack} todayKey={todayKey} briefing={briefing} />}
+      {!naechste && <KlaerungGate cards={stack} todayKey={todayKey} briefing={briefing} kind={profil.kind} />}
     </>
   );
 }

@@ -8,6 +8,7 @@ import { listTodoLists, countOpenPerList } from "@/lib/todos/lists";
 import { listStores } from "@/lib/shopping/repository";
 import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { mergePrefs } from "@/lib/push/quiet-hours";
+import { haushaltProfil } from "@/lib/haushalt/profil";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function EinstellungenPage() {
       })
     : null;
   const prefs = mergePrefs(ich?.notificationPrefs);
+  const profil = await haushaltProfil();
 
   const account = userId
     ? await prisma.calendarAccount.findFirst({
@@ -102,6 +104,10 @@ export default async function EinstellungenPage() {
       tagVon={ich?.tagVonStunde ?? null}
       tagBis={ich?.tagBisStunde ?? null}
       pushPrefs={{ requests: prefs.requests, taskWindow: prefs.taskWindow }}
+      haushalt={{
+        erwachsene: profil.erwachsene.map((e) => ({ email: e.email, name: e.name })),
+        kind: profil.kind,
+      }}
       fremdeVerbindung={
         fremdeVerbindung
           ? {

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { haushaltId } from "@/lib/haushalt/id";
+import { haushaltProfil, beideNamen, nameFuerSlot, type HaushaltProfil } from "@/lib/haushalt/profil";
 import { HAUPTLISTE_FILTER } from "@/lib/haushalt/singletons";
 import { getAnthropic, aiConfigured, AI_MODEL } from "./client";
 import { getRangeData } from "@/lib/calendar/range-data";
@@ -29,6 +30,8 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
   const from = startOfDayBerlin(now);
   const to = new Date(from.getTime() + 4 * 86_400_000);
   const heuteKey = dayKey(now);
+  const profil = await haushaltProfil();
+  const kind = profil.kind;
 
   const [{ occurrences, careByOcc }, todos, einkauf, laeden, listen] = await Promise.all([
     getRangeData(from, to),
@@ -62,11 +65,11 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
     const care = careByOcc.get(`${o.uid}:${dayKey(o.start)}`);
     const careTxt =
       care?.status === "offen"
-        ? " [Betreuung für Nicolas noch OFFEN]"
+        ? ` [Betreuung für ${kind} noch OFFEN]`
         : care?.status === "extern"
-          ? ` [${care.externName ?? "Babysitter"} ist bei Nicolas]`
+          ? ` [${care.externName ?? "Babysitter"} ist bei ${kind}]`
           : care?.person
-            ? ` [${care.person === "constanze" ? "Constanze" : "Dirk"} ist bei Nicolas]`
+            ? ` [${nameFuerSlot(profil, care.person)} ist bei ${kind}]`
             : "";
     const vorbei = o.end <= now ? " (vorbei)" : "";
     zeilen.push(`- ${tag} ${zeit}: ${o.summary}${careTxt}${vorbei}`);
@@ -104,7 +107,7 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
   return zeilen.join("\n");
 }
 
-const ANWEISUNG = `Du bist der stille Familienassistent von Constanze und Dirk (Baby: Nicolas).
+const anweisung = (leute: string, kind: string) => `Du bist der stille Familienassistent von ${leute} (Kind: ${kind}).
 Schreibe EIN kurzes Briefing für den Kopf ihrer Wochenansicht. Beide lesen denselben Text.
 
 Regeln:
@@ -115,15 +118,15 @@ Regeln:
 - Schlage konkrete Uhrzeiten nur vor, wenn ein freier Block sie wirklich hergibt.
 - Wenn der Tag voll ist, sag es ehrlich und empfiehl eine Pause in einer echten Lücke.
   Wenn er leicht ist, sag das in einem Satz — ohne künstliche Ratschläge.
-- Offene Betreuung für Nicolas ist immer erwähnenswert.
+- Offene Betreuung für ${kind} ist immer erwähnenswert.
 - Erfinde nichts. Keine Emojis, keine Anrede, keine Grußformel, keine Aufzählungszeichen.`;
 
-async function frageAssistent(kontext: string): Promise<string | null> {
+async function frageAssistent(kontext: string, profil: HaushaltProfil): Promise<string | null> {
   const res = await getAnthropic().messages.create({
     model: AI_MODEL,
     max_tokens: 300,
     thinking: { type: "disabled" },
-    system: ANWEISUNG,
+    system: anweisung(beideNamen(profil), profil.kind),
     messages: [{ role: "user", content: `Stand jetzt:\n\n${kontext}\n\nSchreibe das Briefing.` }],
   });
   const text = res.content
@@ -158,7 +161,7 @@ export async function generiereAssistentBriefing(now: Date = new Date()): Promis
       }
     }
 
-    const text = await frageAssistent(kontext);
+    const text = await frageAssistent(kontext, await haushaltProfil());
     if (!text) return null;
     await prisma.briefing.upsert({
       where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND, dayKey: tag } },

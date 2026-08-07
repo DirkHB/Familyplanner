@@ -103,10 +103,13 @@ export function KlaerungStack({
   cards,
   onClose,
   briefing = null,
+  kind = "dem Baby",
 }: {
   cards: KlaerungCard[];
   onClose: () => void;
   briefing?: string | null;
+  /** Wie das Kind heißt — steht im Haushaltsprofil, nicht im Code. */
+  kind?: string;
 }) {
   const [index, setIndex] = useState(0);
   /**
@@ -214,6 +217,7 @@ export function KlaerungStack({
             <SwipeCard
               key={`${card.kind}-${index}`}
               card={card}
+              kind={kind}
               onDecide={decide}
               /* Nur die erste Karte zeigt die Wisch-Bewegung vor — einmal
                  reicht, danach kennt die Hand den Weg. */
@@ -273,8 +277,10 @@ function SwipeCard({
   hinweis = false,
   werWahl = false,
   onWerAbbrechen,
+  kind,
 }: {
   card: KlaerungCard;
+  kind: string;
   onDecide: (r: Decision["richtung"], wer?: string) => void;
   hinweis?: boolean;
   werWahl?: boolean;
@@ -321,18 +327,18 @@ function SwipeCard({
           {labels.links}
         </motion.span>
 
-        <CardBody card={card} />
+        <CardBody card={card} kind={kind} />
         {werWahl && card.kind === "eskalation" ? (
-          <WerWaehler onDecide={onDecide} onAbbrechen={onWerAbbrechen} />
+          <WerWaehler onDecide={onDecide} onAbbrechen={onWerAbbrechen} kind={kind} />
         ) : (
-          <CardActions card={card} onDecide={onDecide} />
+          <CardActions card={card} onDecide={onDecide} kind={kind} />
         )}
       </div>
     </motion.div>
   );
 }
 
-function CardBody({ card }: { card: KlaerungCard }) {
+function CardBody({ card, kind }: { card: KlaerungCard; kind: string }) {
   switch (card.kind) {
     case "aufgabe": {
       const shifts = shiftLabel(card.shiftCount);
@@ -348,7 +354,7 @@ function CardBody({ card }: { card: KlaerungCard }) {
     case "betreuung":
       return (
         <div className="mt-10">
-          <p className="eyebrow text-accent-light">Wer ist bei Nicolas?</p>
+          <p className="eyebrow text-accent-light">Wer ist bei {kind}?</p>
           <p className="mt-3 font-display text-3xl leading-tight">{card.title}</p>
           <p className="mt-3 text-surface/70">{card.when}</p>
         </div>
@@ -407,13 +413,15 @@ const DRITTER_WEG =
 function WerWaehler({
   onDecide,
   onAbbrechen,
+  kind,
 }: {
   onDecide: (r: Decision["richtung"], wer?: string) => void;
   onAbbrechen?: () => void;
+  kind: string;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-center text-sm text-surface/70">Wer ist dann bei Nicolas?</p>
+      <p className="text-center text-sm text-surface/70">Wer ist dann bei {kind}?</p>
       {/* flex statt grid-cols-3: Die Dreier-Spalte taucht sonst nirgends im
           Projekt auf, und das CSS dazu fehlte im Build — die Knöpfe stapelten
           sich. Flex braucht keine eigene Utility je Spaltenzahl. */}
@@ -435,7 +443,7 @@ function WerWaehler({
   );
 }
 
-function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void }) {
+function CardActions({ card, onDecide, kind }: { card: KlaerungCard; onDecide: (r: Decision["richtung"]) => void; kind: string }) {
   const labels = LABELS[card.kind];
   return (
     <div className="flex flex-col gap-3">
@@ -453,7 +461,7 @@ function CardActions({ card, onDecide }: { card: KlaerungCard; onDecide: (r: Dec
       */}
       {card.kind === "betreuung" && (
         <button onClick={() => onDecide("keine")} className={DRITTER_WEG}>
-          Nicht nötig — Nicolas ist dabei
+          Nicht nötig — {kind} ist dabei
         </button>
       )}
       {/* Beide können nicht, aber es hat sich anders gelöst (Termin verlegt,

@@ -120,6 +120,43 @@ export async function setPushPrefAction(art: PushArt, an: boolean) {
   return { ok: true };
 }
 
+/**
+ * Wer wohnt hier, und wie heißt das Kind?
+ *
+ * Bisher stand beides im Code. Ein zweiter Haushalt hätte damit unsere Namen
+ * getragen — in der Oberfläche, im Kalendereintrag und in jedem KI-Text.
+ */
+export async function setHaushaltNamenAction(input: {
+  kind: string;
+  namen: { email: string; name: string }[];
+}): Promise<{ ok: boolean; grund?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
+
+  const { prisma } = await import("@/lib/prisma");
+  const { parseAllowlist } = await import("@/lib/auth/allowlist");
+  const { setKindName, invalidateProfil } = await import("@/lib/haushalt/profil");
+
+  // Nur Adressen, die ohnehin Zugang haben — von außen lässt sich hier
+  // niemand hineinschreiben.
+  const erlaubt = new Set(parseAllowlist(process.env.ALLOWED_EMAILS));
+  for (const n of input.namen) {
+    const email = n.email.trim().toLowerCase();
+    const name = n.name.trim();
+    if (!erlaubt.has(email) || !name) continue;
+    await prisma.user.upsert({
+      where: { email },
+      create: { email, name },
+      update: { name },
+    });
+  }
+  await setKindName(input.kind);
+  invalidateProfil();
+  revalidatePath("/einstellungen");
+  revalidatePath("/woche");
+  return { ok: true };
+}
+
 export async function setCareBlocksAction(an: boolean) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };

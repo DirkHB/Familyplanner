@@ -8,6 +8,7 @@ import { expandOccurrences } from "@/lib/calendar/ical";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { dayKey } from "@/lib/calendar/format";
 import { personForEmail } from "@/lib/auth/allowlist";
+import { haushaltProfil } from "@/lib/haushalt/profil";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import {
   CARE_MARKER,
@@ -15,6 +16,7 @@ import {
   careBlockTitle,
   careBlockUid,
   careBlockDescription,
+  nameFuerPlatz,
   dayKeyFromCareBlockUid,
   type CarePerson,
 } from "./block";
@@ -63,20 +65,29 @@ export async function upsertCareBlock(
 ): Promise<void> {
   if (!(await getFlag(CARE_BLOCKS))) return;
 
-  const [ziel, w, user] = await Promise.all([
+  const [ziel, w, user, profil] = await Promise.all([
     schreibziel(),
     fenster(eventUid, occurrenceDate),
     userId
-      ? prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+      ? prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
       : Promise.resolve(null),
+    haushaltProfil(),
   ]);
   if (!ziel || !w || (userId && !user)) return;
 
   const person: CarePerson = user ? personForEmail(user.email) : "extern";
+  // Wer im Kalender steht: der Name aus dem Profil, bei externer Betreuung
+  // der eingegebene („Oma"). Nie ein im Code festgeschriebener Name.
+  const wer = user
+    ? (profil.erwachsene.find((e) => e.email === user.email.toLowerCase())?.name ??
+       user.name ??
+       nameFuerPlatz(person))
+    : (externName?.trim() || nameFuerPlatz("extern"));
+  const titel = careBlockTitle(profil.kind, wer);
   const uid = careBlockUid(eventUid, w.tag);
   const ics = buildIcs({
     uid,
-    title: careBlockTitle(person, externName),
+    title: titel,
     start: w.start,
     end: w.end,
     allDay: false,
@@ -98,7 +109,7 @@ export async function upsertCareBlock(
         recurrenceId: "",
         href,
         etag: put.etag,
-        title: careBlockTitle(person, externName),
+        title: titel,
         start: w.start,
         end: w.end,
         allDay: false,
@@ -106,7 +117,7 @@ export async function upsertCareBlock(
         lastSyncedAt: new Date(),
       },
       update: {
-        title: careBlockTitle(person, externName),
+        title: titel,
         start: w.start,
         end: w.end,
         rawIcs: ics,
