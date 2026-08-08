@@ -36,7 +36,7 @@ export default async function TerminePage({
   const to = startOfDayBerlin(new Date(`${shiftMonth(startKey, MONATE_IM_STROM)}-01T12:00:00Z`));
 
   const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
-  const days = buildWeek(occurrences, metaByUid, now, careByOcc);
+  const days = buildWeek(occurrences, metaByUid, now, careByOcc, undefined, { von: from, bis: to });
 
   // Fürs Raster reichen Kurzformen und Farben — die vollen Termine holt das
   // Tages-Blatt frisch. Das hält ein ganzes Jahr Kalender leicht.

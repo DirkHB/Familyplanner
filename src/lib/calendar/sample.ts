@@ -65,6 +65,9 @@ export function buildSampleWeek(now: Date = new Date()): {
     // Die Vorschau muss beides zeigen: die ruhige Zeile und dass sie an jedem
     // Tag steht, den der Besuch dauert.
     allDay("s-besuch", "Mama in München", 1, 3),
+    // Begann vor dem Fenster und läuft weiter — die Woche darf davon trotzdem
+    // nicht in der Vergangenheit anfangen.
+    allDay("s-sprung", "Sprung 2 (Woche 8-10)", -3, 14),
   ];
 
   const metaByUid = new Map<string, EventMeta>([

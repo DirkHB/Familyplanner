@@ -1,7 +1,7 @@
 import { WeekView } from "@/components/week/WeekView";
 import { buildWeek } from "@/lib/calendar/view-model";
 import { buildSampleWeek } from "@/lib/calendar/sample";
-import { formatDateHeader } from "@/lib/calendar/format";
+import { formatDateHeader, startOfDayBerlin } from "@/lib/calendar/format";
 import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,13 @@ export const dynamic = "force-dynamic";
 export default function VorschauWoche() {
   const now = new Date();
   const { occurrences, metaByUid } = buildSampleWeek(now);
-  const days = buildWeek(occurrences, metaByUid, now);
+  // Derselbe Zeitraum wie auf der echten Woche — sonst zieht ein ganztägiger
+  // Eintrag, der vorletzte Woche begann, die Liste in die Vergangenheit.
+  const von = startOfDayBerlin(now);
+  const days = buildWeek(occurrences, metaByUid, now, undefined, undefined, {
+    von,
+    bis: new Date(von.getTime() + 10 * 86_400_000),
+  });
   const requests = [
     {
       id: "s-req",

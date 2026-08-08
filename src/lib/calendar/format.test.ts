@@ -174,6 +174,27 @@ describe("groupByDay mit mehrtägigem Ganztägigem", () => {
     expect(tageEinesVorkommens(geburtstag)).toEqual(["2026-08-12"]);
   });
 
+  // „Sprung 2 (Woche 8–10)" läuft über Wochen. Ohne Zeitraum spannte er die
+  // Woche über seine eigene Länge auf und ließ sie drei Tage vor heute
+  // anfangen — die Ansicht zeigte Vergangenheit, nach der niemand gefragt hat.
+  it("bleibt im abgefragten Zeitraum", async () => {
+    const { groupByDay, startOfDayBerlin } = await import("./format");
+    // Genau wie die Seiten den Zeitraum bilden: Berliner Tagesbeginn, Ende
+    // exklusiv. Zwei Tage ab dem 12. sind der 12. und der 13.
+    const von = startOfDayBerlin(new Date("2026-08-12T12:00:00Z"));
+    const g = groupByDay([urlaub], new Date("2026-08-12T10:00:00Z"), {
+      von,
+      bis: new Date(von.getTime() + 2 * 86_400_000),
+    });
+    expect(g.map((x) => x.key)).toEqual(["2026-08-12", "2026-08-13"]);
+  });
+
+  it("zeigt ohne Zeitraum weiter alle Tage", async () => {
+    const { groupByDay } = await import("./format");
+    const g = groupByDay([urlaub], new Date("2026-08-12T10:00:00Z"));
+    expect(g).toHaveLength(5);
+  });
+
   // Der Fehler, der uns fast durchgerutscht wäre: Wer den Instant statt
   // `startDate` befragt, bekommt auf einem Berliner Server den 9. dazu.
   it("liest denselben Urlaub in jeder Server-Zeitzone gleich", async () => {

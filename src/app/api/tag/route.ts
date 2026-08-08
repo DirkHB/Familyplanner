@@ -23,7 +23,10 @@ export async function GET(req: Request) {
   const from = startOfDayBerlin(new Date(`${d}T12:00:00Z`));
   const to = new Date(from.getTime() + 86_400_000);
   const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
-  const day = buildWeek(occurrences, metaByUid, new Date(), careByOcc).find((g) => g.key === d);
+  const day = buildWeek(occurrences, metaByUid, new Date(), careByOcc, undefined, {
+    von: from,
+    bis: to,
+  }).find((g) => g.key === d);
 
   return NextResponse.json({
     events: (day?.events ?? []).map((ev) => ({

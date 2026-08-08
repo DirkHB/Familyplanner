@@ -65,8 +65,10 @@ export function buildWeek(
   now: Date = new Date(),
   careByOcc?: CareByOcc,
   fenster: TagesFenster = STANDARD_FENSTER,
+  /** Der abgefragte Zeitraum — hält mehrtägiges Ganztägiges im Fenster. */
+  zeitraum?: { von: Date; bis: Date },
 ): DayVM[] {
-  const groups = groupByDay(occurrences, now);
+  const groups = groupByDay(occurrences, now, zeitraum);
   return groups.map((g) => ({
     key: g.key,
     weekday: g.weekday,

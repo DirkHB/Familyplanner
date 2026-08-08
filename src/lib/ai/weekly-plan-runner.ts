@@ -30,7 +30,7 @@ export async function buildContextFromDb(userId: string | null, now: Date = new 
   const details = await prisma.eventDetail.findMany({ where: { eventUid: { in: uids } } });
   const catByUid = new Map(details.map((d) => [d.eventUid, d.category]));
 
-  const groups = groupByDay(occurrences, now);
+  const groups = groupByDay(occurrences, now, { von: from, bis: to });
   const days: ContextDay[] = groups.map((g) => ({
     weekday: g.weekday,
     dayNumber: g.dayNumber,

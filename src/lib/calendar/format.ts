@@ -138,12 +138,28 @@ export function tageEinesVorkommens(occ: Occurrence): string[] {
   return tage;
 }
 
-export function groupByDay(occurrences: Occurrence[], now: Date = new Date()): DayGroup[] {
+export function groupByDay(
+  occurrences: Occurrence[],
+  now: Date = new Date(),
+  /**
+   * Der abgefragte Zeitraum. Ohne ihn spannt ein mehrtägiges Ganztägiges die
+   * Liste über seine eigene Länge auf — ein Eintrag „Sprung 2 (Woche 8–10)",
+   * der vorletzten Mittwoch begann, ließ die Woche am Mittwoch anfangen,
+   * drei Tage vor heute. Die Vorkommen wissen nichts davon, wonach gefragt
+   * wurde; nur die aufrufende Stelle weiß es.
+   */
+  zeitraum?: { von: Date; bis: Date },
+): DayGroup[] {
   const todayKey = dayKey(now);
+  const vonKey = zeitraum ? dayKey(zeitraum.von) : null;
+  // `bis` ist exklusiv — eine Millisekunde zurück trifft den letzten Tag.
+  const bisKey = zeitraum ? dayKey(new Date(zeitraum.bis.getTime() - 1)) : null;
   const map = new Map<string, Occurrence[]>();
 
   for (const occ of occurrences) {
     for (const k of tageEinesVorkommens(occ)) {
+      if (vonKey && k < vonKey) continue;
+      if (bisKey && k > bisKey) continue;
       const list = map.get(k);
       if (list) list.push(occ);
       else map.set(k, [occ]);

@@ -58,7 +58,7 @@ export default async function WochePage({
       : STANDARD_FENSTER;
 
   const { occurrences, metaByUid, careByOcc } = await getRangeData(from, to);
-  const days = buildWeek(occurrences, metaByUid, now, careByOcc, fenster);
+  const days = buildWeek(occurrences, metaByUid, now, careByOcc, fenster, { von: from, bis: to });
 
   const offeneAnfragen = session?.user?.id ? await getOpenRequestsForUser(session.user.id) : [];
   // Wann der Termin dazu ist, gehört auf die Karte — sonst sagt man Ja, ohne
