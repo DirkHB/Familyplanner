@@ -121,6 +121,14 @@ function DaySection({
 }) {
   const byKey = new Map(day.events.map((e) => [e.key, e]));
   const ganztags = day.events.filter((e) => e.allDay);
+  /*
+   * Der Zeitstrahl misst den Tag an seinen Terminen. Gibt es keinen, hat er
+   * nichts zu messen: „7 Uhr / frei · 14 Std / 21 Uhr" ist die pflichtschuldige
+   * Meldung, dass nichts da ist — drei Zeilen ohne Aussage. Solche Tage gab es
+   * in der Liste früher gar nicht; erst seit eine mehrtägige Kulisse ihre Tage
+   * selbst aufmacht, stehen sie da. Dann eben nur die Kulisse.
+   */
+  const hatTermine = day.events.some((e) => !e.allDay);
   return (
     <section>
       <div className="mb-3 flex items-baseline gap-3">
@@ -134,7 +142,7 @@ function DaySection({
       </div>
 
       {ganztags.length > 0 && (
-        <div className="mb-3 flex flex-col gap-1">
+        <div className={`flex flex-col gap-1 ${hatTermine ? "mb-3" : ""}`}>
           {ganztags.map((ev) => (
             <KulisseZeile key={ev.key} ev={ev} />
           ))}
@@ -145,37 +153,39 @@ function DaySection({
           Termingruppen, gestrichelte Marken für freie Blöcke. Freie Blöcke
           sind bewusst immer gleich hoch — die Frage ist „ist da Luft?",
           die Dauer steht als Text dran. */}
-      <div className="relative pl-4">
-        <span aria-hidden className="absolute bottom-1 left-[3px] top-1 w-px bg-surface-muted" />
-        <p className="tnum mb-1 text-[11px] leading-none text-ink-muted/60">{fenster.vonStunde} Uhr</p>
-        <div className="flex flex-col gap-2.5">
-          {day.strahl.map((seg, i) =>
-            seg.art === "frei" ? (
-              <div key={`frei-${i}`} className="relative flex h-7 items-center">
-                <span aria-hidden className="absolute -left-4 top-1/2 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink-muted/50 bg-bg" />
-                <span className="rounded-pill border border-dashed border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted/80">
-                  {seg.label}
-                </span>
-              </div>
-            ) : (
-              <div key={seg.keys.join("+")} className="relative">
-                <span aria-hidden className="absolute -left-4 top-6 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-ink-muted/60" />
-                {seg.keys.length === 1 ? (
-                  <EventRow ev={byKey.get(seg.keys[0])!} index={i} isNext={seg.keys[0] === nextTodayKey} />
-                ) : (
-                  /* Parallele Termine: nebeneinander, kompakt. */
-                  <div className="grid grid-cols-2 gap-2">
-                    {seg.keys.map((k) => (
-                      <EventRow key={k} ev={byKey.get(k)!} index={i} isNext={k === nextTodayKey} kompakt />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ),
-          )}
+      {hatTermine && (
+        <div className="relative pl-4">
+          <span aria-hidden className="absolute bottom-1 left-[3px] top-1 w-px bg-surface-muted" />
+          <p className="tnum mb-1 text-[11px] leading-none text-ink-muted/60">{fenster.vonStunde} Uhr</p>
+          <div className="flex flex-col gap-2.5">
+            {day.strahl.map((seg, i) =>
+              seg.art === "frei" ? (
+                <div key={`frei-${i}`} className="relative flex h-7 items-center">
+                  <span aria-hidden className="absolute -left-4 top-1/2 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink-muted/50 bg-bg" />
+                  <span className="rounded-pill border border-dashed border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted/80">
+                    {seg.label}
+                  </span>
+                </div>
+              ) : (
+                <div key={seg.keys.join("+")} className="relative">
+                  <span aria-hidden className="absolute -left-4 top-6 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-ink-muted/60" />
+                  {seg.keys.length === 1 ? (
+                    <EventRow ev={byKey.get(seg.keys[0])!} index={i} isNext={seg.keys[0] === nextTodayKey} />
+                  ) : (
+                    /* Parallele Termine: nebeneinander, kompakt. */
+                    <div className="grid grid-cols-2 gap-2">
+                      {seg.keys.map((k) => (
+                        <EventRow key={k} ev={byKey.get(k)!} index={i} isNext={k === nextTodayKey} kompakt />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ),
+            )}
+          </div>
+          <p className="tnum mt-1 text-[11px] leading-none text-ink-muted/60">{fenster.bisStunde} Uhr</p>
         </div>
-        <p className="tnum mt-1 text-[11px] leading-none text-ink-muted/60">{fenster.bisStunde} Uhr</p>
-      </div>
+      )}
     </section>
   );
 }
