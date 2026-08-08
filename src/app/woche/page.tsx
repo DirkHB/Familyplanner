@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { WeekView } from "@/components/week/WeekView";
@@ -11,6 +12,7 @@ import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
 import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
 import { haushaltProfil } from "@/lib/haushalt/profil";
+import { brauchtEinrichtung } from "@/lib/haushalt/einrichtung";
 import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
 import { countTodosDueToday } from "@/lib/klaerung/repository";
@@ -24,6 +26,16 @@ export default async function WochePage({
   searchParams: Promise<{ w?: string }>;
 }) {
   const session = await auth();
+
+  /**
+   * Wer noch nichts eingerichtet hat, landet beim Assistenten statt auf einer
+   * leeren Woche. Die Woche ist der Einstieg nach dem Anmelden — hier abzubiegen
+   * heißt, niemanden vor eine Ansicht zu setzen, die noch nichts zeigen kann.
+   */
+  if (session?.user?.email && (await brauchtEinrichtung(session.user.email))) {
+    redirect("/einrichten");
+  }
+
   const name = displayNameForEmail(session?.user?.email);
 
   const now = new Date();
