@@ -38,14 +38,14 @@ export function buildSampleWeek(now: Date = new Date()): {
     };
   };
 
-  const allDay = (uid: string, summary: string, dayOff: number): Occurrence => {
+  const allDay = (uid: string, summary: string, dayOff: number, tage = 1): Occurrence => {
     const start = new Date(base + dayOff * D);
     return {
       uid,
       summary,
       location: null,
       start,
-      end: new Date(start.getTime() + D),
+      end: new Date(start.getTime() + tage * D),
       allDay: true,
       startDate: dayKey(start),
       recurrenceId: start.toISOString(),
@@ -61,6 +61,10 @@ export function buildSampleWeek(now: Date = new Date()): {
     ev("s-friseur", "Friseur", 1, 10, 30, 60),
     ev("s-tennis", "Tennis", 2, 19, 0, 90),
     allDay("s-oma", "Geburtstag Oma", 3),
+    // Kein Termin, sondern Kulisse — und einer, der über mehrere Tage geht.
+    // Die Vorschau muss beides zeigen: die ruhige Zeile und dass sie an jedem
+    // Tag steht, den der Besuch dauert.
+    allDay("s-besuch", "Mama in München", 1, 3),
   ];
 
   const metaByUid = new Map<string, EventMeta>([
@@ -70,6 +74,7 @@ export function buildSampleWeek(now: Date = new Date()): {
     ["s-friseur", { category: "erledigung", people: ["dirk"] }],
     ["s-tennis", { category: "sport", care: { status: "da", responsible: ["constanze"] }, people: ["dirk"] }],
     ["s-oma", { category: "geburtstag" }],
+    ["s-besuch", { category: "besuch" }],
   ]);
 
   return { occurrences, metaByUid };

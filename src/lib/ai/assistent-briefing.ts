@@ -6,7 +6,13 @@ import { haushaltProfil, beideNamen, nameFuerSlot, type HaushaltProfil } from "@
 import { HAUPTLISTE_FILTER } from "@/lib/haushalt/singletons";
 import { getAnthropic, aiConfigured, AI_MODEL } from "./client";
 import { getRangeData } from "@/lib/calendar/range-data";
-import { startOfDayBerlin, dayKey, formatTime, formatWeekday } from "@/lib/calendar/format";
+import {
+  startOfDayBerlin,
+  dayKey,
+  formatTime,
+  formatWeekday,
+  tageEinesVorkommens,
+} from "@/lib/calendar/format";
 import { buildStrahl, STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 import { listStores } from "@/lib/shopping/repository";
 
@@ -58,10 +64,16 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
 
   const zeilen: string[] = [];
 
-  zeilen.push("TERMINE (nächste 4 Tage):");
-  for (const o of occurrences) {
+  // Ganztägiges und Termine gehören in getrennte Abschnitte. Zusammen gelesen
+  // wird „Mama in München" zu einem Programmpunkt um 0 Uhr — dabei ist es die
+  // Lage des Tages, aus der überhaupt erst etwas folgt.
+  const mitUhrzeit = occurrences.filter((o) => !o.allDay);
+  const kulisse = occurrences.filter((o) => o.allDay);
+
+  zeilen.push("TERMINE MIT UHRZEIT (nächste 4 Tage):");
+  for (const o of mitUhrzeit) {
     const tag = dayKey(o.start) === heuteKey ? "heute" : formatWeekday(o.start);
-    const zeit = o.allDay ? "ganztägig" : `${formatTime(o.start)}–${formatTime(o.end)}`;
+    const zeit = `${formatTime(o.start)}–${formatTime(o.end)}`;
     const care = careByOcc.get(`${o.uid}:${dayKey(o.start)}`);
     const careTxt =
       care?.status === "offen"
@@ -74,7 +86,28 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
     const vorbei = o.end <= now ? " (vorbei)" : "";
     zeilen.push(`- ${tag} ${zeit}: ${o.summary}${careTxt}${vorbei}`);
   }
-  if (occurrences.length === 0) zeilen.push("- keine");
+  if (mitUhrzeit.length === 0) zeilen.push("- keine");
+
+  zeilen.push("WIE DIE TAGE LIEGEN (ganztägige Einträge — Kulisse, keine Termine):");
+  const letzterKey = dayKey(new Date(to.getTime() - 1));
+  const label = (k: string) => (k === heuteKey ? "heute" : formatWeekday(new Date(`${k}T12:00:00Z`)));
+  let gezeigt = 0;
+  for (const o of kulisse) {
+    // Nur die Tage, die überhaupt im Blick sind. Ein Urlaub, der letzte Woche
+    // begann, soll nicht mit „Mi" anfangen — und einer, der zwei Wochen geht,
+    // nicht mit einem Wochentag enden, der zweimal vorkommt.
+    const tage = tageEinesVorkommens(o);
+    const sichtbar = tage.filter((k) => k >= heuteKey && k <= letzterKey);
+    if (sichtbar.length === 0) continue;
+    const weiter = tage[tage.length - 1] > letzterKey ? " und darüber hinaus" : "";
+    const spanne =
+      sichtbar.length === 1
+        ? label(sichtbar[0])
+        : `${label(sichtbar[0])} bis ${label(sichtbar[sichtbar.length - 1])}`;
+    zeilen.push(`- ${spanne}${weiter}: ${o.summary}`);
+    gezeigt++;
+  }
+  if (gezeigt === 0) zeilen.push("- nichts");
 
   const heutige = occurrences.filter((o) => dayKey(o.start) === heuteKey && !o.allDay);
   const strahl = buildStrahl(
@@ -119,6 +152,18 @@ Regeln:
 - Wenn der Tag voll ist, sag es ehrlich und empfiehl eine Pause in einer echten Lücke.
   Wenn er leicht ist, sag das in einem Satz — ohne künstliche Ratschläge.
 - Offene Betreuung für ${kind} ist immer erwähnenswert.
+
+Zu „WIE DIE TAGE LIEGEN":
+- Das sind keine Termine. Ein Geburtstag, eine Hochzeit, ein Besuch — sie stehen im Kalender,
+  damit man weiß, wie der Tag liegt. Sag deshalb nie, dass etwas davon „ansteht" oder wann es ist.
+  Sag, was dadurch möglich oder nötig wird.
+- Nötig: Woran vorher zu denken ist — Geschenk, Anruf, Kleidung, Anfahrt. Aber nur,
+  wenn es in Aufgaben oder Einkauf noch nicht steht.
+- Möglich: Ist jemand da („Mama in München"), dann ist das ein Besuch, kein weiterer Babysitter.
+  Zeit MIT der Person gehört genauso dazu wie ein Abend zu zweit, weil jemand bei ${kind} bleiben kann.
+  Beides nur vorschlagen, wenn der Kalender an dem Tag wirklich Luft lässt.
+- Höchstens EIN solcher Gedanke je Briefing, und nur, wenn er trägt. Lieber nichts sagen
+  als etwas Beliebiges.
 - Erfinde nichts. Keine Emojis, keine Anrede, keine Grußformel, keine Aufzählungszeichen.`;
 
 async function frageAssistent(kontext: string, profil: HaushaltProfil): Promise<string | null> {

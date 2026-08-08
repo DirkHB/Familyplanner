@@ -98,21 +98,65 @@ export type DayGroup = {
 };
 
 /** Vorkommen nach Berliner Kalendertag gruppieren, chronologisch sortiert. */
+/**
+ * An welchen Tagen zeigt sich dieses Vorkommen?
+ *
+ * Fast immer an genau einem — dem seines Beginns. Ganztägiges kann sich aber
+ * über mehrere Tage ziehen („Urlaub Italien, 10.–15."), und dann gehört es
+ * auf jeden dieser Tage. Vorher stand es nur am 10. und war am 11. spurlos
+ * verschwunden: genau an den Tagen weg, an denen es zählt.
+ *
+ * Nur für Ganztägiges. Ein Termin von 23 bis 1 Uhr ist ein Termin am
+ * Vorabend, kein zweitägiger.
+ */
+export function tageEinesVorkommens(occ: Occurrence): string[] {
+  if (!occ.allDay) return [dayKey(occ.start)];
+
+  /*
+   * Ganztägiges hat keinen Zeitpunkt, nur einen Tag — und genau deshalb darf
+   * hier nicht mit dem Instant gerechnet werden: aus `DTSTART;VALUE=DATE:20260810`
+   * macht ical.js Mitternacht in der Zeitzone des SERVERS. Unter UTC ist das
+   * 10.08. 00:00Z, unter Europe/Berlin 09.08. 22:00Z. Beide Male ist es der 10.
+   *
+   * Zonenfest ist allein `startDate`, der reine Datums-String aus dem .ics.
+   * Von dort wird in Kalendertagen weitergezählt; die Länge kommt aus der
+   * Dauer, die sich bei einer Zonenverschiebung nicht ändert (das Runden
+   * fängt die eine Stunde ab, die eine Sommerzeitgrenze dazwischenschiebt).
+   */
+  const erster = occ.startDate ?? dayKey(occ.start);
+  // Endet exklusiv: DTSTART 10.08., DTEND 15.08. sind fünf Tage, der letzte ist der 14.
+  const tageAnzahl = Math.max(1, Math.round((occ.end.getTime() - occ.start.getTime()) / 86_400_000));
+
+  const tage: string[] = [];
+  // Mittags-Anker in UTC: keine Sommerzeit, kein Kippen beim Weiterzählen.
+  let zeiger = new Date(`${erster}T12:00:00Z`);
+  // Deckel gegen kaputte .ics mit absurden Zeiträumen.
+  for (let i = 0; i < Math.min(tageAnzahl, 366); i++) {
+    tage.push(zeiger.toISOString().slice(0, 10));
+    zeiger = new Date(zeiger.getTime() + 86_400_000);
+  }
+  return tage;
+}
+
 export function groupByDay(occurrences: Occurrence[], now: Date = new Date()): DayGroup[] {
   const todayKey = dayKey(now);
   const map = new Map<string, Occurrence[]>();
 
   for (const occ of occurrences) {
-    const k = dayKey(occ.start);
-    const list = map.get(k);
-    if (list) list.push(occ);
-    else map.set(k, [occ]);
+    for (const k of tageEinesVorkommens(occ)) {
+      const list = map.get(k);
+      if (list) list.push(occ);
+      else map.set(k, [occ]);
+    }
   }
 
   const groups: DayGroup[] = [];
   for (const [key, occs] of map) {
     occs.sort((a, b) => a.start.getTime() - b.start.getTime());
-    const rep = occs[0].start;
+    // Der Tag beschreibt sich aus seinem Schlüssel, nicht aus dem ersten
+    // Vorkommen: Ein Urlaub, der am 10. begann, stünde am 12. sonst als
+    // „Montag, 10." da. Mittags-Anker gegen die Sommerzeit.
+    const rep = new Date(`${key}T12:00:00Z`);
     groups.push({
       key,
       date: rep,

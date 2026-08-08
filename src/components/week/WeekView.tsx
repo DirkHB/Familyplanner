@@ -134,9 +134,9 @@ function DaySection({
       </div>
 
       {ganztags.length > 0 && (
-        <div className="mb-3 flex flex-col gap-3">
-          {ganztags.map((ev, i) => (
-            <EventRow key={ev.key} ev={ev} index={i} isNext={false} />
+        <div className="mb-3 flex flex-col gap-1">
+          {ganztags.map((ev) => (
+            <KulisseZeile key={ev.key} ev={ev} />
           ))}
         </div>
       )}
@@ -177,6 +177,39 @@ function DaySection({
         <p className="tnum mt-1 text-[11px] leading-none text-ink-muted/60">{fenster.bisStunde} Uhr</p>
       </div>
     </section>
+  );
+}
+
+/**
+ * Ganztägiges ist meistens gar kein Termin, sondern Kulisse: ein Geburtstag,
+ * ein Besuch, eine Hochzeit. Es sagt, wie der Tag gestimmt ist — nicht, wo man
+ * um halb vier zu sein hat. Als Terminkarte hat es genau das behauptet und
+ * dem Tag ein „ganztägig" vorangestellt, das nichts erklärt.
+ *
+ * Deshalb: keine Karte, kein Schatten, keine Uhrzeitspalte. Eine ruhige Zeile
+ * über dem Tag. Antippbar bleibt sie — an einer Hochzeit hängt ein Geschenk,
+ * an einem Besuch hängt eine Frage.
+ */
+function KulisseZeile({ ev }: { ev: EventVM }) {
+  return (
+    <Link
+      href={ev.href}
+      className="-mx-1 flex items-center gap-2 rounded-card px-1 py-0.5 transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
+    >
+      <span
+        aria-hidden
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: ev.dotColor, opacity: ev.past ? 0.35 : 0.9 }}
+      />
+      <span className={`truncate text-[15px] ${ev.past ? "text-ink-muted line-through" : "text-ink"}`}>
+        {ev.title}
+      </span>
+      {ev.openCount > 0 && (
+        <span className="ml-auto shrink-0 rounded-pill bg-counter-light px-2 py-0.5 text-xs font-medium text-signal">
+          {ev.openCount} offen
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -240,7 +273,9 @@ function EventRow({
             isNext ? "text-accent" : ""
           } ${ev.past ? "text-ink-muted line-through" : ""}`}
         >
-          {ev.allDay ? <span className="text-sm text-ink-muted">ganztägig</span> : ev.time}
+          {/* Nur Termine mit Uhrzeit landen hier — Ganztägiges läuft über
+              KulisseZeile, der Zeitstrahl kennt es gar nicht erst. */}
+          {ev.time}
         </div>
         <div className="w-px shrink-0" style={{ background: ev.dotColor, opacity: ev.past ? 0.15 : 0.35 }} />
         <div className="min-w-0 flex-1">
