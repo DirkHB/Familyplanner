@@ -40,20 +40,16 @@ export const HAUPTLISTE_FILTER = { list: { kind: "haupt" } } as const;
 /* ------------------------------ 2. Die Schalter ------------------------------ */
 
 /**
- * Schalter des Haushalts. Der Schlüssel trägt den Haushalt, damit zwei
- * Haushalte nicht denselben Schalter umlegen.
+ * Schalter des Haushalts.
+ *
+ * Der Schlüssel trug den Haushalt bis eben als Präfix im Text („1:care.blocks"),
+ * weil es keine Spalte dafür gab. Jetzt gibt es eine, und der Riegel setzt sie
+ * ein — zwei Wege, dasselbe zu sagen, sind einer zu viel. Der Präfix ist mit
+ * Migration 0018 aus den Daten verschwunden.
  */
-function flagKey(key: string): string {
-  return `${haushaltId()}:${key}`;
-}
-
 export async function getHaushaltFlag(key: string, fallback = false): Promise<boolean> {
   try {
-    // Erst unter dem neuen Schlüssel, dann unter dem alten: Schalter, die vor
-    // dieser Änderung gesetzt wurden, sollen weiter gelten.
-    const row =
-      (await prisma.appSetting.findUnique({ where: { key: flagKey(key) } })) ??
-      (await prisma.appSetting.findUnique({ where: { key } }));
+    const row = await prisma.appSetting.findFirst({ where: { key } });
     return row ? row.value === "an" : fallback;
   } catch {
     return fallback;
@@ -62,11 +58,12 @@ export async function getHaushaltFlag(key: string, fallback = false): Promise<bo
 
 export async function setHaushaltFlag(key: string, value: boolean): Promise<void> {
   const v = value ? "an" : "aus";
-  await prisma.appSetting.upsert({
-    where: { key: flagKey(key) },
-    create: { key: flagKey(key), value: v },
-    update: { value: v },
-  });
+  const vorhanden = await prisma.appSetting.findFirst({ where: { key }, select: { key: true } });
+  if (vorhanden) {
+    await prisma.appSetting.updateMany({ where: { key }, data: { value: v } });
+  } else {
+    await prisma.appSetting.create({ data: { key, value: v } });
+  }
 }
 
 /* --------------------------- 3. Der Kalenderzugang --------------------------- */

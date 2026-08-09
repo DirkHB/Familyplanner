@@ -14,11 +14,80 @@ datasource db {
 }
 
 /**
+ * ------------------------------ Haushalte ------------------------------
+ * Ein Haushalt sind zwei Erwachsene und ihre Daten. Bis hierher gehörte eine
+ * Datenbank genau einem — jetzt teilen sich mehrere eine, und der Haushalt
+ * steht an jeder Zeile, die jemandem gehört.
+ * Die Spalte ist überall NOT NULL und ohne Vorgabewert. Das ist Absicht: Ein
+ * Schreibzugriff, der den Haushalt vergisst, soll an der Datenbank scheitern
+ * statt still in einem fremden zu landen. Für Lesezugriffe kann die Datenbank
+ * das nicht leisten — dafür gibt es den Riegel in lib/prisma.
+ */
+
+model Household {
+  id        String   @id @default(cuid())
+  /// Nur zur Wiedererkennung in den Logs („Familie Brederecke").
+  name      String?
+  createdAt DateTime @default(now())
+
+  users             User[]
+  invites           Invite[]
+  pushSubscriptions PushSubscription[]
+  calendarAccounts  CalendarAccount[]
+  calendars         Calendar[]
+  events            Event[]
+  eventDetails      EventDetail[]
+  careAssignments   CareAssignment[]
+  shoppingLists     ShoppingList[]
+  shoppingItems     ShoppingItem[]
+  stores            Store[]
+  requests          Request[]
+  ideas             Idea[]
+  learnedPatterns   LearnedPattern[]
+  aiFeedbacks       AiFeedback[]
+  activityLogs      ActivityLog[]
+  todoLists         TodoList[]
+  todos             Todo[]
+  briefings         Briefing[]
+  careRules         CareRule[]
+  appSettings       AppSetting[]
+
+  @@map("households")
+}
+
+/**
+ * Eine Einladung: der einzige Weg herein.
+ * Es gibt keine offene Anmeldung. Wer einen Link bekommt, kommt in genau den
+ * Haushalt, für den er ausgestellt wurde — oder bekommt einen neuen, wenn
+ * `householdId` leer ist (so lädt Dirk eine neue Familie ein).
+ * Gespeichert wird nur der Hash des Tokens. Wer die Datenbank liest, kann
+ * damit keine Einladung benutzen; verloren geht dabei nichts, denn den
+ * Klartext braucht nur der Link in der Mail.
+ */
+model Invite {
+  id          String     @id @default(cuid())
+  /// Leer = beim Einlösen wird ein neuer Haushalt angelegt.
+  householdId String?    @map("household_id")
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  /// Nur diese Adresse kann die Einladung einlösen.
+  email       String
+  tokenHash   String     @unique @map("token_hash")
+  expiresAt   DateTime   @map("expires_at")
+  usedAt      DateTime?  @map("used_at")
+  createdAt   DateTime   @default(now())
+
+  @@index([email])
+  @@map("invites")
+}
+
+/**
  * ------------------------------- Nutzer -------------------------------
  */
 
 model User {
   id                String    @id @default(cuid())
+  householdId       String    @map("household_id")
+  household         Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
   name              String?
   email             String    @unique
   emailVerified     DateTime?
@@ -90,13 +159,17 @@ model VerificationToken {
 }
 
 model PushSubscription {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  endpoint  String   @unique
-  keys      Json
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  householdId String   @default("KEIN_HAUSHALT") @map("household_id")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint    String   @unique
+  keys        Json
+  createdAt   DateTime @default(now())
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("push_subscriptions")
 }
 
@@ -106,6 +179,7 @@ model PushSubscription {
 
 model CalendarAccount {
   id                   String   @id @default(cuid())
+  householdId          String   @default("KEIN_HAUSHALT") @map("household_id")
   userId               String
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider             String   @default("icloud")
@@ -118,11 +192,15 @@ model CalendarAccount {
 
   calendars Calendar[]
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("calendar_accounts")
 }
 
 model Calendar {
   id           String          @id @default(cuid())
+  householdId  String          @default("KEIN_HAUSHALT") @map("household_id")
   accountId    String
   account      CalendarAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   name         String
@@ -135,33 +213,38 @@ model Calendar {
   lastSyncOk   Boolean         @default(true)
   lastError    String?
 
-  events Event[]
+  events    Event[]
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([accountId, url])
+  @@index([householdId])
   @@map("calendars")
 }
 
 model Event {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
+  householdId  String    @default("KEIN_HAUSHALT") @map("household_id")
   calendarId   String
-  calendar     Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  calendar     Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   uid          String // stabile iCalendar-UID
   href         String
   etag         String?
   title        String
   start        DateTime // UTC
   end          DateTime // UTC
-  allDay       Boolean  @default(false)
+  allDay       Boolean   @default(false)
   location     String?
   rrule        String?
   recurrenceId String? // RECURRENCE-ID für Einzelausnahmen einer Serie
-  rawIcs       String   @db.Text
-  status       String   @default("confirmed")
-  lastSyncedAt DateTime @default(now())
+  rawIcs       String    @db.Text
+  status       String    @default("confirmed")
+  lastSyncedAt DateTime  @default(now())
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   // Eine Reihe (uid) kann mehrere Overrides (recurrenceId) haben.
   @@unique([calendarId, uid, recurrenceId])
   @@index([uid])
+  @@index([householdId])
   @@map("events")
 }
 
@@ -171,17 +254,22 @@ model Event {
 
 model EventDetail {
   eventUid      String   @id @map("event_uid") // = iCalendar-UID
+  householdId   String   @default("KEIN_HAUSHALT") @map("household_id")
   category      String   @default("sonstiges")
   notes         String?  @db.Text
   prepChecklist Json     @default("[]")
   createdBy     String?
   updatedAt     DateTime @default(now()) @updatedAt
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("event_details")
 }
 
 model CareAssignment {
   id                String    @id @default(cuid())
+  householdId       String    @default("KEIN_HAUSHALT") @map("household_id")
   eventUid          String
   occurrenceDate    DateTime // welcher Serientermin (Datum)
   responsibleUserId String?
@@ -193,10 +281,12 @@ model CareAssignment {
 
   /// Der Kalenderblock, in dem diese Betreuung steckt. Ein Block kann mehrere
   /// überlappende Betreuungen derselben Person zusammenfassen.
-  blockUid          String?   @map("block_uid")
+  blockUid  String?   @map("block_uid")
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([eventUid, occurrenceDate])
   @@index([blockUid], map: "care_assignments_block_uid_idx")
+  @@index([householdId])
   @@map("care_assignments")
 }
 
@@ -205,50 +295,60 @@ model CareAssignment {
  */
 
 model ShoppingList {
-  id       String         @id @default(cuid())
-  kind     String         @default("haupt") // haupt | termin
-  eventUid String?
-  name     String
-  items    ShoppingItem[]
+  id          String         @id @default(cuid())
+  householdId String         @default("KEIN_HAUSHALT") @map("household_id")
+  kind        String         @default("haupt") // haupt | termin
+  eventUid    String?
+  name        String
+  items       ShoppingItem[]
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("shopping_lists")
 }
 
 model ShoppingItem {
-  id        String       @id @default(cuid())
-  listId    String
-  list      ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
-  eventUid  String?
-  text      String
-  quantity  String?
-  category  String? // Alt: Laden als fester Schlüssel. Ersetzt durch storeId.
-  storeId   String?      @map("store_id")
-  store     Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
-  addedBy   String?
-  checkedBy String?
-  checkedAt DateTime?
-  createdAt DateTime     @default(now())
+  id          String       @id @default(cuid())
+  householdId String       @default("KEIN_HAUSHALT") @map("household_id")
+  listId      String
+  list        ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  eventUid    String?
+  text        String
+  quantity    String?
+  category    String? // Alt: Laden als fester Schlüssel. Ersetzt durch storeId.
+  storeId     String?      @map("store_id")
+  store       Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  addedBy     String?
+  checkedBy   String?
+  checkedAt   DateTime?
+  createdAt   DateTime     @default(now())
+  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([listId])
   @@index([storeId])
+  @@index([householdId])
   @@map("shopping_items")
 }
 
 /**
  * Ein Laden, in dem ihr einkauft. Früher fünf fest verdrahtete Namen im Code —
  * jetzt Zeilen, damit ihr sie selbst anlegen könnt.
- *
  * `storeId = null` ist bewusst kein Laden, sondern das Fach „Sonstiges": Es ist
  * immer da, lässt sich nicht löschen und fängt alles auf, was beim Löschen
  * eines Ladens heimatlos wird.
  */
 model Store {
-  id        String         @id @default(cuid())
-  name      String
-  sortOrder Int            @default(0) @map("sort_order")
-  createdAt DateTime       @default(now())
-  items     ShoppingItem[]
+  id          String         @id @default(cuid())
+  householdId String         @default("KEIN_HAUSHALT") @map("household_id")
+  name        String
+  sortOrder   Int            @default(0) @map("sort_order")
+  createdAt   DateTime       @default(now())
+  items       ShoppingItem[]
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("stores")
 }
 
@@ -257,26 +357,29 @@ model Store {
  */
 
 model Request {
-  id          String    @id @default(cuid())
-  fromUserId  String
-  fromUser    User      @relation("RequestFrom", fields: [fromUserId], references: [id])
-  toUserId    String
-  toUser      User      @relation("RequestTo", fields: [toUserId], references: [id])
-  eventUid    String?
+  id             String    @id @default(cuid())
+  householdId    String    @default("KEIN_HAUSHALT") @map("household_id")
+  fromUserId     String
+  fromUser       User      @relation("RequestFrom", fields: [fromUserId], references: [id])
+  toUserId       String
+  toUser         User      @relation("RequestTo", fields: [toUserId], references: [id])
+  eventUid       String?
   /// Das konkrete Vorkommen, um das es geht. Leer = gilt für den Termin
   /// allgemein (Anfragen von vor Migration 0016).
   occurrenceDate DateTime? @map("occurrence_date")
-  question    String
-  type        String    @default("yes_no") // yes_no | choice | free_text | date
-  options     Json      @default("[]")
-  answer      String?
-  status      String    @default("open") // open | answered | declined
-  dueDate     DateTime?
-  lastNudgeAt DateTime?
-  createdAt   DateTime  @default(now())
+  question       String
+  type           String    @default("yes_no") // yes_no | choice | free_text | date
+  options        Json      @default("[]")
+  answer         String?
+  status         String    @default("open") // open | answered | declined
+  dueDate        DateTime?
+  lastNudgeAt    DateTime?
+  createdAt      DateTime  @default(now())
+  household      Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([eventUid, occurrenceDate, status], map: "requests_event_occurrence_idx")
+  @@index([householdId])
   @@map("requests")
 }
 
@@ -286,6 +389,7 @@ model Request {
 
 model Idea {
   id           String   @id @default(cuid())
+  householdId  String   @default("KEIN_HAUSHALT") @map("household_id")
   type         String // urlaub | ausflug | restaurant | geschenk
   title        String
   description  String?
@@ -296,6 +400,9 @@ model Idea {
   status       String   @default("offen")
   createdAt    DateTime @default(now())
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("ideas")
 }
 
@@ -304,18 +411,23 @@ model Idea {
  */
 
 model LearnedPattern {
-  id        String   @id @default(cuid())
-  label     String // im UI lesbar & editierbar
-  pattern   Json
-  source    String   @default("gelernt")
-  isActive  Boolean  @default(true)
-  updatedAt DateTime @default(now()) @updatedAt
+  id          String   @id @default(cuid())
+  householdId String   @default("KEIN_HAUSHALT") @map("household_id")
+  label       String // im UI lesbar & editierbar
+  pattern     Json
+  source      String   @default("gelernt")
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @default(now()) @updatedAt
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("learned_patterns")
 }
 
 model AiFeedback {
   id                String   @id @default(cuid())
+  householdId       String   @default("KEIN_HAUSHALT") @map("household_id")
   suggestionId      String
   suggestionPayload Json
   userId            String?
@@ -324,6 +436,9 @@ model AiFeedback {
   editedResult      Json?
   createdAt         DateTime @default(now())
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("ai_feedback")
 }
 
@@ -332,15 +447,18 @@ model AiFeedback {
  */
 
 model ActivityLog {
-  id         String   @id @default(cuid())
-  entityType String
-  entityId   String
-  action     String
-  actor      String? // "sync" | userId
-  detail     Json     @default("{}")
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  householdId String    @default("KEIN_HAUSHALT") @map("household_id")
+  entityType  String
+  entityId    String
+  action      String
+  actor       String? // "sync" | userId
+  detail      Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([entityType, entityId])
+  @@index([householdId])
   @@map("activity_log")
 }
 
@@ -350,22 +468,26 @@ model ActivityLog {
 
 /**
  * Eine Aufgabenliste — „Haushalt", „Nicolas", „Papierkram".
- *
  * `listId = null` heißt „Ohne Liste" und ist kein Mangel: Der schnelle
  * Eintrag zwischendurch soll nicht erst eine Einordnung verlangen.
  */
 model TodoList {
-  id        String   @id @default(cuid())
-  name      String
-  sortOrder Int      @default(0) @map("sort_order")
-  createdAt DateTime @default(now())
-  todos     Todo[]
+  id          String   @id @default(cuid())
+  householdId String   @default("KEIN_HAUSHALT") @map("household_id")
+  name        String
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now())
+  todos       Todo[]
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@map("todo_lists")
 }
 
 model Todo {
   id          String    @id @default(cuid())
+  householdId String    @default("KEIN_HAUSHALT") @map("household_id")
   listId      String?   @map("list_id")
   list        TodoList? @relation(fields: [listId], references: [id], onDelete: SetNull)
   title       String
@@ -387,10 +509,12 @@ model Todo {
    * gibt keinen Abgleich zurück.
    */
   sourceUid   String?   @map("source_uid")
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([status, dueDate])
   @@index([listId])
   @@index([sourceUid])
+  @@index([householdId])
   @@map("todos")
 }
 
@@ -399,14 +523,15 @@ model Todo {
  */
 
 model Briefing {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   /// Wem gehört das? Solange eine Datenbank einem Haushalt gehört, immer '1'.
-  householdId String   @default("1") @map("household_id")
+  householdId String    @default("KEIN_HAUSHALT") @map("household_id")
   kind        String // morgen | woche
   dayKey      String // YYYY-MM-DD (Berlin) — ein Briefing je Art und Tag
-  summary     String   @db.Text
-  payload     Json     @default("{}")
-  createdAt   DateTime @default(now())
+  summary     String    @db.Text
+  payload     Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id])
 
   @@unique([householdId, kind, dayKey])
   @@map("briefings")
@@ -422,19 +547,22 @@ model Briefing {
  * abwinken. Der Schlüssel kommt aus titleKey() in lib/care/gaps.ts.
  */
 model CareRule {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   /// Wem gehört das? Solange eine Datenbank einem Haushalt gehört, immer '1'.
-  householdId String   @default("1") @map("household_id")
-  titleKey    String   @map("title_key")
-  decision    String   @default("keine") // keine = nicht nach Betreuung fragen
-  createdBy   String?  @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
+  householdId String    @default("KEIN_HAUSHALT") @map("household_id")
+  titleKey    String    @map("title_key")
+  decision    String    @default("keine") // keine = nicht nach Betreuung fragen
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  household   Household @relation(fields: [householdId], references: [id])
 
   @@unique([householdId, titleKey])
   @@map("care_rules")
 }
 
-/* ------------------------------ Einstellungen ------------------------------ */
+/**
+ * ------------------------------ Einstellungen ------------------------------
+ */
 
 /**
  * Schalter, die für die App als Ganzes gelten (nicht pro Person). Bewusst als
@@ -442,9 +570,14 @@ model CareRule {
  * je Schalter wäre eine Migration für jede Kleinigkeit.
  */
 model AppSetting {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt
+  key         String
+  householdId String   @default("KEIN_HAUSHALT") @map("household_id")
+  value       String
+  updatedAt   DateTime @updatedAt
 
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, key])
+  @@index([householdId])
   @@map("app_settings")
 }

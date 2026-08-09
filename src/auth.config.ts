@@ -33,16 +33,27 @@ export const authConfig = {
     signIn({ user }) {
       return isAllowedEmail(user?.email);
     },
-    jwt({ token }) {
+    /*
+     * Der Haushalt wird beim Anmelden einmal in das Token geschrieben und
+     * bleibt dort. Ihn bei jeder Anfrage nachzuschlagen hieße, für jede
+     * Datenbankabfrage vorher eine Datenbankabfrage zu machen — und der
+     * Riegel ruft das bei jeder auf.
+     *
+     * Er ändert sich nie: Wer einmal zu einem Haushalt gehört, bleibt dort.
+     */
+    jwt({ token, user }) {
       if (token.email && !token.name) {
         token.name = notnameAusEmail(token.email);
       }
+      const frisch = (user as { householdId?: string } | undefined)?.householdId;
+      if (frisch) token.householdId = frisch;
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = (token.sub as string) ?? session.user.id;
         session.user.name = (token.name as string) ?? session.user.name;
+        session.user.householdId = (token.householdId as string) ?? "";
       }
       return session;
     },

@@ -156,6 +156,7 @@ export async function setHaushaltNamenAction(input: {
   const { parseAllowlist } = await import("@/lib/auth/allowlist");
   const { setKindName, invalidateProfil } = await import("@/lib/haushalt/profil");
   const { platzNachReihenfolge } = await import("@/lib/haushalt/platz");
+  const { aktuellerHaushalt } = await import("@/lib/haushalt/aktuell");
 
   // Nur Adressen, die ohnehin Zugang haben — von außen lässt sich hier
   // niemand hineinschreiben.
@@ -176,7 +177,7 @@ export async function setHaushaltNamenAction(input: {
     const vorhanden = await prisma.user.findUnique({ where: { email } });
     await prisma.user.upsert({
       where: { email },
-      create: { email, name, slot: platz },
+      create: { householdId: await aktuellerHaushalt("Namen speichern"), email, name, slot: platz },
       // Ein einmal vergebener Platz bleibt; nur der Name wird aktualisiert.
       update: { name, ...(vorhanden?.slot ? {} : { slot: platz }) },
     });

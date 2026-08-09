@@ -20,6 +20,7 @@ export default defineConfig({
       // Beides gibt es nur im Next-Server; hier stünde sonst der Import im Weg.
       "server-only": path.resolve(__dirname, "db-tests/stubs/server-only.ts"),
       "next/cache": path.resolve(__dirname, "db-tests/stubs/next-cache.ts"),
+      "@/auth": path.resolve(__dirname, "db-tests/stubs/auth.ts"),
       "@": path.resolve(__dirname, "src"),
     },
   },

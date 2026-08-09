@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
+import { mitHaushalt } from "@/lib/haushalt/kontext";
 import { PLATZ_A, PLATZ_B } from "@/lib/haushalt/platz";
 
 /**
@@ -28,6 +29,10 @@ vi.mock("@/lib/calendar/tsdav-client", () => ({
 }));
 
 const prisma = new PrismaClient();
+
+// Alle Prüfungen laufen im selben Haushalt; die Trennung prüft mandanten.test.ts.
+const HAUSHALT = "h-test";
+const imHaushalt = <T>(fn: () => Promise<T>) => mitHaushalt(HAUSHALT, fn);
 const TAG = new Date("2026-08-10T00:00:00.000Z");
 
 let dirk = "", conny = "", kalender = "";
@@ -51,21 +56,23 @@ async function frisch() {
   await prisma.calendarAccount.deleteMany({});
   await prisma.appSetting.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.$executeRawUnsafe('TRUNCATE TABLE "households" CASCADE');
+  await prisma.household.create({ data: { id: HAUSHALT, name: "Prüfung" } });
 
   const { encryptSecret } = await import("@/lib/crypto/envelope");
-  dirk = (await prisma.user.create({ data: { email: "d@x.de", name: "Dirk", slot: PLATZ_A } })).id;
-  conny = (await prisma.user.create({ data: { email: "c@x.de", name: "Conny", slot: PLATZ_B } })).id;
+  dirk = (await prisma.user.create({ data: { householdId: HAUSHALT, email: "d@x.de", name: "Dirk", slot: PLATZ_A } })).id;
+  conny = (await prisma.user.create({ data: { householdId: HAUSHALT, email: "c@x.de", name: "Conny", slot: PLATZ_B } })).id;
   const acc = await prisma.calendarAccount.create({
-    data: { userId: dirk, provider: "icloud", username: "d@icloud.com", credentialsEncrypted: encryptSecret("pw") },
+    data: { householdId: HAUSHALT, userId: dirk, provider: "icloud", username: "d@icloud.com", credentialsEncrypted: encryptSecret("pw") },
   });
-  kalender = (await prisma.calendar.create({ data: { accountId: acc.id, name: "Familie", url: "https://x/fam/" } })).id;
-  await prisma.appSetting.create({ data: { key: "1:care.blocks", value: "an" } });
+  kalender = (await prisma.calendar.create({ data: { householdId: HAUSHALT, accountId: acc.id, name: "Familie", url: "https://x/fam/" } })).id;
+  await prisma.appSetting.create({ data: { householdId: HAUSHALT, key: "care.blocks", value: "an" } });
 }
 
 async function termin(uid: string, titel: string, vonH: number, bisH: number) {
   await prisma.event.create({
     data: {
-      calendarId: kalender, uid, recurrenceId: "", href: `https://x/fam/${uid}.ics`,
+      householdId: HAUSHALT, calendarId: kalender, uid, recurrenceId: "", href: `https://x/fam/${uid}.ics`,
       title: titel, start: new Date(`2026-08-10T${String(vonH).padStart(2, "0")}:00:00Z`),
       end: new Date(`2026-08-10T${String(bisH).padStart(2, "0")}:00:00Z`),
       allDay: false, rawIcs: ics(uid, titel, vonH, bisH),
@@ -76,7 +83,7 @@ async function termin(uid: string, titel: string, vonH: number, bisH: number) {
 async function betreuung(eventUid: string, userId: string | null, note?: string) {
   await prisma.careAssignment.create({
     data: {
-      eventUid, occurrenceDate: TAG,
+      householdId: HAUSHALT, eventUid, occurrenceDate: TAG,
       responsibleUserId: userId,
       status: userId ? "geklaert" : "extern",
       note: note ?? null,
@@ -96,7 +103,7 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await betreuung("b", conny);
 
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
 
     expect(geschrieben).toHaveLength(1);
     expect(geschrieben[0].titel).toBe("👶 das Baby · Conny");
@@ -106,7 +113,7 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await termin("a", "Zahnarzt", 9, 10);
     await betreuung("a", dirk);
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
     expect(geschrieben[0].titel).toBe("👶 das Baby · Dirk");
     expect(geschrieben[0].titel).not.toContain("dirk");
   });
@@ -120,7 +127,7 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await betreuung("b", dirk);
 
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
 
     expect(geschrieben).toHaveLength(2);
     expect(geschrieben.map((g) => g.titel).sort()).toEqual([
@@ -136,7 +143,7 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await betreuung("b", null, "Babysitter");
 
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
     expect(geschrieben).toHaveLength(2);
   });
 
@@ -144,9 +151,9 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await termin("a", "Zahnarzt", 9, 10);
     await betreuung("a", dirk);
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
     const nachErstem = geschrieben.length;
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
     expect(geschrieben.length).toBe(nachErstem);
   });
 
@@ -154,11 +161,11 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await termin("a", "Zahnarzt", 9, 10);
     await betreuung("a", dirk);
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
     expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(1);
 
     await prisma.careAssignment.updateMany({ where: { eventUid: "a" }, data: { status: "offen", responsibleUserId: null } });
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
     expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(0);
   });
 
@@ -169,14 +176,14 @@ describe("Betreuungsblöcke für einen Tag", () => {
     const altUid = "fp-care-2026-08-10-a@planyourweek.app";
     await prisma.event.create({
       data: {
-        calendarId: kalender, uid: altUid, recurrenceId: "", href: `https://x/fam/${altUid}.ics`,
+        householdId: HAUSHALT, calendarId: kalender, uid: altUid, recurrenceId: "", href: `https://x/fam/${altUid}.ics`,
         title: "👶 Nicolas · dirk", start: new Date("2026-08-10T09:00:00Z"),
         end: new Date("2026-08-10T10:00:00Z"), allDay: false, rawIcs: ics(altUid, "alt", 9, 10),
       },
     });
 
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
 
     const uebrig = await prisma.event.findMany({
       where: { uid: { startsWith: "fp-care-" } }, select: { uid: true, title: true },
@@ -192,11 +199,11 @@ describe("Betreuungsblöcke für einen Tag", () => {
     await betreuung("b", conny);
 
     const { synchronisiereTag, anlassFuerBlock } = await import("@/lib/care/block-sync");
-    await synchronisiereTag(TAG);
+    await imHaushalt(() => synchronisiereTag(TAG));
 
     const uid = (await prisma.careAssignment.findFirst({ where: { eventUid: "a" } }))!.blockUid!;
     expect(uid).toBeTruthy();
-    const anlass = await anlassFuerBlock(uid);
+    const anlass = await imHaushalt(() => anlassFuerBlock(uid));
     expect(anlass?.anlaesse.sort()).toEqual(["Ausweisdokumente", "Bestätigung"]);
     expect(anlass?.responsibleUserId).toBe(conny);
   });

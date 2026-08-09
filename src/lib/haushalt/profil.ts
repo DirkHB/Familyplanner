@@ -3,6 +3,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
 import { haushaltId } from "./id";
+import { aktuellerHaushalt } from "./aktuell";
 import {
   PLATZ_A,
   istPlatzWert,
@@ -80,7 +81,7 @@ async function ladeProfil(): Promise<HaushaltProfil> {
   const emails = parseAllowlist(process.env.ALLOWED_EMAILS);
   const [users, kindWert] = await Promise.all([
     prisma.user.findMany({ select: { email: true, name: true, slot: true } }),
-    prisma.appSetting.findUnique({ where: { key: `${haushaltId()}:${KIND_SCHLUESSEL}` } }),
+    prisma.appSetting.findFirst({ where: { key: KIND_SCHLUESSEL } }),
   ]);
   // Ein Platz-Wert ist kein Name. Steht er in der Spalte, gilt der Name als
   // nicht gesetzt — dann fragt der Assistent danach, statt ihn anzuzeigen.
@@ -137,8 +138,11 @@ export async function stelleUserSicher(email: string) {
     }
     return vorhanden;
   }
+  // Beim Nutzer steht der Haushalt ausdrücklich da und wird nicht eingesetzt:
+  // Wer zu wem gehört, ist die eine Zuordnung, die man sehen können muss.
   return prisma.user.create({
     data: {
+      householdId: await aktuellerHaushalt("stelleUserSicher"),
       email: adresse,
       name: eintrag?.name ?? notnameAusEmail(adresse),
       slot: eintrag?.slot ?? PLATZ_A,
@@ -148,12 +152,15 @@ export async function stelleUserSicher(email: string) {
 
 /** Den Namen des Kindes setzen. Leer heißt: zurück zur neutralen Vorgabe. */
 export async function setKindName(name: string): Promise<void> {
-  const key = `${haushaltId()}:${KIND_SCHLUESSEL}`;
   const wert = name.trim();
-  await prisma.appSetting.upsert({
-    where: { key },
-    create: { key, value: wert },
-    update: { value: wert },
+  const vorhanden = await prisma.appSetting.findFirst({
+    where: { key: KIND_SCHLUESSEL },
+    select: { key: true },
   });
+  if (vorhanden) {
+    await prisma.appSetting.updateMany({ where: { key: KIND_SCHLUESSEL }, data: { value: wert } });
+  } else {
+    await prisma.appSetting.create({ data: { key: KIND_SCHLUESSEL, value: wert } });
+  }
   invalidateProfil();
 }
