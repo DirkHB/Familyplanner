@@ -21,6 +21,30 @@ Richtungen), Betreuung für Nicolas absprechen, Aufgaben, Einkauf, Ideen,
 KI-Briefings. Zweck ist nicht „Termine anzeigen" — das kann Apple Kalender —
 sondern die Kopfarbeit aus einem Kopf herausholen: vorausdenken und nachhalten.
 
+## Mandanten
+
+Die App ist nicht mehr nur für uns. Mehrere Haushalte liegen in **einer**
+Datenbank; jede Zeile trägt `household_id`, und jede Abfrage läuft durch den
+Riegel in `src/lib/prisma.ts`, der ihn einsetzt — beim Lesen in die Bedingung,
+beim Schreiben in die Daten.
+
+- Der Haushalt kommt aus `mitHaushalt(...)` (Worker, Einrichtung) oder aus der
+  Sitzung. Keiner von beiden: Ausnahme, nicht „alle Daten".
+- `prismaRoh` ist der Zugang **ohne** Riegel. Genau zwei Stellen dürfen ihn:
+  der Anmelde-Adapter und die Einladungen. Beide arbeiten, bevor ein Haushalt
+  feststeht.
+- Über alle Haushalte gehen darf nur, wer `ueberAlleHaushalte(...)`
+  hinschreibt. Hintergrundaufgaben nehmen stattdessen `proHaushalt(...)`.
+- Zusammengesetzte eindeutige Schlüssel (`householdId_kind_dayKey`) müssen den
+  Haushalt selbst nennen — dort kommt der Riegel nicht heran.
+
+**Anmeldung nur auf Einladung.** Es gibt keine Zugangsliste mehr
+(`ALLOWED_EMAILS` ist weg). Ein Link, einmal gültig, zwei Wochen, gebunden an
+die Adresse; in der Datenbank steht nur sein Abdruck. Eingelöst wird er beim
+Anlegen der Nutzerzeile — ohne Einladung entsteht keine. Neue Haushalte lädt
+ein, wer `users.is_admin` trägt; die zweite Person lädt jeder Haushalt selbst
+ein.
+
 ## Betrieb
 
 - Hosting Sliplane (EU), Domain planyourweek.app, Datenbank Neon (Frankfurt).
@@ -60,3 +84,12 @@ sondern die Kopfarbeit aus einem Kopf herausholen: vorausdenken und nachhalten.
   Browser die Seite nebenher mit.
 - Zeitzone Europe/Berlin: Tagesgrenzen über einen Mittags-Anker rechnen, sonst
   kippt es in der Sommerzeit um einen Tag.
+- **.ics vergleichen:** `DTSTAMP` steht auf die Sekunde genau und ändert sich
+  bei jedem Bauen. Zwei Fassungen roh zu vergleichen findet deshalb IMMER einen
+  Unterschied — dafür gibt es `ohneZeitstempel()`.
+- **Was Next.js zwischenspeichert, läuft nicht im Kontext der Anfrage**, die es
+  angefordert hat. In `unstable_cache` gehört der Haushalt noch einmal
+  ausdrücklich gesetzt, und in den Schlüssel und die Marke.
+- **AsyncLocalStorage und Prisma:** Eine Abfrage startet erst, wenn jemand auf
+  sie wartet. `speicher.run(id, fn)` mit ungewartetem Versprechen verliert den
+  Kontext — deshalb `async () => await fn()`.
