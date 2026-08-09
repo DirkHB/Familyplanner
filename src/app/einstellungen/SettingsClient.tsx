@@ -75,6 +75,7 @@ export function SettingsClient({
   pushPrefs = { requests: true, taskWindow: true },
   fremdeVerbindung = null,
   haushalt = { erwachsene: [], kind: "das Baby" },
+  istVerwaltung = false,
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -90,6 +91,8 @@ export function SettingsClient({
   fremdeVerbindung?: { name: string } | null;
   /** Die beiden Erwachsenen und der Name des Kindes. */
   haushalt?: { erwachsene: { email: string; name: string }[]; kind: string };
+  /** Darf neue Haushalte einladen — sieht genau eine Person. */
+  istVerwaltung?: boolean;
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -181,6 +184,18 @@ export function SettingsClient({
           <Zeile titel="Namen" status={haushalt.kind}>
             <NamenInhalt haushalt={haushalt} />
           </Zeile>
+          {istVerwaltung && (
+            <Link
+              href="/einladungen"
+              className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="min-w-0 flex-1 font-medium">Einladungen</span>
+              <span className="shrink-0 text-sm text-ink-muted">Neue Familien</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-ink-muted/70" aria-hidden>
+                <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          )}
         </Gruppe>
 
         <Gruppe titel="Betreuung">

@@ -32,6 +32,7 @@ export default async function EinstellungenPage() {
           tagBisStunde: true,
           notificationPrefs: true,
           schreibKalenderId: true,
+          isAdmin: true,
         },
       })
     : null;
@@ -112,6 +113,7 @@ export default async function EinstellungenPage() {
       tagVon={ich?.tagVonStunde ?? null}
       tagBis={ich?.tagBisStunde ?? null}
       pushPrefs={{ requests: prefs.requests, taskWindow: prefs.taskWindow }}
+      istVerwaltung={ich?.isAdmin ?? false}
       haushalt={{
         erwachsene: profil.erwachsene.map((e) => ({ email: e.email, name: e.name })),
         kind: profil.kind,

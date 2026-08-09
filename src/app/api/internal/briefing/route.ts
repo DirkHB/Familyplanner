@@ -1,4 +1,5 @@
 import { runBriefing } from "@/lib/overview/briefing-runner";
+import { proHaushalt } from "@/lib/haushalt/runde";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,10 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const kind = url.searchParams.get("kind") === "woche" ? "woche" : "morgen";
   try {
-    const res = await runBriefing(kind);
+    // Eine Runde durch alle Haushalte. Der Text je Haushalt bleibt dort, wo
+    // er hingehört — in der Briefing-Tabelle; hier zählt nur, wie viele
+    // Mitteilungen rausgingen.
+    const res = await proHaushalt(async () => ({ pushed: (await runBriefing(kind)).pushed }));
     return Response.json({ ok: true, kind, ...res });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -40,6 +40,22 @@ function esc(s: string): string {
     .replace(/\r?\n/g, "\\n");
 }
 
+/**
+ * Zwei .ics-Texte vergleichbar machen.
+ *
+ * DTSTAMP ist der Moment, in dem der Text entstand — er ändert sich jede
+ * Sekunde, auch wenn am Termin nichts anders ist. Wer zwei Fassungen
+ * unbesehen vergleicht, findet deshalb IMMER einen Unterschied und schreibt
+ * unaufhörlich nach iCloud. Das ist lange niemandem aufgefallen, weil die
+ * Prüfung dafür beide Fassungen in derselben Sekunde erzeugte.
+ */
+export function ohneZeitstempel(ics: string): string {
+  return ics
+    .split(/\r?\n/)
+    .filter((z) => !z.startsWith("DTSTAMP:"))
+    .join("\r\n");
+}
+
 export function buildIcs(ev: NewEvent, now: Date = new Date()): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",

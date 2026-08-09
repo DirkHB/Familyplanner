@@ -97,6 +97,10 @@ model User {
   slot              String?
   /// In welchen Kalender die App für diese Person schreibt. Leer = erstbester.
   schreibKalenderId String?   @map("schreib_kalender_id")
+  /// Darf neue Haushalte einladen. Trägt genau einer: der, der die App
+  /// betreibt. Ein Haushalt lädt seine zweite Person selbst ein — dafür
+  /// braucht es das nicht.
+  isAdmin           Boolean   @default(false) @map("is_admin")
   notificationPrefs Json      @default("{}")
   // Tagesfenster für den Zeitstrahl (7–21, wenn leer). Je Person, weil
   // Constanze und Dirk unterschiedlich takten.

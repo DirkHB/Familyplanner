@@ -14,39 +14,67 @@ import { auth } from "@/auth";
 /**
  * Die zweite Person einladen.
  *
- * Wer Zugang hat, entscheidet die Allowlist der Instanz — daran ändert die
- * Einladung nichts. Sie sagt der Adresse, die ohnehin schon eingetragen ist,
- * dass es sie jetzt gibt. Eine Einladung, die selbst Zugang verteilt, wäre
- * ein Loch, das man einmal übersieht und nie wieder zumacht.
+ * Bis eben sagte die Einladung einer Adresse, die ohnehin schon freigeschaltet
+ * war, dass es die App jetzt gibt — Zugang verteilte eine Umgebungsvariable.
+ * Jetzt ist die Einladung der Zugang: ein einmaliger Link, gebunden an genau
+ * diese Adresse, vierzehn Tage gültig.
+ *
+ * Der Haushalt steht dabei fest — es ist der des Einladenden. Wer hier
+ * einlädt, holt jemanden in die eigene Wohnung, nicht in eine neue.
  */
-export async function ladePartnerEinAction(): Promise<{ ok: boolean; grund?: string }> {
+export async function ladePartnerEinAction(
+  email: string,
+): Promise<{ ok: boolean; grund?: string }> {
   const session = await auth();
-  if (!session?.user?.email) return { ok: false, grund: "Nicht angemeldet." };
+  if (!session?.user?.email || !session.user.householdId) {
+    return { ok: false, grund: "Nicht angemeldet." };
+  }
 
-  const { parseAllowlist } = await import("@/lib/auth/allowlist");
+  const adresse = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adresse)) {
+    return { ok: false, grund: "Das sieht nicht nach einer E-Mail-Adresse aus." };
+  }
+  if (adresse === session.user.email.trim().toLowerCase()) {
+    return { ok: false, grund: "Das bist du selbst." };
+  }
+
+  const { prismaRoh } = await import("@/lib/prisma");
+  const { ladeEin, linkFuer } = await import("@/lib/einladung/store");
   const { haushaltProfil } = await import("@/lib/haushalt/profil");
   const { sendEmail } = await import("@/lib/email/send");
   const { einladungEmail } = await import("@/lib/email/einladung");
 
-  const meine = session.user.email.trim().toLowerCase();
-  const partner = parseAllowlist(process.env.ALLOWED_EMAILS).find((e) => e !== meine);
-  if (!partner) {
-    return {
-      ok: false,
-      grund: "Es ist keine zweite Adresse hinterlegt. Die richten wir für euch ein.",
-    };
+  // Wer schon irgendwo wohnt, kann nicht zweimal einziehen. Ohne diese Frage
+  // bekäme die Person eine Einladung, die beim Einlösen scheitert — und der
+  // Fehler stünde dann bei ihr, nicht bei dem, der sie geschickt hat.
+  const schonDa = await prismaRoh.user.findUnique({
+    where: { email: adresse },
+    select: { householdId: true },
+  });
+  if (schonDa) {
+    return schonDa.householdId === session.user.householdId
+      ? { ok: false, grund: "Die Person ist schon dabei." }
+      : { ok: false, grund: "Diese Adresse gehört schon zu einem anderen Haushalt." };
   }
 
   const profil = await haushaltProfil();
-  const vonName = profil.erwachsene.find((e) => e.email === meine)?.name ?? "Dein Partner";
-  const url = process.env.AUTH_URL || "https://planyourweek.app";
+  const meine = session.user.email.trim().toLowerCase();
+  const vonName = profil.erwachsene.find((e) => e.email === meine)?.name ?? "Jemand";
 
   try {
-    const mail = einladungEmail({ an: partner, vonName, kind: profil.kind, url: `${url}/anmelden` });
-    await sendEmail({ to: partner, subject: mail.subject, html: mail.html, text: mail.text });
+    const { token } = await ladeEin({ email: adresse, householdId: session.user.householdId });
+    const mail = einladungEmail({
+      an: adresse,
+      vonName,
+      kind: profil.kind,
+      url: linkFuer(token),
+    });
+    await sendEmail({ to: adresse, subject: mail.subject, html: mail.html, text: mail.text });
+    revalidatePath("/einrichten");
+    revalidatePath("/einstellungen");
     return { ok: true };
   } catch {
-    return { ok: false, grund: "Die Mail ging nicht raus. Schick ihr einfach den Link." };
+    return { ok: false, grund: "Die Mail ging nicht raus. Versuch es gleich noch einmal." };
   }
 }
 

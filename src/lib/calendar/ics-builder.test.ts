@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildIcs } from "./ics-builder";
+import { buildIcs, ohneZeitstempel } from "./ics-builder";
 import { parseEvents, expandOccurrences } from "./ical";
 
 describe("buildIcs (Round-Trip durch den Parser)", () => {
@@ -65,5 +65,41 @@ describe("X-Eigenschaften", () => {
       allDay: false,
     });
     expect(ics).not.toContain("X-PLANYOURWEEK");
+  });
+
+  it("vergleicht zwei Fassungen ohne den Zeitstempel", () => {
+    // Derselbe Termin, eine Sekunde später geschrieben. Ohne diese Klammer
+    // hielte der Vergleich in block-sync nie — und jeder Lauf schriebe alle
+    // Betreuungsblöcke des Tages neu nach iCloud.
+    const ev = {
+      uid: "fp-care-2026-08-10-a@planyourweek.app",
+      title: "👶 das Baby · Dirk",
+      start: new Date("2026-08-10T09:00:00Z"),
+      end: new Date("2026-08-10T10:00:00Z"),
+      allDay: false,
+    };
+    const frueh = buildIcs(ev, new Date("2026-08-09T20:00:00Z"));
+    const spaet = buildIcs(ev, new Date("2026-08-09T20:00:01Z"));
+
+    expect(frueh).not.toBe(spaet);
+    expect(ohneZeitstempel(frueh)).toBe(ohneZeitstempel(spaet));
+    expect(ohneZeitstempel(frueh)).not.toContain("DTSTAMP");
+    // Alles andere bleibt stehen — sonst würde der Vergleich echte
+    // Unterschiede mit verschlucken.
+    expect(ohneZeitstempel(frueh)).toContain("SUMMARY:👶 das Baby · Dirk");
+    expect(ohneZeitstempel(frueh)).toContain("DTSTART:20260810T090000Z");
+  });
+
+  it("sieht einen echten Unterschied weiterhin", () => {
+    const basis = {
+      uid: "u1",
+      start: new Date("2026-08-10T09:00:00Z"),
+      end: new Date("2026-08-10T10:00:00Z"),
+      allDay: false,
+    };
+    const jetzt = new Date("2026-08-09T20:00:00Z");
+    const a = buildIcs({ ...basis, title: "👶 das Baby · Dirk" }, jetzt);
+    const b = buildIcs({ ...basis, title: "👶 das Baby · Constanze" }, jetzt);
+    expect(ohneZeitstempel(a)).not.toBe(ohneZeitstempel(b));
   });
 });

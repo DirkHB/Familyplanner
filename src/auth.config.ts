@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import { isAllowedEmail, notnameAusEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
@@ -23,16 +23,15 @@ export const authConfig = {
       const p = nextUrl.pathname;
       const PUBLIC = ["/", "/style"];
       if (p.startsWith("/anmelden")) return true;
+      if (p.startsWith("/einladung")) return true; // der Link aus der Mail, noch ohne Anmeldung
       if (p.startsWith("/api/internal")) return true; // per Shared-Secret geschützt (Worker)
       if (p === "/api/push/vapid-key") return true; // nur der öffentliche VAPID-Key
       if (p.startsWith("/vorschau")) return true; // öffentliche Design-Vorschau (Beispieldaten)
       if (PUBLIC.includes(p)) return true;
       return !!auth?.user;
     },
-    // Nur die zwei freigeschalteten Adressen kommen rein.
-    signIn({ user }) {
-      return isAllowedEmail(user?.email);
-    },
+    // Wer hereindarf, entscheidet die Einladung — geprüft in auth.ts, weil es
+    // dafür die Datenbank braucht. Hier am Rand gibt es keine.
     /*
      * Der Haushalt wird beim Anmelden einmal in das Token geschrieben und
      * bleibt dort. Ihn bei jeder Anfrage nachzuschlagen hieße, für jede

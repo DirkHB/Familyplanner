@@ -1,11 +1,43 @@
-# Zweiter Haushalt aufsetzen (für Dirk)
+# Jemanden einladen (für Dirk)
 
-Thomas und Yvonne bekommen eine **eigene Instanz**: eigene Datenbank, eigene
-App, eigener Worker, eigene Adresse. Gemeinsam bleiben nur die Dinge, die auf
-uns laufen — Anthropic-Schlüssel, Resend-Konto, Domain. Sie sehen unsere Daten
-nicht und wir ihre nicht, weil es schlicht zwei getrennte Datenbanken sind.
+Eine befreundete Familie bekommt **keine eigene Instanz** mehr. Sie bekommt
+einen Link. Die App trennt die Haushalte selbst: Jede Zeile in der Datenbank
+gehört einem Haushalt, und jede Abfrage läuft durch einen Riegel, der ihn
+einsetzt. Zwei Familien in derselben Datenbank sehen voneinander nichts.
 
-Rechne mit **45 bis 60 Minuten**.
+Rechne mit **zwei Minuten**.
+
+Die alte Fassung dieser Anleitung beschrieb 45 bis 60 Minuten Handarbeit:
+eigene Neon-Datenbank, eigene Schlüssel, eigene Subdomain, zwei Sliplane-
+Services, Adressen in `ALLOWED_EMAILS`. Das ist ersatzlos weg. Wer es
+nachlesen will, findet es in der Git-Geschichte.
+
+---
+
+## So geht es
+
+1. In der App auf **Einstellungen → Wer wohnt hier → Einladungen**.
+   (Die Zeile sieht nur, wer das Verwaltungsrecht hat — das bist du.)
+2. Adresse eintragen, **Einladung schicken**.
+3. Fertig. Du musst nichts weiter tun — nicht im Code, nicht in Sliplane,
+   nicht in der Datenbank.
+
+Die andere Seite bekommt eine Mail mit einem Link. Der Link
+
+- funktioniert **einmal**,
+- gilt **zwei Wochen**,
+- und nur die Adresse, an die er ging, kann ihn einlösen. Weiterleiten bringt
+  nichts: Wer ihn antippt, löst nur aus, dass eine Anmeldemail an die
+  ursprüngliche Adresse geht.
+
+Beim Einlösen entsteht ein **neuer Haushalt**. Die Person landet direkt im
+Einrichtungs-Assistenten: Namen, Kalender verbinden, die zweite Person
+einladen, Aufgaben, Listen. Die zweite Person lädt sie selbst ein — dafür
+brauchst du nicht noch einmal gefragt zu werden.
+
+Eine offene Einladung kannst du auf derselben Seite zurücknehmen, solange sie
+niemand eingelöst hat. Dieselbe Adresse noch einmal einzuladen ersetzt die
+alte Einladung; es liegen nie zwei gültige Links für einen Menschen herum.
 
 ---
 
@@ -39,154 +71,6 @@ Zwei Wege in der Zwischenzeit, beide in Ordnung:
 Sag Bescheid, wenn Thomas seinen Google-Kalender testweise per CalDAV
 freigeben kann — dann probieren wir Weg drei.
 
-## 1. Datenbank bei Neon
-
-1. In Neon ein **neues Projekt** anlegen, Region **Frankfurt** (wie unseres).
-2. Namen so wählen, dass du ihn später wiedererkennst.
-3. Den **Connection String** kopieren. Er muss dieselbe Form haben wie unserer:
-   `postgresql://BENUTZER:PASSWORT@HOST:5432/DATENBANK`
-4. Weglegen — den brauchst du gleich als `DATABASE_URL`.
-
-Die Datenbank bleibt leer. Die Tabellen legt der erste Start der App selbst an
-(`start.sh` fährt `prisma migrate deploy`). Unsere Beispieldaten aus den alten
-Migrationen kommen dort **nicht** an: Migration 0013 räumt sie auf jeder
-Datenbank weg, in der sich noch nie jemand angemeldet hat.
-
-## 2. Schlüssel erzeugen
-
-Jede Instanz braucht eigene. Vier Befehle im Terminal:
-
-```
-openssl rand -base64 32     # → AUTH_SECRET
-openssl rand -base64 32     # → ENCRYPTION_KEY
-openssl rand -base64 32     # → WORKER_SECRET
-npx web-push generate-vapid-keys   # → VAPID_PUBLIC_KEY und VAPID_PRIVATE_KEY
-```
-
-`ENCRYPTION_KEY` verschlüsselt Thomas' iCloud-Passwort. Wenn der verloren geht,
-muss er den Kalender neu verbinden — also mit ablegen, wo du unsere Schlüssel
-auch aufbewahrst. **Nirgendwo ins Repository.**
-
-## 3. Adresse festlegen
-
-Such dir eine Subdomain unserer Domain aus, zum Beispiel
-`zwei.planyourweek.app`. Beim DNS-Anbieter einen **CNAME** auf den Sliplane-
-Service zeigen lassen (die Zieladresse zeigt dir Sliplane an, sobald der
-Service steht — also Schritt 4 zuerst, dann hierher zurück).
-
-Die Adresse ist wichtiger, als sie aussieht: Sie steht in `AUTH_URL`, und die
-Magic-Link-Mails zeigen dorthin. Später ändern heißt, dass alle offenen Links
-tot sind.
-
-## 4. Sliplane-Service „App"
-
-Neuer Service aus demselben Repository wie unserer.
-
-| Feld | Wert |
-|---|---|
-| Dockerfile Path | `Dockerfile` |
-| Start Command / CMD-Override | **leer lassen** |
-| Port | `3000` |
-| Healthcheck | `/api/health` |
-
-Die beiden Fallen, die uns schon Zeit gekostet haben:
-
-- **Der CMD-Override muss leer bleiben.** `start.sh` macht Migration *und*
-  Serverstart. Sliplane führt Overrides nicht über eine Shell aus — ein `&&`
-  käme als Argument bei Prisma an.
-- **„Dockerfile Path" muss wirklich `Dockerfile` enthalten**, sonst baut
-  Sliplane mit Railpack am Dockerfile vorbei.
-- **Ohne Healthcheck läuft der Service in eine Redeploy-Schleife.**
-
-## 5. Sliplane-Service „Worker"
-
-Zweiter Service, **dasselbe Image**, nur ein anderer Start:
-
-| Feld | Wert |
-|---|---|
-| Dockerfile Path | `Dockerfile` |
-| Start Command / CMD-Override | `node worker/index.mjs` |
-| Port | `3000` |
-| Healthcheck | `/api/health` |
-
-Der Worker antwortet auf jedem Pfad mit `200` — der Healthcheck greift also
-genauso wie bei der App. Er übernimmt: Kalender-Sync alle 5 Minuten, Briefings
-morgens um 7, Erinnerungen, die Abend-Nachfrage bei offener Betreuung und den
-Aufgaben-Vorschlag alle 15 Minuten.
-
-## 6. Umgebungsvariablen
-
-Bei **beiden** Services identisch eintragen.
-
-### Neu für diese Instanz
-
-| Variable | Wert |
-|---|---|
-| `DATABASE_URL` | der Neon-String aus Schritt 1 |
-| `AUTH_SECRET` | erster `openssl`-Wert |
-| `ENCRYPTION_KEY` | zweiter `openssl`-Wert |
-| `WORKER_SECRET` | dritter `openssl`-Wert — bei App **und** Worker gleich |
-| `AUTH_URL` | `https://zwei.planyourweek.app` (deine Adresse aus Schritt 3) |
-| `ALLOWED_EMAILS` | `thomas@…,yvonne@…` |
-| `VAPID_PUBLIC_KEY` | aus `web-push` |
-| `VAPID_PRIVATE_KEY` | aus `web-push` |
-
-### Von uns übernommen
-
-| Variable | Wert |
-|---|---|
-| `RESEND_API_KEY` | unser Schlüssel |
-| `EMAIL_FROM` | `Familienplaner <plan@planyourweek.app>` |
-| `ANTHROPIC_API_KEY` | unser Schlüssel |
-| `ANTHROPIC_MODEL` | `claude-sonnet-5` empfohlen — siehe Kosten unten |
-| `VAPID_SUBJECT` | `mailto:dirkbrederecke@gmail.com` (du bist der Betreiber) |
-| `TZ` | `Europe/Berlin` |
-| `APP_INTERNAL_URL` | leer lassen, außer Sliplane gibt dir eine interne Adresse |
-
-**Zwei Dinge, die leicht übersehen werden:**
-
-1. **Die Reihenfolge in `ALLOWED_EMAILS` entscheidet, wer Platz A ist.** Trag
-   Thomas zuerst ein, wenn er Platz A sein soll. Später umsortieren verschiebt
-   die Zuordnung nicht mehr (die Plätze bleiben in der Datenbank), aber beim
-   ersten Mal zählt es.
-2. **Nur diese zwei Adressen kommen rein.** Meine steht nicht in ihrer
-   Allowlist — ich kann mich in ihrer Instanz also gar nicht anmelden, auch
-   wenn ich wollte. Das ist Absicht und sollte so bleiben.
-
-**Für unsere eigene Instanz:** Die Reihenfolge bestimmt jetzt auch, in welcher
-Richtung Namen ausgeschrieben werden — auf der Anmeldeseite steht „Für Dirk und
-Constanze", weil deine Adresse vorn steht. Wenn dir „Constanze und Dirk" lieber
-ist, tausch die beiden in Sliplane. Das verschiebt nichts mehr: Unsere Plätze
-stehen seit Migration 0014 in der Datenbank und hängen nicht länger an der
-Umgebungsvariablen.
-
-## 7. Erster Start prüfen
-
-1. App-Service ausrollen, **Logs öffnen**. Du willst sehen:
-   `[start] prisma migrate deploy` und danach `[start] node server.js`.
-   Bricht die Migration ab, startet der Server trotzdem — der Grund steht
-   dann oben im Log lesbar da (meist eine falsche `DATABASE_URL`).
-2. `https://zwei.planyourweek.app/api/health` aufrufen → `{"ok":true,…}`.
-3. Worker-Service ausrollen, Logs prüfen: die Cron-Jobs melden sich beim Start.
-4. Die Anmeldeseite aufrufen. Melde dich **nicht** selbst an — deine Adresse
-   ist nicht freigeschaltet, es käme nur eine Fehlermeldung.
-
-## 8. Übergabe
-
-Thomas bekommt von dir:
-
-- die Adresse (`https://zwei.planyourweek.app`)
-- die Bestätigung, welche zwei E-Mail-Adressen freigeschaltet sind
-- die Anleitung `docs/anleitung-thomas.md`
-
-Alles Weitere macht er selbst: Beim ersten Aufruf von `/woche` landet er
-automatisch im Einrichtungs-Assistenten, weil noch nichts eingerichtet ist.
-
-Sag ihm dabei die beiden Dinge, die in der Anleitung stehen, aber leicht
-überlesen werden: dass beim Verbinden **alle** seine iCloud-Kalender
-hereinkommen und er die überflüssigen abschalten muss, und dass Yvonne bis auf
-Weiteres kein eigenes Schreibziel hat.
-
 ---
 
 ## Was du danach im Blick behältst
@@ -194,15 +78,21 @@ Weiteres kein eigenes Schreibziel hat.
 **Kosten.** Anthropic läuft über unseren Schlüssel, also auf unsere Rechnung.
 Pro Haushalt und Tag sind das ein Briefing morgens, eins sonntags und die
 Aufgaben-Vorschläge. Mit `claude-sonnet-5` bleibt das im Cent-Bereich; mit
-`claude-opus-5` etwa das Fünffache. Falls es sich lohnt, kannst du in Anthropic
-später einen zweiten API-Schlüssel anlegen und ihn nur für Thomas' Instanz
-verwenden — dann siehst du in der Abrechnung, was auf wen entfällt.
+`claude-opus-5` etwa das Fünffache. Bei sieben Haushalten also weiter
+überschaubar — aber es ist jetzt unsere Rechnung für alle, nicht mehr eine pro
+Instanz. Wenn das kippt, ist die Stellschraube `ANTHROPIC_MODEL`.
 
-**Updates.** Beide Instanzen ziehen aus demselben Repository. Wenn du bei uns
-ausrollst, denk daran, dass Thomas' Services nicht automatisch mitkommen —
-Sliplane muss dort separat neu bauen. Migrationen laufen beim Start von selbst.
+**Updates.** Es gibt nur noch eine Instanz. Wenn du ausrollst, sind alle
+Haushalte gleichzeitig auf dem neuen Stand — das ist der angenehme Teil, und
+zugleich der Grund, vor dem Ausrollen die Prüfkette laufen zu lassen.
 
-**Was du sehen kannst und was nicht.** Du hast Zugriff auf die Neon-Datenbank
-und die Sliplane-Logs, also technisch auf alles. Das solltest du Thomas einmal
-klar sagen, bevor er anfängt, private Termine einzutragen — nicht als
-Formalie, sondern damit er es weiß.
+**Was du sehen kannst und was nicht.** Du hast Zugriff auf die Datenbank und
+die Sliplane-Logs, also technisch auf alles — auch auf die Termine der anderen
+Haushalte. Der Riegel schützt die Familien voreinander, nicht vor dir. Das
+solltest du jedem einmal klar sagen, bevor er anfängt, private Termine
+einzutragen — nicht als Formalie, sondern damit er es weiß.
+
+**Wer einlädt.** Das Verwaltungsrecht hängt an einer Spalte (`users.is_admin`)
+und trägt genau eine Person: die älteste Nutzerzeile der Datenbank. Innerhalb
+eines Haushalts braucht es das nicht — dort lädt jeder seine zweite Person
+selbst ein.

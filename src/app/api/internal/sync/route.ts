@@ -1,4 +1,5 @@
 import { runSyncForAllAccounts } from "@/lib/calendar/sync-engine";
+import { proHaushalt } from "@/lib/haushalt/runde";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,14 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   try {
-    const summary = await runSyncForAllAccounts();
+    // Eine Runde durch alle Haushalte — die Aufgabe selbst weiß nichts davon.
+    // Die Fehlerliste wird zur Zahl: Welcher Kalender in welcher Familie
+    // klemmt, steht im Log des jeweiligen Haushalts, nicht in einer Antwort,
+    // die alle betrifft.
+    const summary = await proHaushalt(async () => {
+      const s = await runSyncForAllAccounts();
+      return { calendars: s.calendars, upserted: s.upserted, deleted: s.deleted, fehlerhafteKalender: s.errors.length };
+    });
     return Response.json({ ok: true, ...summary });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

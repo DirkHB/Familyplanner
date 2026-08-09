@@ -16,26 +16,30 @@ anzeigen", das kann Apple Kalender. Sondern vorausdenken und nachhalten.
 
 ## Was du von Dirk bekommst
 
-- eine Internetadresse (so etwas wie `https://zwei.planyourweek.app`)
-- die Info, welche zwei E-Mail-Adressen freigeschaltet sind — deine und die
-  von Yvonne
+Eine **Einladungsmail**. Mehr nicht — keine Adresse zum Merken, kein Passwort,
+keine Registrierung.
 
-Nur diese zwei Adressen kommen rein. Es gibt keine Registrierung und kein
-Passwort.
+Der Link darin funktioniert einmal, gilt zwei Wochen und nur für die Adresse,
+an die er ging. Weiterleiten bringt also nichts.
 
 ---
 
 ## Schritt 1 — Anmelden
 
-1. Die Adresse im Browser öffnen.
-2. Deine E-Mail-Adresse eintragen und abschicken.
-3. Du bekommst eine Mail mit einem Link. **Den anklicken.**
+1. Den Link aus der Einladungsmail antippen.
+2. Auf **Einladung annehmen** tippen.
+3. Du bekommst eine zweite Mail mit einem Anmeldelink. **Den anklicken.**
 
 Fertig, du bist drin. Kein Passwort, kein Konto anlegen. Beim nächsten Mal
-bleibst du angemeldet.
+bleibst du angemeldet — und ab dann reicht `planyourweek.app` plus deine
+E-Mail-Adresse.
 
-*Kommt keine Mail?* Erst in den Spam schauen. Wenn dort auch nichts liegt, hat
-Dirk vermutlich eine andere Adresse freigeschaltet — kurz nachfragen.
+*Kommt keine Mail?* Erst in den Spam schauen. Wenn dort auch nichts liegt,
+kurz bei Dirk nachfragen.
+
+**Was dabei entsteht:** ein eigener Bereich für euch — euer Kalender, eure
+Namen, eure Listen. Dirk und Constanze sehen davon nichts, und ihr von ihnen
+auch nicht.
 
 ## Schritt 2 — Der Einrichtungs-Assistent
 
@@ -100,10 +104,11 @@ liegt.
 
 ### 2.3 Yvonne einladen
 
-Ein Knopf. Der schickt ihr eine Mail, dass es die App jetzt gibt, mit dem Link.
+Ihre E-Mail-Adresse eintragen, Knopf drücken. Sie bekommt denselben Ablauf wie
+du: Link antippen, Einladung annehmen, Anmeldemail anklicken.
 
-Zugang hat sie ohnehin — ihre Adresse ist ja schon freigeschaltet. Die
-Einladung sagt ihr nur Bescheid.
+Das ist auch der Moment, in dem sie Zugang bekommt — vorher hat sie keinen.
+Der Link gilt zwei Wochen und funktioniert nur mit ihrer Adresse.
 
 ### 2.4 Aufgaben übernehmen
 

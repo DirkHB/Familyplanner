@@ -1,4 +1,5 @@
 import { runAufgabenFenster } from "@/lib/todos/fenster-runner";
+import { proHaushalt } from "@/lib/haushalt/runde";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,7 +11,8 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   try {
-    const summary = await runAufgabenFenster();
+    // Eine Runde durch alle Haushalte — die Aufgabe selbst weiß nichts davon.
+    const summary = await proHaushalt(() => runAufgabenFenster());
     return Response.json({ ok: true, ...summary });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

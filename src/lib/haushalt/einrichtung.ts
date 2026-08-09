@@ -2,6 +2,8 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { getHaushaltFlag, setHaushaltFlag } from "./singletons";
+import { aktuellerHaushalt } from "./aktuell";
+import { offeneEinladungenDesHaushalts } from "@/lib/einladung/store";
 import { haushaltProfil, KIND_VORGABE } from "./profil";
 
 /**
@@ -31,12 +33,16 @@ export type EinrichtungStatus = {
   partnerEmail: string | null;
   /** Hat sich die zweite Person schon einmal angemeldet? */
   partnerDa: boolean;
+  /** An wen eine Einladung unterwegs ist, die noch niemand eingelöst hat. */
+  eingeladenEmail: string | null;
   kind: string;
   erwachsene: { email: string; name: string }[];
 };
 
 export async function einrichtungStatus(meineEmail?: string | null): Promise<EinrichtungStatus> {
-  const [profil, abgeschlossen, kalender, listen, laeden, aufgaben, users] = await Promise.all([
+  const haushalt = await aktuellerHaushalt("Einrichtungsstand");
+  const [profil, abgeschlossen, kalender, listen, laeden, aufgaben, users, offen] =
+    await Promise.all([
     haushaltProfil(),
     getHaushaltFlag(FERTIG_FLAG),
     prisma.calendarAccount.count({ where: { provider: "icloud" } }),
@@ -44,6 +50,7 @@ export async function einrichtungStatus(meineEmail?: string | null): Promise<Ein
     prisma.store.count(),
     prisma.todo.count(),
     prisma.user.findMany({ select: { email: true, emailVerified: true } }),
+    offeneEinladungenDesHaushalts(haushalt),
   ]);
 
   // Die zweite Person kommt nicht mehr aus einer Umgebungsvariablen, sondern
@@ -62,10 +69,15 @@ export async function einrichtungStatus(meineEmail?: string | null): Promise<Ein
     profil.kind !== KIND_VORGABE &&
     profil.erwachsene.every((e) => e.name && e.name !== notnameAusEmail(e.email));
 
+  const eingeladenEmail = offen[0]?.email ?? null;
+
   const erledigt: Record<SchrittName, boolean> = {
     namen: namenGesetzt,
     kalender: kalender > 0,
-    partner: partnerDa,
+    // Eine verschickte Einladung zählt als erledigt: Was noch fehlt, liegt
+    // jetzt bei der anderen Person, und der Assistent soll nicht dabei
+    // stehenbleiben, bis sie ihr Postfach öffnet.
+    partner: partnerDa || eingeladenEmail !== null,
     aufgaben: aufgaben > 0,
     faecher: listen > 0 || laeden > 0,
   };
@@ -77,6 +89,7 @@ export async function einrichtungStatus(meineEmail?: string | null): Promise<Ein
     offen: reihenfolge.filter((s) => !erledigt[s]),
     partnerEmail,
     partnerDa,
+    eingeladenEmail,
     kind: profil.kind,
     erwachsene: profil.erwachsene.map((e) => ({ email: e.email, name: e.name })),
   };

@@ -14,6 +14,7 @@ const STATUS: EinrichtungStatus = {
   offen: ["namen", "kalender", "partner", "aufgaben", "faecher"],
   partnerEmail: "yvonne@example.com",
   partnerDa: false,
+  eingeladenEmail: null,
   kind: "das Baby",
   // Leer, damit sich die Vorschau ohne Anmeldung durchklicken lässt — der
   // Fuß speichert nur, wenn wirklich etwas eingetragen wurde.

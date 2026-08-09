@@ -14,8 +14,8 @@ Nichts davon steht im Code. Reihenfolge = Priorität.
 ## 2. Auth (Login für euch beide)
 - [ ] **`AUTH_SECRET`** — `openssl rand -base64 32`
 - [ ] **`AUTH_URL`** — `https://planyourweek.app`
-- [ ] **`ALLOWED_EMAILS`** — bereits `constanze? , dirkbrederecke@gmail.com` … (im Code default gesetzt:
-      `dirkbrederecke@gmail.com,constanzehiller@hotmail.com`) — nur bestätigen.
+- [x] ~~`ALLOWED_EMAILS`~~ — entfällt. Zugang gibt es nur noch über eine Einladung; die Variable
+      wird nicht mehr gelesen und kann in Sliplane gelöscht werden.
 - [ ] **`RESEND_API_KEY`** — Resend-Konto, API-Key. Absender-Domain `planyourweek.app` in Resend
       verifizieren (DNS-Records bei united-domains). **`EMAIL_FROM`** entsprechend setzen.
 

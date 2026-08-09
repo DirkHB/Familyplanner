@@ -1,4 +1,5 @@
 import { runCareAbend } from "@/lib/care/abend-runner";
+import { proHaushalt } from "@/lib/haushalt/runde";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,8 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   try {
-    const summary = await runCareAbend();
+    // Eine Runde durch alle Haushalte — die Aufgabe selbst weiß nichts davon.
+    const summary = await proHaushalt(() => runCareAbend());
     return Response.json({ ok: true, ...summary });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

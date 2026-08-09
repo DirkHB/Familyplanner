@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { kalenderzugang } from "@/lib/haushalt/singletons";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "@/lib/calendar/tsdav-client";
-import { buildIcs } from "@/lib/calendar/ics-builder";
+import { buildIcs, ohneZeitstempel } from "@/lib/calendar/ics-builder";
 import { expandOccurrences } from "@/lib/calendar/ical";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { dayKey } from "@/lib/calendar/format";
@@ -228,7 +228,11 @@ async function schreibeBlock(s: Gewuenscht): Promise<boolean> {
   // Unverändert und am richtigen Ort? Dann nichts tun. Das hält die
   // Wiederholbarkeit billig — sonst schriebe jede Änderung an einem Tag alle
   // Blöcke dieses Tages neu nach iCloud.
-  if (vorhanden && vorhanden.rawIcs === ics && vorhanden.calendarId === ziel.calendarId) {
+  if (
+    vorhanden &&
+    ohneZeitstempel(vorhanden.rawIcs) === ohneZeitstempel(ics) &&
+    vorhanden.calendarId === ziel.calendarId
+  ) {
     return false;
   }
   // Liegt der Block bisher woanders (die Person hat ihr Schreibziel geändert),

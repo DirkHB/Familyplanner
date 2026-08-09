@@ -1,27 +1,11 @@
 /**
- * Wer darf sich anmelden? Quelle ist ALLOWED_EMAILS (kommagetrennt).
- * Kein öffentliches Signup, keine Selbstregistrierung.
+ * Was von der Zugangsliste übrig ist: ein Notname.
  *
- * Wer wer IST — Name und Platz im Haushalt — steht nicht mehr hier, sondern
- * in der Datenbank (`lib/haushalt/profil.ts` und `lib/haushalt/platz.ts`).
- * Diese Datei kennt nur noch Adressen.
+ * Wer sich anmelden darf, stand hier einmal als Liste in einer
+ * Umgebungsvariablen. Das ist vorbei — die Antwort gibt jetzt die Einladung
+ * (`lib/einladung/store.ts`), und wer wer IST, steht in der Datenbank
+ * (`lib/haushalt/profil.ts`, `lib/haushalt/platz.ts`).
  */
-
-export function parseAllowlist(raw: string | undefined): string[] {
-  return (raw ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function isAllowedEmail(
-  email: string | null | undefined,
-  raw: string | undefined = process.env.ALLOWED_EMAILS,
-): boolean {
-  if (!email) return false;
-  const allow = parseAllowlist(raw);
-  return allow.includes(email.trim().toLowerCase());
-}
 
 /**
  * Notname aus der Adresse — „thomas@example.com" wird „Thomas".

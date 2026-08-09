@@ -1,31 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAllowlist, isAllowedEmail, notnameAusEmail } from "./allowlist";
-
-describe("parseAllowlist", () => {
-  it("trennt, trimmt und macht klein", () => {
-    expect(parseAllowlist(" A@x.de , b@Y.de ")).toEqual(["a@x.de", "b@y.de"]);
-  });
-
-  it("wirft Leeres weg", () => {
-    expect(parseAllowlist("a@x.de,,")).toEqual(["a@x.de"]);
-    expect(parseAllowlist(undefined)).toEqual([]);
-  });
-});
-
-describe("isAllowedEmail", () => {
-  const liste = "a@x.de,b@y.de";
-
-  it("lässt Eingetragene rein, unabhängig von Groß- und Kleinschreibung", () => {
-    expect(isAllowedEmail("A@X.de", liste)).toBe(true);
-    expect(isAllowedEmail(" b@y.de ", liste)).toBe(true);
-  });
-
-  it("lässt alle anderen draußen", () => {
-    expect(isAllowedEmail("c@z.de", liste)).toBe(false);
-    expect(isAllowedEmail(null, liste)).toBe(false);
-    expect(isAllowedEmail("a@x.de", undefined)).toBe(false);
-  });
-});
+import { notnameAusEmail } from "./allowlist";
 
 describe("notnameAusEmail", () => {
   it("macht aus der Adresse einen brauchbaren Notnamen", () => {

@@ -281,6 +281,7 @@ function SchrittKalender({ erledigt }: { erledigt: boolean }) {
 function SchrittPartner({ status }: { status: EinrichtungStatus }) {
   const [pending, start] = useTransition();
   const [gesagt, setGesagt] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
 
   if (status.partnerDa) {
     return (
@@ -292,25 +293,37 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
       </>
     );
   }
-  if (!status.partnerEmail) {
+  if (status.eingeladenEmail) {
     return (
-      <p className="text-ink-muted">
-        Für diese Instanz ist bisher nur deine Adresse hinterlegt. Sag uns Bescheid, welche
-        zweite dazu soll — wir tragen sie ein, danach kann sie sich sofort anmelden.
-      </p>
+      <>
+        <Fertighinweis text="Einladung ist unterwegs ✓" />
+        <p className="text-ink-muted">
+          An <span className="font-medium text-ink">{status.eingeladenEmail}</span>. Sobald sie
+          den Link antippt, seht ihr dasselbe. Der Link gilt zwei Wochen.
+        </p>
+      </>
     );
   }
   return (
     <div className="flex flex-col gap-4">
       <p className="text-ink-muted">
-        Eingetragen ist <span className="font-medium text-ink">{status.partnerEmail}</span>. Sie
-        kann sich damit anmelden — ein Passwort braucht sie nicht, der Link kommt per Mail.
+        Wir schicken einen Link, der nur für diese eine Adresse funktioniert. Ein Passwort
+        braucht sie nicht.
       </p>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email"
+        inputMode="email"
+        placeholder="ihre@email.de"
+        className="w-full rounded-card border border-surface-muted bg-surface px-4 py-3 outline-none focus:border-accent"
+      />
       <button
-        disabled={pending}
+        disabled={pending || !email.trim()}
         onClick={() =>
           start(async () => {
-            const r = await ladePartnerEinAction();
+            const r = await ladePartnerEinAction(email);
             setGesagt(r.ok ? "Einladung ist raus ✓" : (r.grund ?? "Hat nicht geklappt."));
           })
         }

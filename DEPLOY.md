@@ -81,7 +81,6 @@ Beide Services laufen auf **demselben Server** (kostet nichts extra) und deploye
 | `TZ` | `Europe/Berlin` | ✅ | ✅ | Cron-Zeiten & Anzeige |
 | `AUTH_SECRET` | `openssl rand -base64 32` | ✅ | — | Session-Signatur (Auth.js) |
 | `AUTH_URL` | `https://planyourweek.app` | ✅ | — | öffentliche App-URL |
-| `ALLOWED_EMAILS` | `dirkbrederecke@gmail.com,constanzehiller@hotmail.com` | ✅ | — | Login-Allowlist (genau ihr beide) |
 | `ENCRYPTION_KEY` | `openssl rand -base64 32` | ✅ | ✅ | verschlüsselt CalDAV-Zugänge at rest |
 | `ANTHROPIC_API_KEY` | Anthropic Console | ✅ | ✅ | KI, nur serverseitig (ab Phase 4) |
 | `RESEND_API_KEY` | Resend | ✅ | ✅ | Magic-Link + Eskalations-Mails |

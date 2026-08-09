@@ -153,6 +153,12 @@ describe("Betreuungsblöcke für einen Tag", () => {
     const { synchronisiereTag } = await import("@/lib/care/block-sync");
     await imHaushalt(() => synchronisiereTag(TAG));
     const nachErstem = geschrieben.length;
+    // Über eine Sekundengrenze hinweg: Im .ics steht ein Zeitstempel, der sich
+    // jede Sekunde ändert. Ohne die Klammer in ics-builder verglich der Lauf
+    // zwei Texte, die sich immer unterscheiden — und schrieb jedes Mal neu
+    // nach iCloud. Die Prüfung merkte davon nichts, weil beide Läufe in
+    // dieselbe Sekunde fielen.
+    await new Promise((r) => setTimeout(r, 1100));
     await imHaushalt(() => synchronisiereTag(TAG));
     expect(geschrieben.length).toBe(nachErstem);
   });
