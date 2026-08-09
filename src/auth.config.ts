@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import { isAllowedEmail, displayNameForEmail } from "@/lib/auth/allowlist";
+import { isAllowedEmail, notnameAusEmail } from "@/lib/auth/allowlist";
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
@@ -35,7 +35,7 @@ export const authConfig = {
     },
     jwt({ token }) {
       if (token.email && !token.name) {
-        token.name = displayNameForEmail(token.email);
+        token.name = notnameAusEmail(token.email);
       }
       return token;
     },

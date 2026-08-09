@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { personForEmail } from "@/lib/auth/allowlist";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import { createEvent } from "@/lib/calendar/create";
 import { berlinStunde } from "@/lib/calendar/zeitstrahl";
 
@@ -39,7 +39,7 @@ export async function neuerTerminAction(input: {
     start,
     end,
     allDay: false,
-    createdBy: personForEmail(session.user.email),
+    createdBy: await meinPlatz(session.user.email),
   });
   if (!res.created) return { ok: false, grund: res.reason ?? "Anlegen fehlgeschlagen." };
 

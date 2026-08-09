@@ -136,18 +136,30 @@ export async function setHaushaltNamenAction(input: {
   const { prisma } = await import("@/lib/prisma");
   const { parseAllowlist } = await import("@/lib/auth/allowlist");
   const { setKindName, invalidateProfil } = await import("@/lib/haushalt/profil");
+  const { platzNachReihenfolge } = await import("@/lib/haushalt/platz");
 
   // Nur Adressen, die ohnehin Zugang haben — von außen lässt sich hier
   // niemand hineinschreiben.
-  const erlaubt = new Set(parseAllowlist(process.env.ALLOWED_EMAILS));
+  const reihenfolge = parseAllowlist(process.env.ALLOWED_EMAILS);
+  const erlaubt = new Set(reihenfolge);
   for (const n of input.namen) {
     const email = n.email.trim().toLowerCase();
     const name = n.name.trim();
     if (!erlaubt.has(email) || !name) continue;
+    /*
+     * Hier wird der Platz festgeschrieben — der einzige Moment, in dem ein
+     * Haushalt ihn wirklich festlegt. Danach steht er in der Datenbank und
+     * überlebt jedes Umsortieren von ALLOWED_EMAILS. Ohne das hinge die
+     * Zuordnung an einer Umgebungsvariablen, und wer sie umstellt, tauscht
+     * rückwirkend alle Aufgaben zwischen zwei Menschen.
+     */
+    const platz = platzNachReihenfolge(reihenfolge.indexOf(email));
+    const vorhanden = await prisma.user.findUnique({ where: { email } });
     await prisma.user.upsert({
       where: { email },
-      create: { email, name },
-      update: { name },
+      create: { email, name, slot: platz },
+      // Ein einmal vergebener Platz bleibt; nur der Name wird aktualisiert.
+      update: { name, ...(vorhanden?.slot ? {} : { slot: platz }) },
     });
   }
   await setKindName(input.kind);
@@ -250,9 +262,9 @@ export async function discoverRemindersAction() {
 export async function importRemindersAction(url: string) {
   const session = await auth();
   if (!session?.user?.email) return { ok: false, grund: "Nicht angemeldet.", uebernommen: 0, uebersprungen: 0 };
-  const { personForEmail } = await import("@/lib/auth/allowlist");
+  const { meinPlatz } = await import("@/lib/haushalt/profil");
   const { importRemindersList } = await import("@/lib/todos/import-icloud");
-  const res = await importRemindersList(url, personForEmail(session.user.email));
+  const res = await importRemindersList(url, await meinPlatz(session.user.email));
   revalidatePath("/einstellungen");
   revalidatePath("/aufgaben");
   return res;
@@ -283,14 +295,14 @@ export async function importPastedListAction(name: string, text: string) {
   }
 
   const { prisma } = await import("@/lib/prisma");
-  const { personForEmail } = await import("@/lib/auth/allowlist");
+  const { meinPlatz } = await import("@/lib/haushalt/profil");
   const vorhandene = await prisma.todo.findMany({
     where: { listId: liste.id, status: "offen" },
     select: { title: true },
   });
   const schonDa = new Set(vorhandene.map((t) => t.title.trim().toLowerCase()));
 
-  const me = personForEmail(session.user.email);
+  const me = await meinPlatz(session.user.email);
   let uebernommen = 0;
   for (const t of titel) {
     if (schonDa.has(t.toLowerCase())) continue;

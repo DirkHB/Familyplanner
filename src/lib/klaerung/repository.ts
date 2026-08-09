@@ -6,7 +6,7 @@ import { isCareGap } from "@/lib/care/gaps";
 import { getDismissedTitleKeys } from "@/lib/care/rules";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { berlinWeekday } from "@/lib/overview/horizon";
 import { buildStack, type KlaerungCard } from "./build";
 
@@ -70,7 +70,7 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
     kind: "anfrage" as const,
     id: r.id,
     question: r.question,
-    fromName: r.fromUser.name ?? displayNameForEmail(r.fromUser.email),
+    fromName: r.fromUser.name ?? notnameAusEmail(r.fromUser.email),
     eventUid: r.eventUid,
     when: terminLabels.get(r.id) ?? null,
   }));

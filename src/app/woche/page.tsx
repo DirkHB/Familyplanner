@@ -5,13 +5,13 @@ import { WeekView } from "@/components/week/WeekView";
 import { buildWeek } from "@/lib/calendar/view-model";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, formatDateHeader, greetingFor, dayKey } from "@/lib/calendar/format";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { getKlaerungStack } from "@/lib/klaerung/repository";
 import { KlaerungGate } from "@/components/klaerung/KlaerungGate";
 import { buildRequestVM } from "@/lib/requests/view-model";
 import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
-import { haushaltProfil } from "@/lib/haushalt/profil";
+import { haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
+import { platzFuerEmail } from "@/lib/haushalt/platz";
 import { brauchtEinrichtung } from "@/lib/haushalt/einrichtung";
 import { STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 import { wochenBriefing } from "@/lib/calendar/wochen-briefing";
@@ -36,10 +36,10 @@ export default async function WochePage({
     redirect("/einrichten");
   }
 
-  const name = displayNameForEmail(session?.user?.email);
-
   const now = new Date();
   const profil = await haushaltProfil();
+  // Die Begrüßung nimmt den Namen aus dem Haushalt, nicht aus der Adresse.
+  const name = nameFuerSlot(profil, platzFuerEmail(profil, session?.user?.email));
   // ?w=1 blättert eine Woche vor — der Nachfolger des alten Überblick-Umschalters.
   const naechste = (await searchParams).w === "1";
   const from = new Date(startOfDayBerlin(now).getTime() + (naechste ? 7 * 86_400_000 : 0));

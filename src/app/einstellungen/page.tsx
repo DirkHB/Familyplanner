@@ -6,7 +6,7 @@ import { listDismissed } from "@/lib/care/rules";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import { listTodoLists, countOpenPerList } from "@/lib/todos/lists";
 import { listStores } from "@/lib/shopping/repository";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { mergePrefs } from "@/lib/push/quiet-hours";
 import { haushaltProfil } from "@/lib/haushalt/profil";
 
@@ -113,7 +113,7 @@ export default async function EinstellungenPage() {
           ? {
               name:
                 fremdeVerbindung.user?.name ??
-                displayNameForEmail(fremdeVerbindung.user?.email ?? ""),
+                notnameAusEmail(fremdeVerbindung.user?.email ?? ""),
             }
           : null
       }

@@ -1,6 +1,10 @@
 /**
- * Zugang nur für genau unsere zwei Adressen (Constanze und Dirk).
- * Quelle: ALLOWED_EMAILS (kommagetrennt). Kein öffentliches Signup.
+ * Wer darf sich anmelden? Quelle ist ALLOWED_EMAILS (kommagetrennt).
+ * Kein öffentliches Signup, keine Selbstregistrierung.
+ *
+ * Wer wer IST — Name und Platz im Haushalt — steht nicht mehr hier, sondern
+ * in der Datenbank (`lib/haushalt/profil.ts` und `lib/haushalt/platz.ts`).
+ * Diese Datei kennt nur noch Adressen.
  */
 
 export function parseAllowlist(raw: string | undefined): string[] {
@@ -19,19 +23,17 @@ export function isAllowedEmail(
   return allow.includes(email.trim().toLowerCase());
 }
 
-/** Anzeigename aus fester Zuordnung (Mockup-Sprache: Constanze zuerst). */
-export function displayNameForEmail(email: string | null | undefined): string {
-  const e = (email ?? "").trim().toLowerCase();
-  if (e === "constanzehiller@hotmail.com" || e === "c.brederecke@gmail.com") return "Constanze";
-  if (e === "dirkbrederecke@gmail.com") return "Dirk";
-  return e.split("@")[0] || "Du";
-}
-
-export type Person = "dirk" | "constanze";
-
-/** Avatar-/Personen-Zuordnung. Constanze = rosé, Dirk = navy. */
-export function personForEmail(email: string | null | undefined): Person {
-  const e = (email ?? "").trim().toLowerCase();
-  if (e === "dirkbrederecke@gmail.com") return "dirk";
-  return "constanze";
+/**
+ * Notname aus der Adresse — „thomas@example.com" wird „Thomas".
+ *
+ * Nur ein Platzhalter für die Lücke zwischen dem ersten Login und dem Moment,
+ * in dem jemand im Assistenten seinen Namen einträgt. Überall, wo ein echter
+ * Name vorliegt, hat der Vorrang: `user.name ?? notnameAusEmail(user.email)`.
+ */
+export function notnameAusEmail(email: string | null | undefined): string {
+  const lokal = (email ?? "").trim().toLowerCase().split("@")[0];
+  if (!lokal) return "Du";
+  // Punkte und Striche trennen meist Vor- und Nachname.
+  const wort = lokal.split(/[._-]/)[0];
+  return wort.charAt(0).toUpperCase() + wort.slice(1);
 }

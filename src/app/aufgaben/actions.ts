@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { personForEmail, type Person } from "@/lib/auth/allowlist";
+import { meinPlatz, haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
+import { PLAETZE, type Platz as Person } from "@/lib/haushalt/platz";
 import { createTodo, toggleTodo, deleteTodo, setTodoList } from "@/lib/todos/repository";
 import { createTodoList } from "@/lib/todos/lists";
 import { NEUE_LISTE } from "@/lib/todos/group";
@@ -17,10 +18,10 @@ export async function createTodoAction(
   const title = String(fd.get("title") ?? "").trim();
   if (!title) return { error: "Bitte einen Titel eingeben." };
 
-  const me = personForEmail(session.user.email);
+  const me = await meinPlatz(session.user.email);
   const rawAssignee = String(fd.get("assignee") ?? "");
   const assignee: Person | null =
-    rawAssignee === "dirk" || rawAssignee === "constanze" ? rawAssignee : null;
+    (PLAETZE as string[]).includes(rawAssignee) ? (rawAssignee as Person) : null;
 
   // Datum kommt als YYYY-MM-DD (Berlin) → Fälligkeit 09:00 Ortszeit als Referenzpunkt.
   const dueRaw = String(fd.get("dueDate") ?? "");
@@ -154,10 +155,10 @@ export async function setTodoDueAction(id: string, dueRaw: string | null) {
   });
 
   if (spaeter) {
-    const me = personForEmail(session.user.email);
+    const me = await meinPlatz(session.user.email);
     const { resolvePartner } = await import("@/lib/requests/repository");
     const partner = await resolvePartner(session.user.id);
-    const partnerPerson = partner ? personForEmail(partner.email) : null;
+    const partnerPerson = partner?.slot ?? null;
     const betroffen =
       partnerPerson !== null && (todo.assignee === partnerPerson || todo.createdBy === partnerPerson);
     if (partner && betroffen) {
@@ -165,7 +166,7 @@ export async function setTodoDueAction(id: string, dueRaw: string | null) {
       const wann = new Intl.DateTimeFormat("de-DE", {
         weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Berlin",
       }).format(neu!);
-      const wer = me === "constanze" ? "Constanze" : "Dirk";
+      const wer = nameFuerSlot(await haushaltProfil(), me);
       await notifyUserId(partner.id, {
         title: `${wer} hat „${todo.title}" verschoben`,
         body: `Jetzt bis ${wann}.`,

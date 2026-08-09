@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useHaushaltNamen } from "@/components/app/HaushaltContext";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { captureAction, acceptSuggestionAction, rejectSuggestionAction } from "./actions";
@@ -23,7 +24,7 @@ const KIND_META: Record<string, { label: string; icon: string; tone: string }> =
 const EXAMPLES = [
   "Donnerstag 15 Uhr Kinderarzt U3",
   "Windeln und Haferdrink kaufen",
-  "Constanze soll die Kita anrufen",
+  "Bei der Kita anrufen",
 ];
 
 export function ErfassenClient({ configured }: { configured: boolean }) {
@@ -123,6 +124,7 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
 }
 
 function SuggestionCard({ item }: { item: SmartItem }) {
+  const namen = useHaushaltNamen();
   const [pending, start] = useTransition();
   const [state, setState] = useState<"open" | "accepted" | "rejected">("open");
   const [note, setNote] = useState("");
@@ -157,7 +159,7 @@ function SuggestionCard({ item }: { item: SmartItem }) {
 
       {item.assignee && (
         <p className="mt-1.5 text-sm text-ink-muted">
-          für {item.assignee === "constanze" ? "Constanze" : "Dirk"}
+          für {namen[item.assignee] || "den anderen"}
         </p>
       )}
       {item.careNeeded && item.kind === "termin" && (

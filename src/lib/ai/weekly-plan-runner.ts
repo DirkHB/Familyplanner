@@ -5,7 +5,7 @@ import { getOccurrencesForRange } from "@/lib/calendar/repository";
 import { groupByDay, formatTime, formatDateHeader, startOfDayBerlin } from "@/lib/calendar/format";
 import { categoryOf, guessCategory } from "@/lib/calendar/categories";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { getFairness } from "@/lib/fairness/repository";
 import { activePatternLabels } from "@/lib/patterns/repository";
 import { buildPlanningContext, type ContextDay } from "./planning-context";
@@ -50,7 +50,7 @@ export async function buildContextFromDb(userId: string | null, now: Date = new 
 
   const openRequests = userId
     ? (await getOpenRequestsForUser(userId)).map(
-        (r) => `${r.fromUser.name ?? displayNameForEmail(r.fromUser.email)} fragt: ${r.question}`,
+        (r) => `${r.fromUser.name ?? notnameAusEmail(r.fromUser.email)} fragt: ${r.question}`,
       )
     : [];
 
@@ -74,7 +74,8 @@ export async function runWeeklyPlan(userId: string | null, now: Date = new Date(
 
 /** Sonntagabend-Push „Eure Woche" an beide (Worker, So 19:00). */
 export async function runWeeklySummaryPush(): Promise<{ pushed: number }> {
-  const { parseAllowlist, displayNameForEmail } = await import("@/lib/auth/allowlist");
+  const { parseAllowlist } = await import("@/lib/auth/allowlist");
+  const { stelleUserSicher } = await import("@/lib/haushalt/profil");
   const { notifyUserId } = await import("@/lib/push/notify");
   const { aiConfigured } = await import("./client");
 
@@ -90,11 +91,7 @@ export async function runWeeklySummaryPush(): Promise<{ pushed: number }> {
 
   let pushed = 0;
   for (const email of parseAllowlist(process.env.ALLOWED_EMAILS)) {
-    const user = await prisma.user.upsert({
-      where: { email },
-      create: { email, name: displayNameForEmail(email) },
-      update: {},
-    });
+    const user = await stelleUserSicher(email);
     pushed += await notifyUserId(user.id, {
       title: "Eure Woche 🌱",
       body,

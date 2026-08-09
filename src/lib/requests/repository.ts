@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, displayNameForEmail } from "@/lib/auth/allowlist";
+import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
+import { stelleUserSicher } from "@/lib/haushalt/profil";
 import { notifyUserId } from "@/lib/push/notify";
 
 export type RequestType = "yes_no" | "choice" | "free_text" | "date";
@@ -9,7 +10,9 @@ export type RequestType = "yes_no" | "choice" | "free_text" | "date";
  * Zwei-Personen-Modell: Anfragen gehen immer an den jeweils anderen. Wir stellen sicher,
  * dass beide Nutzerzeilen existieren (aus der Allowlist), damit Anfragen nie ins Leere gehen.
  */
-export async function resolvePartner(userId: string): Promise<{ id: string; email: string } | null> {
+export async function resolvePartner(
+  userId: string,
+): Promise<{ id: string; email: string; slot: string | null } | null> {
   const me = await prisma.user.findUnique({ where: { id: userId } });
   if (!me) return null;
   const others = parseAllowlist(process.env.ALLOWED_EMAILS).filter(
@@ -17,12 +20,8 @@ export async function resolvePartner(userId: string): Promise<{ id: string; emai
   );
   const partnerEmail = others[0];
   if (!partnerEmail) return null;
-  const partner = await prisma.user.upsert({
-    where: { email: partnerEmail },
-    create: { email: partnerEmail, name: displayNameForEmail(partnerEmail) },
-    update: {},
-  });
-  return { id: partner.id, email: partner.email };
+  const partner = await stelleUserSicher(partnerEmail);
+  return { id: partner.id, email: partner.email, slot: partner.slot };
 }
 
 export async function createRequest(input: {
@@ -82,7 +81,7 @@ type AnsweredRequest = {
 /** Verdrahtung Antwort → Wirkung (Abschnitt 6.2): „Ja" auf eine Betreuungsanfrage
  *  klärt die Betreuung, legt dem Übernehmenden eine Aufgabe an und pusht den anderen. */
 async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
-  const answererName = req.toUser.name ?? displayNameForEmail(req.toUser.email);
+  const answererName = req.toUser.name ?? notnameAusEmail(req.toUser.email);
   const yes = answer.trim().toLowerCase() === "ja";
 
   if (req.eventUid && req.type === "yes_no") {

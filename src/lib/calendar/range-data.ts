@@ -3,7 +3,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { expandOccurrences } from "./ical";
 import { dayKey } from "./format";
-import { personForEmail, type Person } from "@/lib/auth/allowlist";
+import { PLATZ_A, type Platz as Person } from "@/lib/haushalt/platz";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
 import { careWindow } from "@/lib/care/gaps";
@@ -35,7 +35,14 @@ export function invalidateKalender() {
 type Wire = {
   occ: (Omit<Occurrence, "start" | "end"> & { start: string; end: string })[];
   details: { eventUid: string; category: string; notes: string | null }[];
-  care: { eventUid: string; day: string; status: string; email: string | null; note: string | null }[];
+  care: {
+    eventUid: string;
+    day: string;
+    status: string;
+    email: string | null;
+    slot: string | null;
+    note: string | null;
+  }[];
 };
 
 /**
@@ -92,7 +99,7 @@ const baueLader = (haushalt: string) =>
     const careRange = careWindow(from, to);
     const careRows = await prisma.careAssignment.findMany({
       where: { occurrenceDate: { gte: careRange.from, lte: careRange.to } },
-      include: { responsible: { select: { email: true } } },
+      include: { responsible: { select: { email: true, slot: true } } },
     });
 
     return {
@@ -103,6 +110,7 @@ const baueLader = (haushalt: string) =>
         day: dayKey(c.occurrenceDate),
         status: c.status,
         email: c.responsible?.email ?? null,
+        slot: c.responsible?.slot ?? null,
         note: c.status === "extern" ? c.note : null,
       })),
     };
@@ -126,7 +134,7 @@ export async function getRangeData(from: Date, to: Date) {
   const careByOcc = new Map<string, CareOcc>(
     d.care.map((c) => [
       `${c.eventUid}:${c.day}`,
-      { status: c.status, person: c.email ? personForEmail(c.email) : null, externName: c.note },
+      { status: c.status, person: (c.slot as Person | null) ?? null, externName: c.note },
     ]),
   );
   return { occurrences, metaByUid, careByOcc };

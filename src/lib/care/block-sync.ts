@@ -7,7 +7,7 @@ import { buildIcs } from "@/lib/calendar/ics-builder";
 import { expandOccurrences } from "@/lib/calendar/ical";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { dayKey } from "@/lib/calendar/format";
-import { personForEmail } from "@/lib/auth/allowlist";
+import type { Platz } from "@/lib/haushalt/platz";
 import { haushaltProfil } from "@/lib/haushalt/profil";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import {
@@ -69,13 +69,13 @@ export async function upsertCareBlock(
     schreibziel(),
     fenster(eventUid, occurrenceDate),
     userId
-      ? prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+      ? prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, slot: true } })
       : Promise.resolve(null),
     haushaltProfil(),
   ]);
   if (!ziel || !w || (userId && !user)) return;
 
-  const person: CarePerson = user ? personForEmail(user.email) : "extern";
+  const person: CarePerson = (user?.slot as Platz | null) ?? "extern";
   // Wer im Kalender steht: der Name aus dem Profil, bei externer Betreuung
   // der eingegebene („Oma"). Nie ein im Code festgeschriebener Name.
   const wer = user

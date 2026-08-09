@@ -1,8 +1,9 @@
 import "server-only";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist } from "@/lib/auth/allowlist";
+import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
 import { haushaltId } from "./id";
+import { PLATZ_A, platzFuerEmail, platzNachReihenfolge, type Platz } from "./platz";
 
 /**
  * Wer wohnt hier, und wie heißt das Kind?
@@ -22,8 +23,8 @@ import { haushaltId } from "./id";
  */
 
 export type PersonProfil = {
-  /** Der gespeicherte Wert in Aufgaben, Einkauf und Verlauf. */
-  slot: string;
+  /** Der gespeicherte Platz — PLATZ_A oder PLATZ_B, siehe platz.ts. */
+  slot: Platz;
   name: string;
   email: string;
 };
@@ -64,15 +65,15 @@ async function ladeProfil(): Promise<HaushaltProfil> {
     prisma.user.findMany({ select: { email: true, name: true, slot: true } }),
     prisma.appSetting.findUnique({ where: { key: `${haushaltId()}:${KIND_SCHLUESSEL}` } }),
   ]);
-  const nameFuer = new Map(users.map((u) => [u.email.toLowerCase(), u.name]));
+  const nameFuer = new Map(users.map((u) => [u.email.toLowerCase(), u.name] as const));
   const slotFuer = new Map(users.map((u) => [u.email.toLowerCase(), u.slot]));
 
   const erwachsene: PersonProfil[] = emails.map((email, i) => ({
     // Die Reihenfolge der Allowlist bestimmt den Platz. Wer schon einen in
     // der Datenbank hat, behält ihn — sonst verlören Aufgaben ihre Zuordnung,
     // sobald jemand die Umgebungsvariable umsortiert.
-    slot: slotFuer.get(email) ?? (i === 0 ? "a" : "b"),
-    name: nameFuer.get(email) ?? email.split("@")[0],
+    slot: (slotFuer.get(email) as Platz | null) ?? platzNachReihenfolge(i),
+    name: nameFuer.get(email) ?? notnameAusEmail(email),
     email,
   }));
 
@@ -86,6 +87,42 @@ const geladen = unstable_cache(ladeProfil, ["haushalt-profil"], {
 
 export async function haushaltProfil(): Promise<HaushaltProfil> {
   return geladen();
+}
+
+/** Der Platz der angemeldeten Person — der Einstieg für fast jede Aktion. */
+export async function meinPlatz(email: string | null | undefined): Promise<Platz> {
+  return platzFuerEmail(await haushaltProfil(), email);
+}
+
+/**
+ * Die Nutzerzeile zu einer Adresse — angelegt, falls es sie noch nicht gibt.
+ *
+ * Nötig, weil Zeilen erst beim ersten Login entstehen: Der Worker will
+ * jemandem eine Aufgabe zuweisen oder eine Frage schicken, bevor die Person
+ * je da war. Das stand an sechs Stellen als eigenes `upsert` — jedes mit
+ * seiner eigenen Vorstellung davon, was in `name` gehört, und keines hat den
+ * Platz gesetzt. Ein zweiter Haushalt hätte damit Zeilen ohne Platz bekommen.
+ */
+export async function stelleUserSicher(email: string) {
+  const adresse = email.trim().toLowerCase();
+  const profil = await haushaltProfil();
+  const eintrag = profil.erwachsene.find((e) => e.email === adresse);
+  const vorhanden = await prisma.user.findUnique({ where: { email: adresse } });
+  if (vorhanden) {
+    // Fehlt nur der Platz, wird er nachgetragen — ohne den Namen anzufassen,
+    // den die Person vielleicht selbst gesetzt hat.
+    if (!vorhanden.slot && eintrag) {
+      return prisma.user.update({ where: { id: vorhanden.id }, data: { slot: eintrag.slot } });
+    }
+    return vorhanden;
+  }
+  return prisma.user.create({
+    data: {
+      email: adresse,
+      name: eintrag?.name ?? notnameAusEmail(adresse),
+      slot: eintrag?.slot ?? PLATZ_A,
+    },
+  });
 }
 
 /** Den Namen des Kindes setzen. Leer heißt: zurück zur neutralen Vorgabe. */

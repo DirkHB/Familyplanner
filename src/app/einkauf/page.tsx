@@ -1,10 +1,7 @@
 import { auth } from "@/auth";
 import { getMainListGroups, getFrequentSuggestions } from "@/lib/shopping/repository";
-import {
-  parseAllowlist,
-  displayNameForEmail,
-  personForEmail,
-} from "@/lib/auth/allowlist";
+import { haushaltProfil } from "@/lib/haushalt/profil";
+import { PLATZ_B } from "@/lib/haushalt/platz";
 import { EinkaufClient } from "./EinkaufClient";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function EinkaufPage() {
   const session = await auth();
   const myEmail = (session?.user?.email ?? "").toLowerCase();
-  const partnerEmail =
-    parseAllowlist(process.env.ALLOWED_EMAILS).find((e) => e !== myEmail) ??
-    "constanzehiller@hotmail.com";
+  // Der andere Erwachsene des Haushalts. Hier stand eine feste Adresse als
+  // Notnagel — die war in einem zweiten Haushalt schlicht falsch.
+  const profil = await haushaltProfil();
+  const partner = profil.erwachsene.find((e) => e.email !== myEmail) ?? profil.erwachsene[0];
 
   const [{ groups }, suggestions] = await Promise.all([
     getMainListGroups(),
@@ -25,8 +23,8 @@ export default async function EinkaufPage() {
     <EinkaufClient
       groups={groups}
       suggestions={suggestions}
-      partnerName={displayNameForEmail(partnerEmail)}
-      partnerPerson={personForEmail(partnerEmail)}
+      partnerName={partner?.name ?? "Der andere"}
+      partnerPerson={partner?.slot ?? PLATZ_B}
     />
   );
 }

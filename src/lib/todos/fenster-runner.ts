@@ -4,7 +4,9 @@ import { haushaltId } from "@/lib/haushalt/id";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import { freieBloecke, berlinStunde, dauerLabel, STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
-import { parseAllowlist, personForEmail, displayNameForEmail } from "@/lib/auth/allowlist";
+import { parseAllowlist } from "@/lib/auth/allowlist";
+import { haushaltProfil, stelleUserSicher } from "@/lib/haushalt/profil";
+import { platzFuerEmail } from "@/lib/haushalt/platz";
 import { mergePrefs } from "@/lib/push/quiet-hours";
 import { notifyUserId } from "@/lib/push/notify";
 import { generiereAufgabenVorschlag, type VorschlagKontext } from "@/lib/ai/aufgaben-vorschlag";
@@ -48,12 +50,8 @@ export async function runAufgabenFenster(now: Date = new Date()): Promise<Fenste
   const morgenKey = dayKey(new Date(heuteStart.getTime() + 86_400_000 + 43_200_000));
 
   for (const email of emails) {
-    const person = personForEmail(email);
-    const user = await prisma.user.upsert({
-      where: { email },
-      create: { email, name: displayNameForEmail(email) },
-      update: {},
-    });
+    const person = platzFuerEmail(await haushaltProfil(), email);
+    const user = await stelleUserSicher(email);
     summary.geprueft++;
 
     const prefs = mergePrefs(user.notificationPrefs);

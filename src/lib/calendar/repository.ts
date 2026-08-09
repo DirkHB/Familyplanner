@@ -4,7 +4,8 @@ import { expandOccurrences } from "./ical";
 import { headForOccurrence, pickOccurrence } from "./occurrence-pick";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
-import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
+import type { Platz } from "@/lib/haushalt/platz";
 
 /** DB-Zugriff für die Kalenderansichten. Expandiert Wiederholungen aus den gespeicherten .ics. */
 
@@ -121,9 +122,9 @@ export async function getEventView(
       care = {
         status: row.status as "offen" | "zugesagt" | "geklaert" | "keine" | "extern",
         responsibleName: row.responsible
-          ? row.responsible.name ?? displayNameForEmail(row.responsible.email)
+          ? row.responsible.name ?? notnameAusEmail(row.responsible.email)
           : null,
-        responsiblePerson: row.responsible ? personForEmail(row.responsible.email) : null,
+        responsiblePerson: (row.responsible?.slot as Platz | null) ?? null,
         externName: row.status === "extern" ? row.note : null,
       };
     }

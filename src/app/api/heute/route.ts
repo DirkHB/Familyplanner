@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { countTodosDueToday } from "@/lib/klaerung/repository";
-import { personForEmail } from "@/lib/auth/allowlist";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import { HAUPTLISTE_FILTER } from "@/lib/haushalt/singletons";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,6 @@ export async function GET() {
   const einkauf = await prisma.shoppingItem
     .count({ where: { checkedAt: null, ...HAUPTLISTE_FILTER } })
     .catch(() => 0);
-  const person = session.user.email ? personForEmail(session.user.email) : null;
+  const person = session.user.email ? await meinPlatz(session.user.email) : null;
   return NextResponse.json({ aufgaben, einkauf, person });
 }

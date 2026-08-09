@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { createRequest, resolvePartner } from "@/lib/requests/repository";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { notifyUserId } from "@/lib/push/notify";
 import { haushaltProfil } from "@/lib/haushalt/profil";
 import { upsertCareBlock, removeCareBlock } from "./block-sync";
@@ -51,7 +51,7 @@ export async function takeCare(eventUid: string, date: Date, userId: string) {
     const partner = await resolvePartner(userId);
     if (me && partner) {
       await notifyUserId(partner.id, {
-        title: `✓ ${me.name ?? displayNameForEmail(me.email)} ist bei ${(await haushaltProfil()).kind}`,
+        title: `✓ ${me.name ?? notnameAusEmail(me.email)} ist bei ${(await haushaltProfil()).kind}`,
         body: event?.title ?? "Betreuung geklärt",
         url: `/termin/${encodeURIComponent(eventUid)}`,
         tag: `care-take-${eventUid}-${occurrenceDate.toISOString().slice(0, 10)}`,

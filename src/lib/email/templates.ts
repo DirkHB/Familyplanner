@@ -1,8 +1,8 @@
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 
 /** Warmer, knapper Ton. Farben aus dem Design-System, inline (E-Mail-Clients). */
 export function magicLinkEmail(email: string, url: string) {
-  const name = displayNameForEmail(email);
+  const name = notnameAusEmail(email);
   const subject = "Dein Login für Plan";
   const text = `Hallo ${name},\n\ntipp auf diesen Link, um dich bei Plan anzumelden:\n${url}\n\nDer Link gilt 24 Stunden. Falls du das nicht warst, ignorier die Mail einfach.`;
 
@@ -28,7 +28,7 @@ export function magicLinkEmail(email: string, url: string) {
 
 /** Eskalations-Mail nach 3 Tagen. Ton: neutral, freundlich, nie vorwurfsvoll. */
 export function nudgeEmail(email: string, count: number, url: string) {
-  const name = displayNameForEmail(email);
+  const name = notnameAusEmail(email);
   const subject = count === 1 ? "Eine Frage wartet noch auf dich" : `${count} Fragen warten noch`;
   const text = `Hallo ${name},\n\nkleine Erinnerung: ${
     count === 1 ? "eine Frage wartet" : `${count} Fragen warten`

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 
 /**
  * Schwebende Leiste, nur Symbole — wie man es von den großen Apps kennt.

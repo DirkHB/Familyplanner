@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 import { containersByList, NEUE_LISTE, type TodoVM } from "@/lib/todos/group";
 import { MAX_NAME_LAENGE } from "@/lib/names";
 import Link from "next/link";

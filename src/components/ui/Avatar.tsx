@@ -1,9 +1,21 @@
-/** Feste Zwei-Personen-Avatare: Dirk = Dunkelblau, Constanze = Rosé. */
-type Person = "dirk" | "constanze";
+"use client";
 
-const MAP: Record<Person, { initial: string; bg: string; fg: string }> = {
-  dirk: { initial: "D", bg: "var(--color-ink)", fg: "var(--color-surface)" },
-  constanze: { initial: "C", bg: "var(--color-counter)", fg: "var(--color-surface)" },
+import { useName } from "@/components/app/HaushaltContext";
+import { PLATZ_A, type Platz } from "@/lib/haushalt/platz";
+
+/**
+ * Der Personen-Kreis. Farbe trägt die Unterscheidung — Platz A dunkelblau,
+ * Platz B rosé —, der Buchstabe kommt aus dem Namen.
+ *
+ * Bis eben standen „D" und „C" fest im Code. In einem zweiten Haushalt hätte
+ * Yvonne ein „C" getragen. Steht noch kein Name fest, bleibt der Kreis leer:
+ * ein falscher Buchstabe ist schlimmer als gar keiner, denn er behauptet
+ * etwas.
+ */
+
+const FARBE: Record<Platz, { bg: string; fg: string }> = {
+  [PLATZ_A]: { bg: "var(--color-ink)", fg: "var(--color-surface)" },
+  constanze: { bg: "var(--color-counter)", fg: "var(--color-surface)" },
 };
 
 export function Avatar({
@@ -11,11 +23,12 @@ export function Avatar({
   size = 28,
   showName = false,
 }: {
-  person: Person;
+  person: Platz;
   size?: number;
   showName?: boolean;
 }) {
-  const { initial, bg, fg } = MAP[person];
+  const name = useName(person);
+  const { bg, fg } = FARBE[person] ?? FARBE[PLATZ_A];
   return (
     <span className="inline-flex items-center gap-2">
       <span
@@ -29,13 +42,9 @@ export function Avatar({
         }}
         aria-hidden
       >
-        {initial}
+        {name.charAt(0).toUpperCase()}
       </span>
-      {showName && (
-        <span className="font-medium">
-          {person === "dirk" ? "Dirk" : "Constanze"}
-        </span>
-      )}
+      {showName && name && <span className="font-medium">{name}</span>}
     </span>
   );
 }

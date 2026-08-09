@@ -1,5 +1,5 @@
 import ICAL from "ical.js";
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 
 /**
  * Wer ist durch einen Termin gebunden?

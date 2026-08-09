@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
-import type { Person } from "@/lib/auth/allowlist";
+import { PLATZ_A, PLATZ_B, type Platz as Person } from "@/lib/haushalt/platz";
 import { OHNE_LADEN } from "@/lib/shopping/stores";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
 import { createStoreAction } from "@/app/einstellungen/actions";
@@ -230,8 +230,8 @@ export function EinkaufClient({
         <h1 className="font-display text-4xl">Einkaufsliste</h1>
         <p className="mt-2 flex items-center gap-2 text-ink-muted">
           <span className="flex -space-x-1.5">
-            <Avatar person="constanze" size={22} />
-            <Avatar person="dirk" size={22} />
+            <Avatar person={PLATZ_A} size={22} />
+            <Avatar person={PLATZ_B} size={22} />
           </span>
           Gemeinsam mit {partnerName} · {openCount} offen
         </p>

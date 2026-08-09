@@ -6,7 +6,8 @@ import { aiConfigured, getAnthropic, AI_MODEL } from "@/lib/ai/client";
 import { smartCapture, type SmartItem, type SmartResult } from "@/lib/ai/smart-capture";
 import { logAiFeedback } from "@/lib/ai/feedback";
 import { createEvent } from "@/lib/calendar/create";
-import { displayNameForEmail, personForEmail, type Person } from "@/lib/auth/allowlist";
+import { meinPlatz, haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
+import { PLAETZE, type Platz as Person } from "@/lib/haushalt/platz";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { createTodo } from "@/lib/todos/repository";
 import { addItem, resolveStoreByName } from "@/lib/shopping/repository";
@@ -35,7 +36,7 @@ export async function acceptSuggestionAction(
 ): Promise<{ ok: boolean; created: boolean; reason?: string; where?: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) return { ok: false, created: false };
-  const me = personForEmail(session.user.email);
+  const me = await meinPlatz(session.user.email);
 
   await logAiFeedback({
     suggestionId: `${item.kind}:${item.title}`,
@@ -56,7 +57,7 @@ export async function acceptSuggestionAction(
     if (item.kind === "aufgabe") {
       const due = item.dueDate ? new Date(`${item.dueDate}T09:00:00+02:00`) : null;
       const assignee: Person | null =
-        item.assignee === "dirk" || item.assignee === "constanze" ? item.assignee : me;
+        (PLAETZE as string[]).includes(item.assignee ?? "") ? (item.assignee as Person) : me;
       await createTodo({ title: item.title, notes: item.notes, dueDate: due, assignee, createdBy: me });
       revalidatePath("/aufgaben");
       return { ok: true, created: true, where: "Aufgaben" };
@@ -70,7 +71,7 @@ export async function acceptSuggestionAction(
       category: item.category,
       careNeeded: item.careNeeded,
       description: item.notes,
-      createdBy: displayNameForEmail(session.user.email),
+      createdBy: nameFuerSlot(await haushaltProfil(), me),
     });
     revalidatePath("/woche");
     revalidatePath("/termine");

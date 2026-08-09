@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { personForEmail } from "@/lib/auth/allowlist";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import { addItem, toggleItem, deleteItem, moveItemToStore, clearChecked } from "@/lib/shopping/repository";
 import { storeIdFromGroupKey } from "@/lib/shopping/stores";
 
 async function person() {
   const session = await auth();
   if (!session?.user?.email) return null;
-  return personForEmail(session.user.email);
+  return meinPlatz(session.user.email);
 }
 
 export async function addItemAction(text: string, store?: string) {

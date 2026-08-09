@@ -13,7 +13,8 @@ import {
 } from "@/lib/care/repository";
 import { dismissTitle, undismissTitle } from "@/lib/care/rules";
 import { answerRequest, resolvePartner } from "@/lib/requests/repository";
-import { displayNameForEmail, personForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import { notifyUserId } from "@/lib/push/notify";
 import { haushaltProfil } from "@/lib/haushalt/profil";
 import { removeCareBlock } from "@/lib/care/block-sync";
@@ -65,7 +66,7 @@ async function schonGeklaert(
         where: { id: vorher.responsibleUserId },
         select: { email: true, name: true },
       });
-      const name = wer ? (wer.name ?? displayNameForEmail(wer.email)) : "Der andere";
+      const name = wer ? (wer.name ?? notnameAusEmail(wer.email)) : "Der andere";
       return `${name} ist schon bei ${await kindName()} ✓`;
     }
     return "Schon geklärt ✓";
@@ -301,7 +302,7 @@ export async function stapelFrageAbendAction(
   });
   if (schonDa) return { ok: true, schon: "Steht schon in euren Aufgaben" };
 
-  const me = personForEmail(session.user.email);
+  const me = await meinPlatz(session.user.email);
   const todo = await prisma.todo.create({
     data: {
       title: `Betreuung klären: ${titel}`,

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app/AppShell";
 import { Avatar } from "@/components/ui/Avatar";
-import { personForEmail, displayNameForEmail } from "@/lib/auth/allowlist";
+import { haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
+import { platzFuerEmail } from "@/lib/haushalt/platz";
 import { abmeldenAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,10 @@ export const dynamic = "force-dynamic";
 export default async function ProfilPage() {
   const session = await auth();
   const email = session?.user?.email ?? "";
-  const person = personForEmail(email);
-  const name = displayNameForEmail(email);
+  // Name und Platz aus dem Haushalt — die Adresse sagt darüber nichts.
+  const profil = await haushaltProfil();
+  const person = platzFuerEmail(profil, email);
+  const name = nameFuerSlot(profil, person);
 
   return (
     <AppShell>

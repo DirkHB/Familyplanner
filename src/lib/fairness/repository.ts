@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { personForEmail } from "@/lib/auth/allowlist";
+import type { Platz } from "@/lib/haushalt/platz";
 import { computeFairness, type Fairness } from "./compute";
 
 /** Fairness über die letzten `weeks` Wochen (Standard 6) aus den Betreuungs-Zuweisungen. */
@@ -12,7 +12,7 @@ export async function getFairness(weeks = 6, now: Date = new Date()): Promise<Fa
   });
   return computeFairness(
     rows.map((r) => ({
-      person: r.responsible ? personForEmail(r.responsible.email) : null,
+      person: (r.responsible?.slot as Platz | null) ?? null,
     })),
   );
 }

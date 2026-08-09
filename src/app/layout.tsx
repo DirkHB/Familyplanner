@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { HaushaltProvider, type HaushaltNamen } from "@/components/app/HaushaltContext";
+import { haushaltProfil } from "@/lib/haushalt/profil";
+import { PLATZ_A, PLATZ_B } from "@/lib/haushalt/platz";
 
 // Selbst gehostete Fonts (Fontsource, OFL) — keine externen CDN-Aufrufe.
 import "@fontsource-variable/fraunces";
@@ -42,15 +45,35 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+/**
+ * Die Namen des Haushalts, einmal je Aufruf.
+ *
+ * Bewusst mit Netz: Ohne das `catch` risse ein Datenbank-Hänger — ein
+ * Neon-Kaltstart reicht — die Anmeldeseite mit ab, und dann kommt niemand mehr
+ * rein, um das Problem zu sehen. Kurz zwischengespeichert ist es ohnehin, das
+ * hier ist also höchstens alle fünf Minuten eine Abfrage.
+ */
+async function namenDesHaushalts(): Promise<HaushaltNamen> {
+  try {
+    const profil = await haushaltProfil();
+    const namen: HaushaltNamen = { [PLATZ_A]: "", [PLATZ_B]: "" };
+    for (const e of profil.erwachsene) namen[e.slot] = e.name;
+    return namen;
+  } catch {
+    return { [PLATZ_A]: "", [PLATZ_B]: "" };
+  }
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const namen = await namenDesHaushalts();
   return (
     <html lang="de" className={GeistSans.variable} suppressHydrationWarning>
       <body>
-        {children}
+        <HaushaltProvider namen={namen}>{children}</HaushaltProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

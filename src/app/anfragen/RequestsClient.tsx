@@ -19,9 +19,12 @@ export type HistoryItem = {
 export function RequestsClient({
   incoming,
   history,
+  partnerName = "",
 }: {
   incoming: RequestVM[];
   history: HistoryItem[];
+  /** Der andere Erwachsene — steht auf dem Absende-Knopf. */
+  partnerName?: string;
 }) {
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -46,7 +49,7 @@ export function RequestsClient({
           </section>
         )}
 
-        <CreateForm />
+        <CreateForm partnerName={partnerName} />
 
         {history.length > 0 && (
           <section className="mt-8">
@@ -120,7 +123,7 @@ function FreeAnswer({ pending, onSend }: { pending: boolean; onSend: (v: string)
   );
 }
 
-function CreateForm() {
+function CreateForm({ partnerName }: { partnerName: string }) {
   const [state, formAction, pending] = useActionState(createRequestAction, { error: null });
   const [type, setType] = useState("yes_no");
   return (
@@ -138,7 +141,7 @@ function CreateForm() {
           <input name="options" placeholder="Optionen, mit Komma getrennt" className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent" />
         )}
         <button type="submit" disabled={pending} className="rounded-pill bg-accent px-5 py-3.5 font-medium text-surface disabled:opacity-60">
-          {pending ? "Senden …" : "An Constanze/Dirk senden"}
+          {pending ? "Senden …" : partnerName ? `An ${partnerName} senden` : "Senden"}
         </button>
         {state?.error && <p className="text-sm text-signal">{state.error}</p>}
       </form>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { personForEmail } from "@/lib/auth/allowlist";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import {
   createIdea,
   toggleVote,
@@ -34,7 +34,7 @@ export async function createIdeaAction(
 export async function voteAction(id: string) {
   const session = await auth();
   if (!session?.user?.email) return;
-  await toggleVote(id, personForEmail(session.user.email));
+  await toggleVote(id, await meinPlatz(session.user.email));
   revalidatePath("/ideen");
 }
 

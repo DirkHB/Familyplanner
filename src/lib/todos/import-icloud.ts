@@ -4,7 +4,7 @@ import { createICloudClient } from "@/lib/calendar/tsdav-client";
 import { kalenderzugang } from "@/lib/haushalt/singletons";
 import { parseTodos, type ParsedTodo } from "@/lib/calendar/vtodo";
 import { createTodoList } from "./lists";
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 
 /**
  * Erinnerungen aus iCloud übernehmen — einmalig (Variante B).

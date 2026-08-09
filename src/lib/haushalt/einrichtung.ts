@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist } from "@/lib/auth/allowlist";
+import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
 import { getHaushaltFlag, setHaushaltFlag } from "./singletons";
 import { haushaltProfil, KIND_VORGABE } from "./profil";
 
@@ -57,7 +57,7 @@ export async function einrichtungStatus(meineEmail?: string | null): Promise<Ein
   // Erwachsenen nicht mehr nur ihre E-Mail-Adresse als Namen tragen.
   const namenGesetzt =
     profil.kind !== KIND_VORGABE &&
-    profil.erwachsene.every((e) => e.name && e.name !== e.email.split("@")[0]);
+    profil.erwachsene.every((e) => e.name && e.name !== notnameAusEmail(e.email));
 
   const erledigt: Record<SchrittName, boolean> = {
     namen: namenGesetzt,

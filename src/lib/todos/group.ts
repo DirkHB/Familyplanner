@@ -1,4 +1,4 @@
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 import { dayKey } from "@/lib/calendar/format";
 
 /** Aufgaben-Gruppierung nach ETA (Abschnitt Aufgaben): rein & testbar. */

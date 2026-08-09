@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { meinPlatz, haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
 import { redirect } from "next/navigation";
 import { takeCare, requestCare, dismissCare } from "@/lib/care/repository";
 import { dismissTitle } from "@/lib/care/rules";
@@ -14,7 +14,6 @@ import { invalidateKalender } from "@/lib/calendar/range-data";
 import { aiConfigured, getAnthropic, AI_MODEL } from "@/lib/ai/client";
 import { suggestPrep } from "@/lib/ai/prep-suggest";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { personForEmail } from "@/lib/auth/allowlist";
 import {
   linkItemToEvent,
   unlinkItem,
@@ -39,7 +38,7 @@ export async function savePrep(uid: string, items: PrepItem[]): Promise<{ ok: bo
   const session = await auth();
   if (!session?.user?.email) return { ok: false };
   const clean = readPrep(items).slice(0, 50);
-  const by = displayNameForEmail(session.user.email);
+  const by = nameFuerSlot(await haushaltProfil(), await meinPlatz(session.user.email));
   await prisma.eventDetail.upsert({
     where: { eventUid: uid },
     create: { eventUid: uid, prepChecklist: clean, createdBy: by },
@@ -71,7 +70,7 @@ export async function suggestPrepAction(
 export async function saveNotes(uid: string, notes: string): Promise<{ ok: boolean }> {
   const session = await auth();
   if (!session?.user?.email) return { ok: false };
-  const by = displayNameForEmail(session.user.email);
+  const by = nameFuerSlot(await haushaltProfil(), await meinPlatz(session.user.email));
 
   await prisma.eventDetail.upsert({
     where: { eventUid: uid },
@@ -221,7 +220,7 @@ export async function addShoppingItemToEventAction(uid: string, text: string) {
   if (!session?.user?.email) return { ok: false };
   const t = text.trim();
   if (!t) return { ok: false };
-  await addItemToEvent(t, uid, personForEmail(session.user.email));
+  await addItemToEvent(t, uid, await meinPlatz(session.user.email));
   revalTermin(uid);
   return { ok: true };
 }
@@ -230,7 +229,7 @@ export async function addShoppingItemToEventAction(uid: string, text: string) {
 export async function toggleShoppingItemAction(uid: string, itemId: string) {
   const session = await auth();
   if (!session?.user?.email) return { ok: false };
-  await toggleItem(itemId, personForEmail(session.user.email));
+  await toggleItem(itemId, await meinPlatz(session.user.email));
   revalTermin(uid);
   return { ok: true };
 }

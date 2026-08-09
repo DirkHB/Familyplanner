@@ -1,40 +1,44 @@
 import { describe, it, expect } from "vitest";
-import { parseAllowlist, isAllowedEmail, displayNameForEmail, personForEmail } from "./allowlist";
+import { parseAllowlist, isAllowedEmail, notnameAusEmail } from "./allowlist";
 
-const RAW = "dirkbrederecke@gmail.com, constanzehiller@hotmail.com";
+describe("parseAllowlist", () => {
+  it("trennt, trimmt und macht klein", () => {
+    expect(parseAllowlist(" A@x.de , b@Y.de ")).toEqual(["a@x.de", "b@y.de"]);
+  });
 
-describe("allowlist", () => {
-  it("parst und normalisiert Adressen", () => {
-    expect(parseAllowlist(RAW)).toEqual([
-      "dirkbrederecke@gmail.com",
-      "constanzehiller@hotmail.com",
-    ]);
+  it("wirft Leeres weg", () => {
+    expect(parseAllowlist("a@x.de,,")).toEqual(["a@x.de"]);
     expect(parseAllowlist(undefined)).toEqual([]);
-    expect(parseAllowlist("")).toEqual([]);
+  });
+});
+
+describe("isAllowedEmail", () => {
+  const liste = "a@x.de,b@y.de";
+
+  it("lässt Eingetragene rein, unabhängig von Groß- und Kleinschreibung", () => {
+    expect(isAllowedEmail("A@X.de", liste)).toBe(true);
+    expect(isAllowedEmail(" b@y.de ", liste)).toBe(true);
   });
 
-  it("lässt genau die zwei Adressen zu (case-insensitiv)", () => {
-    expect(isAllowedEmail("Dirkbrederecke@Gmail.com", RAW)).toBe(true);
-    expect(isAllowedEmail("  ConstanzeHiller@hotmail.com ", RAW)).toBe(true);
+  it("lässt alle anderen draußen", () => {
+    expect(isAllowedEmail("c@z.de", liste)).toBe(false);
+    expect(isAllowedEmail(null, liste)).toBe(false);
+    expect(isAllowedEmail("a@x.de", undefined)).toBe(false);
+  });
+});
+
+describe("notnameAusEmail", () => {
+  it("macht aus der Adresse einen brauchbaren Notnamen", () => {
+    expect(notnameAusEmail("thomas@example.com")).toBe("Thomas");
+    expect(notnameAusEmail("yvonne.mueller@example.com")).toBe("Yvonne");
+    expect(notnameAusEmail("c.brederecke@gmail.com")).toBe("C");
   });
 
-  it("blockt alles andere", () => {
-    expect(isAllowedEmail("fremd@example.com", RAW)).toBe(false);
-    expect(isAllowedEmail("c.brederecke@gmail.com", RAW)).toBe(false); // alte Adresse
-    expect(isAllowedEmail(null, RAW)).toBe(false);
-    expect(isAllowedEmail(undefined, RAW)).toBe(false);
-    expect(isAllowedEmail("", RAW)).toBe(false);
-  });
-
-  it("liefert die richtigen Anzeigenamen (neue und alte Adresse)", () => {
-    expect(displayNameForEmail("constanzehiller@hotmail.com")).toBe("Constanze");
-    expect(displayNameForEmail("c.brederecke@gmail.com")).toBe("Constanze");
-    expect(displayNameForEmail("dirkbrederecke@gmail.com")).toBe("Dirk");
-    expect(displayNameForEmail("jemand@x.de")).toBe("jemand");
-  });
-
-  it("ordnet Personen korrekt zu", () => {
-    expect(personForEmail("dirkbrederecke@gmail.com")).toBe("dirk");
-    expect(personForEmail("constanzehiller@hotmail.com")).toBe("constanze");
+  it("fällt nie auf einen fremden Namen zurück", () => {
+    // Früher stand hier eine feste Zuordnung: Jede unbekannte Adresse wurde
+    // „Constanze". In einem zweiten Haushalt hieß damit jeder so.
+    expect(notnameAusEmail("irgendwer@example.com")).toBe("Irgendwer");
+    expect(notnameAusEmail("")).toBe("Du");
+    expect(notnameAusEmail(null)).toBe("Du");
   });
 });

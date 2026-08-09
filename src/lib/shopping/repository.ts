@@ -8,7 +8,7 @@ import {
   normalizeName,
   nameVergeben,
 } from "./stores";
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 import { hauptliste } from "@/lib/haushalt/singletons";
 
 /** Gemeinsame Haupt-Einkaufsliste (Singleton), gruppiert nach Läden. */

@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { Person } from "@/lib/auth/allowlist";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 
 /** Ideen- & Urlaubsboard (Abschnitt 6.5). Bewertung durch beide, Umwandlung in Termine. */
 

@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { personForEmail } from "@/lib/auth/allowlist";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import { listTodos } from "@/lib/todos/repository";
 import { buildTodoVM } from "@/lib/todos/group";
 import { getRangeData } from "@/lib/calendar/range-data";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 /** Aufgaben: gemeinsame To-Dos nach ETA + Vorbereitungs-Punkte der nächsten Termine. */
 export default async function AufgabenPage() {
   const session = await auth();
-  const me = personForEmail(session?.user?.email ?? "");
+  const me = await meinPlatz(session?.user?.email);
 
   const now = new Date();
   const rows = await listTodos();

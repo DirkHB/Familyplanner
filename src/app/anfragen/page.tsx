@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { listRequests } from "@/lib/requests/repository";
 import { buildRequestVM, relativeTime } from "@/lib/requests/view-model";
 import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
-import { displayNameForEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
+import { haushaltProfil } from "@/lib/haushalt/profil";
 import { RequestsClient, type HistoryItem } from "./RequestsClient";
 
 export const dynamic = "force-dynamic";
@@ -30,10 +31,18 @@ export default async function AnfragenPage() {
         status: r.status,
         answer: r.answer,
         direction: outgoing ? "out" : "in",
-        otherName: other.name ?? displayNameForEmail(other.email),
+        otherName: other.name ?? notnameAusEmail(other.email),
         ageLabel: relativeTime(r.createdAt, now),
       };
     });
 
-  return <RequestsClient incoming={incoming} history={history} />;
+  // Der andere Erwachsene des Haushalts — auf dem Knopf stand bis eben
+  // „An Constanze/Dirk senden", also beide Namen fest im Code.
+  const profil = await haushaltProfil();
+  const meine = (session.user?.email ?? "").toLowerCase();
+  const partner = profil.erwachsene.find((e) => e.email !== meine);
+
+  return (
+    <RequestsClient incoming={incoming} history={history} partnerName={partner?.name ?? ""} />
+  );
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, personForEmail, displayNameForEmail, type Person } from "@/lib/auth/allowlist";
+import { haushaltProfil, nameFuerSlot, stelleUserSicher } from "@/lib/haushalt/profil";
+import { emailFuerPlatz, type Platz as Person } from "@/lib/haushalt/platz";
 import { mergePrefs, isQuietHours } from "@/lib/push/quiet-hours";
 import { sendPushToUser } from "@/lib/push/webpush";
 
@@ -53,7 +54,7 @@ export async function createTodo(input: {
   // Dem anderen zugewiesen → sofort freundlich Bescheid geben (best effort).
   if (input.assignee && input.assignee !== input.createdBy) {
     void notifyPerson(input.assignee, {
-      title: `${displayNameForPerson(input.createdBy)} hat dir eine Aufgabe eingetragen`,
+      title: `${nameFuerSlot(await haushaltProfil(), input.createdBy)} hat dir eine Aufgabe eingetragen`,
       body: todo.title,
       url: "/aufgaben",
       tag: `todo-${todo.id}`,
@@ -78,19 +79,11 @@ export async function deleteTodo(id: string) {
 
 /* ------------------------- Erinnerungen (Worker-Tick) ------------------------- */
 
-function displayNameForPerson(p: Person): string {
-  return p === "constanze" ? "Constanze" : "Dirk";
-}
-
 /** User-Zeile zu einer Person auflösen (über die Allowlist), inkl. Anlegen falls nötig. */
 async function userForPerson(person: Person) {
-  const email = parseAllowlist(process.env.ALLOWED_EMAILS).find((e) => personForEmail(e) === person);
+  const email = emailFuerPlatz(await haushaltProfil(), person);
   if (!email) return null;
-  return prisma.user.upsert({
-    where: { email },
-    create: { email, name: displayNameForEmail(email) },
-    update: {},
-  });
+  return stelleUserSicher(email);
 }
 
 async function notifyPerson(person: Person, payload: { title: string; body: string; url: string; tag: string }) {

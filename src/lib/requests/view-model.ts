@@ -1,4 +1,5 @@
-import { displayNameForEmail, personForEmail, type Person } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
+import { PLATZ_A, type Platz } from "@/lib/haushalt/platz";
 import { isOverdue } from "./nudge";
 
 export type RequestType = "yes_no" | "choice" | "free_text" | "date";
@@ -9,7 +10,7 @@ export type RequestVM = {
   type: RequestType;
   options: string[];
   fromName: string;
-  fromPerson: Person;
+  fromPerson: Platz;
   ageLabel: string;
   overdue: boolean;
   /** Wann der Termin ist, um den es geht („morgen, 16:00") — sonst null. */
@@ -35,7 +36,7 @@ type RequestRow = {
   options: unknown;
   status: string;
   createdAt: Date;
-  fromUser: { email: string; name: string | null };
+  fromUser: { email: string; name: string | null; slot: string | null };
 };
 
 export function buildRequestVM(
@@ -50,8 +51,10 @@ export function buildRequestVM(
     question: req.question,
     type: (req.type as RequestType) ?? "yes_no",
     options,
-    fromName: req.fromUser.name ?? displayNameForEmail(req.fromUser.email),
-    fromPerson: personForEmail(req.fromUser.email),
+    fromName: req.fromUser.name ?? notnameAusEmail(req.fromUser.email),
+    // Der Platz steht in der Zeile, die ohnehin geladen wurde — die Adresse
+    // sagt darüber nichts mehr.
+    fromPerson: (req.fromUser.slot as Platz | null) ?? PLATZ_A,
     ageLabel: relativeTime(req.createdAt, now),
     overdue: isOverdue(req.createdAt, req.status, now),
   };
