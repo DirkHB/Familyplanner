@@ -155,7 +155,32 @@ export async function withdrawCareBlockAction(
     return { ok: true, weiterZu: "/woche" };
   }
 
-  await requestCare(anlass.eventUid, anlass.occurrenceDate, session.user.id, anlass.title);
+  /*
+   * Ein Block kann mehrere überlappende Betreuungen zusammenfassen. „Ich kann
+   * doch nicht" heißt dann für alle davon — wer um 11:35 nicht kann, kann auch
+   * den zweiten Termin um 11:35 nicht übernehmen. Nur den ersten zu öffnen
+   * hieße, die anderen still auf einer Zusage sitzen zu lassen, die es nicht
+   * mehr gibt.
+   */
+  const { prisma } = await import("@/lib/prisma");
+  const zeilen = await prisma.careAssignment.findMany({
+    where: { blockUid },
+    select: { eventUid: true, occurrenceDate: true },
+  });
+  const events = await prisma.event.findMany({
+    where: { uid: { in: zeilen.map((z) => z.eventUid) }, recurrenceId: "" },
+    select: { uid: true, title: true },
+  });
+  const titelFuer = new Map(events.map((e) => [e.uid, e.title]));
+  for (const z of zeilen) {
+    await frageDenAnderen(
+      z.eventUid,
+      z.occurrenceDate.toISOString(),
+      session.user.id,
+      titelFuer.get(z.eventUid) ?? "diesem Termin",
+    ).catch(() => null);
+  }
+
   invalidateKalender();
   revalidatePath("/woche");
   const ziel = `/termin/${encodeURIComponent(anlass.eventUid)}`;

@@ -60,16 +60,20 @@ export function platzNachReihenfolge(index: number): Platz {
 }
 
 /**
- * Sieht dieser „Name“ in Wahrheit nach einem Platz-Wert aus?
+ * Ist dieser „Name“ in Wahrheit der Platz-Wert selbst?
  *
- * Genau das ist uns passiert: In der Datenbank standen „dirk“ und
- * „constanze“ als Namen, und weil die Werte klein geschrieben sind, sahen sie
- * in der Oberfläche aus wie Namen — „👶 Nicolas · constanze“,
- * „In dirks Kalender“. Sie wanderten sogar in echte Kalendereinträge, wo sie
- * Wochen später noch standen. Erkannt heißt: als nicht gesetzt behandeln und
- * noch einmal fragen.
+ * In unserer Datenbank standen „dirk“ und „constanze“ als Namen, und weil sie
+ * klein geschrieben sind, sahen sie in der Oberfläche aus wie Namen —
+ * „👶 Nicolas · constanze“, „In dirks Kalender“. Sie wanderten sogar in echte
+ * Kalendereinträge.
+ *
+ * Der Vergleich ist mit Absicht buchstabengenau. Beim ersten Versuch hat er
+ * klein geschrieben verglichen — und damit auch den echten Namen „Dirk“
+ * einkassiert. Ein Mensch, der so heißt, verlor seinen Namen an eine Prüfung,
+ * die ihn schützen sollte. Die Platz-Werte schreibt nur Code, und der schreibt
+ * sie immer genau so; was ein Mensch tippt, fängt groß an.
  */
 export function istPlatzWert(name: string | null | undefined): boolean {
-  const n = (name ?? "").trim().toLowerCase();
+  const n = (name ?? "").trim();
   return n === PLATZ_A || n === PLATZ_B;
 }

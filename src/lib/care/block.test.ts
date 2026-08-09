@@ -118,3 +118,79 @@ describe("careBlockDescription", () => {
     expect(careBlockDescription("Kinderarzt · U3")).toContain("Kinderarzt · U3");
   });
 });
+
+/* --------------------------- Zusammenfassen --------------------------- */
+
+import { fasseZusammen, careBlockGruppenUid } from "./block";
+
+const f = (anlass: string, vonH: number, bisH: number, uid = anlass) => ({
+  eventUid: uid,
+  anlass,
+  start: new Date(`2026-08-10T${String(vonH).padStart(2, "0")}:00:00Z`),
+  end: new Date(`2026-08-10T${String(bisH).padStart(2, "0")}:00:00Z`),
+});
+
+describe("fasseZusammen", () => {
+  it("macht aus zwei überlappenden Terminen eine Zusage", () => {
+    // Genau der Fall aus dem Kalender: zwei Termine um 11:35, zwei Blöcke.
+    const g = fasseZusammen([f("Bestätigung", 11, 12), f("Ausweisdokumente", 11, 12)]);
+    expect(g).toHaveLength(1);
+    expect(g[0].anlaesse).toEqual(["Bestätigung", "Ausweisdokumente"]);
+  });
+
+  it("dehnt das Fenster auf das späteste Ende", () => {
+    const g = fasseZusammen([f("A", 10, 11), f("B", 10, 14)]);
+    expect(g).toHaveLength(1);
+    expect(g[0].start.getUTCHours()).toBe(10);
+    expect(g[0].end.getUTCHours()).toBe(14);
+  });
+
+  it("zieht Aneinandergrenzendes zusammen", () => {
+    // Wer von 10 bis 12 durchgehend gebunden ist, will einen Balken sehen.
+    const g = fasseZusammen([f("A", 10, 11), f("B", 11, 12)]);
+    expect(g).toHaveLength(1);
+    expect([g[0].start.getUTCHours(), g[0].end.getUTCHours()]).toEqual([10, 12]);
+  });
+
+  it("lässt eine echte Lücke eine Lücke sein", () => {
+    const g = fasseZusammen([f("Vormittag", 9, 11), f("Abend", 18, 20)]);
+    expect(g).toHaveLength(2);
+    expect(g.map((x) => x.start.getUTCHours())).toEqual([9, 18]);
+  });
+
+  it("sortiert vor dem Zusammenfassen", () => {
+    const g = fasseZusammen([f("Spät", 18, 20), f("Früh", 9, 19)]);
+    expect(g).toHaveLength(1);
+    expect(g[0].anlaesse).toEqual(["Früh", "Spät"]);
+  });
+
+  it("kommt mit einer leeren Liste klar", () => {
+    expect(fasseZusammen([])).toEqual([]);
+  });
+
+  it("verändert die Eingabe nicht", () => {
+    const eingabe = [f("B", 18, 20), f("A", 9, 10)];
+    fasseZusammen(eingabe);
+    expect(eingabe.map((x) => x.anlass)).toEqual(["B", "A"]);
+  });
+});
+
+describe("careBlockGruppenUid", () => {
+  it("ist wiedererkennbar und trägt den Tag", () => {
+    const uid = careBlockGruppenUid("2026-08-10", "dirk", 0);
+    expect(uid).toBe("fp-care-2026-08-10-dirk-0@planyourweek.app");
+    expect(isCareBlockUid(uid)).toBe(true);
+    expect(dayKeyFromCareBlockUid(uid)).toBe("2026-08-10");
+  });
+
+  it("unterscheidet Personen und Gruppen", () => {
+    const a = careBlockGruppenUid("2026-08-10", "dirk", 0);
+    expect(a).not.toBe(careBlockGruppenUid("2026-08-10", "constanze", 0));
+    expect(a).not.toBe(careBlockGruppenUid("2026-08-10", "dirk", 1));
+  });
+
+  it("verträgt einen Namen mit Sonderzeichen", () => {
+    const uid = careBlockGruppenUid("2026-08-10", "Oma Müller", 0);
+    expect(uid).toMatch(/^fp-care-2026-08-10-[A-Za-z0-9._-]+@planyourweek\.app$/);
+  });
+});

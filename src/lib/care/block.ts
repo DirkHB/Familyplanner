@@ -92,3 +92,73 @@ export function dayKeyFromCareBlockUid(uid: string): string | null {
 export function careBlockDescription(anlass: string): string {
   return `Betreuung während: ${anlass}\nAngelegt vom Familienplaner.`;
 }
+
+/* --------------------------- Zusammenfassen --------------------------- */
+
+export type Betreuungsfenster = {
+  eventUid: string;
+  anlass: string;
+  start: Date;
+  end: Date;
+};
+
+export type Blockgruppe = {
+  start: Date;
+  end: Date;
+  /** Alle Anlässe, die in dieses Fenster fallen — in zeitlicher Reihenfolge. */
+  anlaesse: string[];
+  eventUids: string[];
+};
+
+/**
+ * Überlappende Betreuungszeiten derselben Person zu einer zusammenfassen.
+ *
+ * Der Fehler, den das behebt: Zwei Termine um 11:35 ergaben zwei
+ * Betreuungsblöcke — „👶 Nicolas · Constanze" stand zweimal untereinander im
+ * Kalender. Sachlich ist das eine einzige Zusage: Constanze ist von 11:35 bis
+ * 12:35 bei Nicolas, egal aus wie vielen Gründen.
+ *
+ * Aneinandergrenzendes wird mitgenommen (10–11 und 11–12 werden 10–12) — wer
+ * durchgehend gebunden ist, will einen Balken sehen, keine Kette. Eine echte
+ * Lücke dazwischen bleibt eine Lücke: Vormittags und abends sind zwei
+ * Zusagen, und dazwischen ist man frei.
+ */
+export function fasseZusammen(fenster: Betreuungsfenster[]): Blockgruppe[] {
+  const sortiert = [...fenster].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const gruppen: Blockgruppe[] = [];
+
+  for (const f of sortiert) {
+    const letzte = gruppen[gruppen.length - 1];
+    if (letzte && f.start.getTime() <= letzte.end.getTime()) {
+      if (f.end > letzte.end) letzte.end = f.end;
+      letzte.anlaesse.push(f.anlass);
+      letzte.eventUids.push(f.eventUid);
+      continue;
+    }
+    gruppen.push({
+      start: f.start,
+      end: f.end,
+      anlaesse: [f.anlass],
+      eventUids: [f.eventUid],
+    });
+  }
+  return gruppen;
+}
+
+/**
+ * UID einer zusammengefassten Gruppe.
+ *
+ * Sie hängt nicht mehr am einzelnen Termin, sondern am Tag, an der Person und
+ * an der Position im Tag. Das geht, weil ein Tag immer als Ganzes neu
+ * gerechnet wird: Was nicht mehr gebraucht wird, fliegt dabei raus.
+ */
+export function careBlockGruppenUid(dayKey: string, wer: string, index: number): string {
+  const sauber = wer.replace(/[^A-Za-z0-9._-]/g, "") || "x";
+  return `${CARE_UID_PREFIX}${dayKey}-${sauber}-${index}@planyourweek.app`;
+}
+
+/** Beschreibung einer Gruppe: alle Anlässe, damit klar ist, woher sie kommt. */
+export function careBlockGruppenDescription(anlaesse: string[]): string {
+  const liste = anlaesse.map((a) => `\u2022 ${a}`).join("\n");
+  return `Betreuung während:\n${liste}\nAngelegt vom Familienplaner.`;
+}

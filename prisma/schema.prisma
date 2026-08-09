@@ -191,7 +191,12 @@ model CareAssignment {
   status            String    @default("offen") // offen | zugesagt | geklaert
   note              String?
 
+  /// Der Kalenderblock, in dem diese Betreuung steckt. Ein Block kann mehrere
+  /// überlappende Betreuungen derselben Person zusammenfassen.
+  blockUid          String?   @map("block_uid")
+
   @@unique([eventUid, occurrenceDate])
+  @@index([blockUid], map: "care_assignments_block_uid_idx")
   @@map("care_assignments")
 }
 

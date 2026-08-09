@@ -82,14 +82,20 @@ describe("Reihenfolge und Gegenstück", () => {
  * sich als Namen ausgaben — und dann in Kalendereinträgen landeten.
  */
 describe("istPlatzWert", () => {
-  it("erkennt einen Platz-Wert, der als Name auftritt", () => {
+  it("erkennt den Platz-Wert, wie Code ihn schreibt", () => {
     expect(istPlatzWert("dirk")).toBe(true);
     expect(istPlatzWert("constanze")).toBe(true);
-    expect(istPlatzWert("  Dirk  ")).toBe(true);
-    expect(istPlatzWert("CONSTANZE")).toBe(true);
+    expect(istPlatzWert(" dirk ")).toBe(true);
   });
 
-  it("lässt echte Namen in Ruhe", () => {
+  it("nimmt einem Menschen namens Dirk nicht seinen Namen weg", () => {
+    // Der erste Versuch verglich klein geschrieben — und warf damit genau die
+    // Namen weg, die er schützen sollte. Unser eigener Haushalt.
+    expect(istPlatzWert("Dirk")).toBe(false);
+    expect(istPlatzWert("Constanze")).toBe(false);
+  });
+
+  it("lässt alle anderen Namen in Ruhe", () => {
     expect(istPlatzWert("Dirk Brederecke")).toBe(false);
     expect(istPlatzWert("Thomas")).toBe(false);
     expect(istPlatzWert("Yvonne")).toBe(false);

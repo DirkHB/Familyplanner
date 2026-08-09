@@ -188,6 +188,34 @@ export async function setHaushaltNamenAction(input: {
   return { ok: true };
 }
 
+/**
+ * Betreuungsblöcke im Kalender neu schreiben.
+ *
+ * Der Reparaturweg für das, was aus früheren Fehlern noch in iCloud steht:
+ * doppelte Einträge, wenn zwei Termine zur selben Zeit lagen, und Titel mit
+ * einem Platz-Wert statt einem Namen („👶 Nicolas · constanze"). Beides
+ * korrigiert sich nicht von selbst — ein einmal geschriebener Kalendereintrag
+ * bleibt, bis ihn jemand anfasst.
+ *
+ * Rechnet dieselbe Rechnung wie jede einzelne Änderung, nur für einen
+ * Zeitraum. Zweimal gedrückt passiert beim zweiten Mal nichts mehr.
+ */
+export async function bloeckeNeuSchreibenAction(): Promise<{ ok: boolean; tage: number }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, tage: 0 };
+
+  const { schreibeBloeckeNeu } = await import("@/lib/care/block-sync");
+  const { startOfDayBerlin } = await import("@/lib/calendar/format");
+  // Vier Wochen zurück und zwölf nach vorn: weit genug für alles, was im
+  // Kalender noch stört, und kurz genug, um in einem Rutsch durchzulaufen.
+  const von = new Date(startOfDayBerlin(new Date()).getTime() - 28 * 86_400_000);
+  const r = await schreibeBloeckeNeu(von, 28 + 84);
+
+  revalidatePath("/woche");
+  revalidatePath("/termine");
+  return { ok: true, tage: r.tage };
+}
+
 export async function setCareBlocksAction(an: boolean) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };

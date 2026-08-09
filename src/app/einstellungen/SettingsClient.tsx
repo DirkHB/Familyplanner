@@ -12,6 +12,7 @@ import {
   disconnectAction,
   sendTestPushAction,
   setCareBlocksAction,
+  bloeckeNeuSchreibenAction,
   setPushPrefAction,
   setHaushaltNamenAction,
   setTagesfensterAction,
@@ -430,9 +431,43 @@ function CareBlocksZeile({ an }: { an: boolean }) {
         <>
           Wer übernimmt, bekommt „👶 Kind · Name" in den gemeinsamen Kalender — sichtbar auf
           dem Sperrbildschirm. Nimmst du eine Zusage zurück, verschwindet der Eintrag.
+          <BloeckeNeuSchreiben />
         </>
       }
     />
+  );
+}
+
+/**
+ * Der Reparaturweg für Blöcke, die schon falsch im Kalender stehen.
+ *
+ * Ein Kalendereintrag ist geschrieben und bleibt — er merkt nicht, dass die
+ * App inzwischen anders rechnet. Was aus früheren Fehlern dort steht (zweimal
+ * derselbe Eintrag, ein Platz-Wert statt eines Namens) verschwindet erst,
+ * wenn jemand die Blöcke neu schreiben lässt.
+ */
+function BloeckeNeuSchreiben() {
+  const [pending, start] = useTransition();
+  const [fertig, setFertig] = useState<string | null>(null);
+
+  return (
+    <span className="mt-2 flex items-center gap-3">
+      <button
+        disabled={pending}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          start(async () => {
+            const r = await bloeckeNeuSchreibenAction();
+            setFertig(r.ok ? `${r.tage} Tage geprüft ✓` : "Hat nicht geklappt");
+          });
+        }}
+        className="rounded-pill border border-ink-muted/30 px-3 py-1.5 text-xs font-medium text-ink disabled:opacity-60"
+      >
+        {pending ? "Schreibe neu …" : "Blöcke neu schreiben"}
+      </button>
+      {fertig && <span className="text-xs text-ink-muted">{fertig}</span>}
+    </span>
   );
 }
 
