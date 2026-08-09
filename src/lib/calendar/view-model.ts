@@ -173,6 +173,14 @@ export type DetailVM = {
    * ist der Block verwaist und kann nur noch weggeräumt werden.
    */
   careBlockAnlass: string | null;
+  /**
+   * Bin ICH der, der die Betreuung übernommen hat?
+   *
+   * „Ich kann doch nicht" darf nur dastehen, wenn ich es auch zurücknehmen
+   * kann. Auf dem Block des anderen wäre der Knopf ein Angebot, seine Zusage
+   * für ihn zurückzuziehen — und genau so sah es aus.
+   */
+  careBlockIch: boolean;
   readOnly?: boolean;
 };
 
@@ -192,6 +200,7 @@ export type DetailInput = {
   kalenderPlatz?: Person | null;
   anfrage?: { vonMir: boolean; seit: Date } | null;
   careBlockAnlass?: string | null;
+  careBlockIch?: boolean;
 };
 
 /** „seit 20 Min." — grob reicht, es geht um „wartet schon länger". */
@@ -231,6 +240,7 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
       : null,
     isCareBlock: istBlock,
     careBlockAnlass: v.careBlockAnlass ?? null,
+    careBlockIch: v.careBlockIch ?? false,
     readOnly,
   };
 }

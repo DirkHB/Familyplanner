@@ -3,7 +3,13 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
 import { haushaltId } from "./id";
-import { PLATZ_A, platzFuerEmail, platzNachReihenfolge, type Platz } from "./platz";
+import {
+  PLATZ_A,
+  istPlatzWert,
+  platzFuerEmail,
+  platzNachReihenfolge,
+  type Platz,
+} from "./platz";
 
 /**
  * Wer wohnt hier, und wie heißt das Kind?
@@ -45,10 +51,21 @@ export function invalidateProfil() {
   revalidateTag(TAG());
 }
 
-/** Der Anzeigename zu einem gespeicherten Platz („dirk"/"constanze"). */
+/**
+ * Der Anzeigename zu einem Platz.
+ *
+ * Der Rückfall war bis eben der Platz selbst — und der heißt historisch
+ * „dirk"/„constanze". Fand die Suche nichts, stand in der Oberfläche also ein
+ * klein geschriebener Platz-Wert da, der wie ein Name aussieht: „👶 Nicolas ·
+ * constanze", „In dirks Kalender". Falsch, aber unauffällig genug, um lange
+ * niemandem aufzufallen. Ein neutraler Rückfall ist unbequemer und deshalb
+ * ehrlicher: Man sieht sofort, dass ein Name fehlt.
+ */
 export function nameFuerSlot(p: HaushaltProfil, slot: string | null | undefined): string {
   if (!slot) return "jemand";
-  return p.erwachsene.find((e) => e.slot === slot)?.name ?? slot;
+  const treffer = p.erwachsene.find((e) => e.slot === slot);
+  if (treffer && !istPlatzWert(treffer.name)) return treffer.name;
+  return slot === p.erwachsene[0]?.slot ? "Person A" : "Person B";
 }
 
 /** Beide Namen in fester Reihenfolge — „Constanze und Dirk", nie umgekehrt. */
@@ -65,7 +82,11 @@ async function ladeProfil(): Promise<HaushaltProfil> {
     prisma.user.findMany({ select: { email: true, name: true, slot: true } }),
     prisma.appSetting.findUnique({ where: { key: `${haushaltId()}:${KIND_SCHLUESSEL}` } }),
   ]);
-  const nameFuer = new Map(users.map((u) => [u.email.toLowerCase(), u.name] as const));
+  // Ein Platz-Wert ist kein Name. Steht er in der Spalte, gilt der Name als
+  // nicht gesetzt — dann fragt der Assistent danach, statt ihn anzuzeigen.
+  const nameFuer = new Map(
+    users.map((u) => [u.email.toLowerCase(), istPlatzWert(u.name) ? null : u.name] as const),
+  );
   const slotFuer = new Map(users.map((u) => [u.email.toLowerCase(), u.slot]));
 
   const erwachsene: PersonProfil[] = emails.map((email, i) => ({

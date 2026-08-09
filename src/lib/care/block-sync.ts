@@ -8,7 +8,7 @@ import { expandOccurrences } from "@/lib/calendar/ical";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { dayKey } from "@/lib/calendar/format";
 import type { Platz } from "@/lib/haushalt/platz";
-import { haushaltProfil } from "@/lib/haushalt/profil";
+import { haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
 import { getFlag, CARE_BLOCKS } from "@/lib/settings/store";
 import {
   CARE_MARKER,
@@ -84,11 +84,14 @@ export async function upsertCareBlock(
   const person: CarePerson = (user?.slot as Platz | null) ?? "extern";
   // Wer im Kalender steht: der Name aus dem Profil, bei externer Betreuung
   // der eingegebene („Oma"). Nie ein im Code festgeschriebener Name.
-  const wer = user
-    ? (profil.erwachsene.find((e) => e.email === user.email.toLowerCase())?.name ??
-       user.name ??
-       nameFuerPlatz(person))
-    : (externName?.trim() || nameFuerPlatz("extern"));
+  // Ein Platz-Wert („dirk") ist kein Name — `nameFuerSlot` fängt das ab und
+  // schreibt lieber „Person A" in den Kalender. Das ist unbequem und deshalb
+  // richtig: Ein klein geschriebener Platz sieht wie ein Name aus und wandert
+  // dann in echte Kalendereinträge, die noch Wochen später dastehen.
+  const wer =
+    user && person !== "extern"
+      ? nameFuerSlot(profil, person)
+      : externName?.trim() || nameFuerPlatz("extern");
   const titel = careBlockTitle(profil.kind, wer);
   const uid = careBlockUid(eventUid, w.tag);
   const ics = buildIcs({
@@ -147,7 +150,12 @@ export async function upsertCareBlock(
  */
 export async function anlassFuerBlock(
   blockUid: string,
-): Promise<{ eventUid: string; occurrenceDate: Date; title: string } | null> {
+): Promise<{
+  eventUid: string;
+  occurrenceDate: Date;
+  title: string;
+  responsibleUserId: string | null;
+} | null> {
   const tag = dayKeyFromCareBlockUid(blockUid);
   if (!tag) return null;
 
@@ -160,7 +168,7 @@ export async function anlassFuerBlock(
 
   const kandidaten = await prisma.careAssignment.findMany({
     where: { occurrenceDate: { gte: von, lte: bis } },
-    select: { eventUid: true, occurrenceDate: true },
+    select: { eventUid: true, occurrenceDate: true, responsibleUserId: true },
   });
   const treffer = kandidaten.find((k) => careBlockUid(k.eventUid, tag) === blockUid);
   if (!treffer) return null;
@@ -173,6 +181,7 @@ export async function anlassFuerBlock(
     eventUid: treffer.eventUid,
     occurrenceDate: treffer.occurrenceDate,
     title: ev?.title ?? "diesem Termin",
+    responsibleUserId: treffer.responsibleUserId,
   };
 }
 

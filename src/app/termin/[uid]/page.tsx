@@ -29,7 +29,11 @@ export default async function TerminPage({
     return (
       <EventDetail
         kind={kind}
-        vm={buildDetailVM({ ...view, careBlockAnlass: anlass?.title ?? null })}
+        vm={buildDetailVM({
+          ...view,
+          careBlockAnlass: anlass?.title ?? null,
+          careBlockIch: !!session?.user?.id && anlass?.responsibleUserId === session.user.id,
+        })}
         shopping={null}
       />
     );

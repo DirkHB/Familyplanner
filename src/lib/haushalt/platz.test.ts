@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   PLATZ_A,
   PLATZ_B,
+  istPlatzWert,
   platzFuerEmail,
   emailFuerPlatz,
   andererPlatz,
@@ -72,5 +73,26 @@ describe("Reihenfolge und Gegenstück", () => {
   it("nennt den jeweils anderen", () => {
     expect(andererPlatz(PLATZ_A)).toBe(PLATZ_B);
     expect(andererPlatz(PLATZ_B)).toBe(PLATZ_A);
+  });
+});
+
+/**
+ * Der Fehler, den wir im echten Kalender gesehen haben: „👶 Nicolas ·
+ * constanze“ und „In dirks Kalender“. Klein geschriebene Platz-Werte, die
+ * sich als Namen ausgaben — und dann in Kalendereinträgen landeten.
+ */
+describe("istPlatzWert", () => {
+  it("erkennt einen Platz-Wert, der als Name auftritt", () => {
+    expect(istPlatzWert("dirk")).toBe(true);
+    expect(istPlatzWert("constanze")).toBe(true);
+    expect(istPlatzWert("  Dirk  ")).toBe(true);
+    expect(istPlatzWert("CONSTANZE")).toBe(true);
+  });
+
+  it("lässt echte Namen in Ruhe", () => {
+    expect(istPlatzWert("Dirk Brederecke")).toBe(false);
+    expect(istPlatzWert("Thomas")).toBe(false);
+    expect(istPlatzWert("Yvonne")).toBe(false);
+    expect(istPlatzWert(null)).toBe(false);
   });
 });

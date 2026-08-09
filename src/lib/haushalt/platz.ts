@@ -58,3 +58,18 @@ export function andererPlatz(platz: Platz): Platz {
 export function platzNachReihenfolge(index: number): Platz {
   return PLAETZE[index] ?? PLATZ_B;
 }
+
+/**
+ * Sieht dieser „Name“ in Wahrheit nach einem Platz-Wert aus?
+ *
+ * Genau das ist uns passiert: In der Datenbank standen „dirk“ und
+ * „constanze“ als Namen, und weil die Werte klein geschrieben sind, sahen sie
+ * in der Oberfläche aus wie Namen — „👶 Nicolas · constanze“,
+ * „In dirks Kalender“. Sie wanderten sogar in echte Kalendereinträge, wo sie
+ * Wochen später noch standen. Erkannt heißt: als nicht gesetzt behandeln und
+ * noch einmal fragen.
+ */
+export function istPlatzWert(name: string | null | undefined): boolean {
+  const n = (name ?? "").trim().toLowerCase();
+  return n === PLATZ_A || n === PLATZ_B;
+}

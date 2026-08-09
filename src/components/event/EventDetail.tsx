@@ -261,7 +261,13 @@ function CareBlockInfo({ vm, kind }: { vm: DetailVM; kind: string }) {
         </p>
       )}
 
-      {!vm.readOnly && (
+      {/*
+        „Ich kann doch nicht" gehört nur dem, der zugesagt hat. Auf dem Block
+        des anderen stand derselbe Knopf — ein Angebot, seine Zusage für ihn
+        zurückzunehmen. Wer nicht zuständig ist, sieht deshalb nur, wer es ist,
+        und kommt über den Termin selbst weiter.
+      */}
+      {!vm.readOnly && (vm.careBlockIch || !vm.careBlockAnlass) && (
         <button
           disabled={pending}
           onClick={() =>
@@ -280,6 +286,12 @@ function CareBlockInfo({ vm, kind }: { vm: DetailVM; kind: string }) {
               ? "Ich kann doch nicht — den anderen fragen"
               : "Eintrag entfernen"}
         </button>
+      )}
+      {!vm.readOnly && !vm.careBlockIch && vm.careBlockAnlass && (
+        <p className="mt-4 rounded-card bg-surface-muted px-4 py-3 text-sm text-ink-muted">
+          Das ist die Zusage des anderen — nur er kann sie zurücknehmen. Wenn
+          sich etwas ändert, geht das über den Termin selbst.
+        </p>
       )}
     </section>
   );
