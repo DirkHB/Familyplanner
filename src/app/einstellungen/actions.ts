@@ -30,6 +30,25 @@ export async function connectAction(
   }
 }
 
+/**
+ * Festlegen, in welchen Kalender die App für mich schreibt.
+ *
+ * Ohne diese Wahl nimmt sie den erstbesten — und wer selbst kein Konto
+ * verbunden hat, schreibt damit in den Kalender des anderen. Genau das soll
+ * hier aufhören.
+ */
+export async function setSchreibKalenderAction(calendarId: string | null) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const { prisma } = await import("@/lib/prisma");
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { schreibKalenderId: calendarId },
+  });
+  revalidatePath("/einstellungen");
+  return { ok: true };
+}
+
 export async function toggleCalendarAction(calendarId: string, isSynced: boolean) {
   const session = await auth();
   if (!session?.user?.id) return;

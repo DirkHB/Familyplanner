@@ -26,6 +26,8 @@ model User {
   /// Platz im Haushalt. Die Werte sind historisch ("dirk"/"constanze") und
   /// bedeuten nur noch Platz A und Platz B — der Name steht in `name`.
   slot              String?
+  /// In welchen Kalender die App für diese Person schreibt. Leer = erstbester.
+  schreibKalenderId String?   @map("schreib_kalender_id")
   notificationPrefs Json      @default("{}")
   // Tagesfenster für den Zeitstrahl (7–21, wenn leer). Je Person, weil
   // Constanze und Dirk unterschiedlich takten.

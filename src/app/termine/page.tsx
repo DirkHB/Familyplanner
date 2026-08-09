@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import { meinPlatz } from "@/lib/haushalt/profil";
 import { AppShell } from "@/components/app/AppShell";
 import { FabErfassen } from "@/components/app/FabErfassen";
 import { buildWeek } from "@/lib/calendar/view-model";
@@ -26,7 +28,10 @@ export default async function TerminePage({
 }: {
   searchParams: Promise<{ m?: string }>;
 }) {
+  const session = await auth();
   const { m } = await searchParams;
+  // Vorgabe für „Kalender von": der eigene Kalender.
+  const platz = await meinPlatz(session?.user?.email);
   const now = new Date();
   const todayKey = dayKey(now);
   const startKey = isMonthKey(m) ? m : todayKey.slice(0, 7);
@@ -74,7 +79,12 @@ export default async function TerminePage({
           {monatFmt.format(new Date(`${vorher}-01T00:00:00Z`))}
         </Link>
 
-        <MonatsStrom monate={monate} eventsByDay={eventsByDay} todayKey={todayKey} />
+        <MonatsStrom
+          monate={monate}
+          eventsByDay={eventsByDay}
+          todayKey={todayKey}
+          meinPlatz={platz}
+        />
       </>
     </AppShell>
   );

@@ -6,7 +6,8 @@ import { buildStrahl, STANDARD_FENSTER, type StrahlSegment, type TagesFenster } 
 
 /** Serialisierbare View-Models für die Client-Komponenten (Server formatiert, Client rendert). */
 
-export type Person = "dirk" | "constanze";
+export type { Platz as Person } from "@/lib/haushalt/platz";
+import type { Platz as Person } from "@/lib/haushalt/platz";
 
 export type EventVM = {
   key: string;
@@ -85,14 +86,17 @@ export function buildWeek(
       const meta = metaByUid.get(o.uid) ?? {};
       const cat = meta.category ? categoryOf(meta.category) : categoryOf(guessCategory(o.summary));
 
+      /*
+       * Das Etikett nennt den Zustand, nicht die Person. Den Namen trägt der
+       * Avatar daneben, und der holt ihn aus dem Haushalt — hier standen bis
+       * eben unsere beiden Namen fest im Code, für einen zweiten Haushalt
+       * also schlicht die falschen.
+       */
       let care: EventVM["care"] = null;
       if (meta.care) {
         care = {
           status: meta.care.status,
-          label:
-            meta.care.status === "da" && meta.care.responsible?.length
-              ? `${meta.care.responsible[0] === "constanze" ? "Constanze" : "Dirk"} ist da`
-              : CARE_LABEL[meta.care.status],
+          label: CARE_LABEL[meta.care.status],
           person: meta.care.responsible?.[0] ?? null,
         };
       } else if (!o.allDay && careByOcc) {
@@ -101,12 +105,7 @@ export function buildWeek(
           if (c.status === "offen") care = { status: "offen", label: "Betreuung offen", person: null };
           else if (c.status === "extern")
             care = { status: "da", label: `${c.externName ?? "Babysitter"} ist da`, person: null };
-          else if (c.person)
-            care = {
-              status: "da",
-              label: `${c.person === "constanze" ? "Constanze" : "Dirk"} ist da`,
-              person: c.person,
-            };
+          else if (c.person) care = { status: "da", label: CARE_LABEL.da, person: c.person };
         }
       }
 
@@ -159,6 +158,8 @@ export type DetailVM = {
   prep: { text: string; done: boolean }[];
   occurrenceISO: string | null;
   care: CareVM;
+  /** In wessen Kalender der Termin liegt — „In Yvonnes Kalender". */
+  kalenderPlatz: Person | null;
   /**
    * Ein von der App selbst angelegter Betreuungsblock („👶 Nicolas · Dirk").
    * Der ist die Antwort auf eine Betreuungsfrage, nicht selbst ein Termin —
@@ -186,6 +187,7 @@ export type DetailInput = {
   prepChecklist: { text: string; done: boolean }[];
   occurrenceISO?: string | null;
   care?: CareVM;
+  kalenderPlatz?: Person | null;
   careBlockAnlass?: string | null;
 };
 
@@ -209,6 +211,7 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
     prep: v.prepChecklist,
     occurrenceISO: v.occurrenceISO ?? null,
     care: v.care ?? null,
+    kalenderPlatz: v.kalenderPlatz ?? null,
     isCareBlock: istBlock,
     careBlockAnlass: v.careBlockAnlass ?? null,
     readOnly,

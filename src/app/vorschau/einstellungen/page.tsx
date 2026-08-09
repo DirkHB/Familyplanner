@@ -9,6 +9,7 @@ export default function VorschauEinstellungen() {
       account={{
         id: "s-acc",
         username: "dirk@icloud.com",
+        schreibKalenderId: "c1",
         calendars: [
           { id: "c1", name: "C&D", isSynced: true, lastSyncedLabel: "2. Aug., 16:40", lastSyncOk: true, lastError: null },
           { id: "c2", name: "Privat", isSynced: true, lastSyncedLabel: "2. Aug., 16:40", lastSyncOk: true, lastError: null },

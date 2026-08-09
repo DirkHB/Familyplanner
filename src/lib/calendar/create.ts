@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { createICloudClient } from "./tsdav-client";
-import { kalenderzugang } from "@/lib/haushalt/singletons";
+import { kalenderzugang, kalenderzugangFuerPlatz } from "@/lib/haushalt/singletons";
 import { buildIcs } from "./ics-builder";
 import { requestCare } from "@/lib/care/repository";
 import { invalidateKalender } from "./range-data";
@@ -20,6 +20,13 @@ export type CreateEventInput = {
   checklist?: string[];
   careNeeded?: boolean;
   createdBy?: string;
+  /**
+   * In wessen Kalender der Termin gehört. Ohne Angabe: in den der anlegenden
+   * Person. Das ist der „Kalender von"-Schalter — man legt oft etwas an, das
+   * beim anderen im Kalender stehen muss (der Zahnarzttermin, den man für ihn
+   * ausgemacht hat).
+   */
+  fuerPlatz?: string | null;
 };
 
 export type CreateEventResult = { created: boolean; uid?: string; reason?: string };
@@ -28,13 +35,10 @@ export async function createEvent(
   userId: string,
   input: CreateEventInput,
 ): Promise<CreateEventResult> {
-  /**
-   * Das eigene Konto zuerst, sonst das des Haushalts. Vorher stand hier nur
-   * das eigene — wer kein iCloud-Konto verbunden hatte (etwa mit einem
-   * Android-Gerät), konnte in den gemeinsamen Kalender nichts eintragen,
-   * obwohl er ihm gehört.
-   */
-  const ziel = await kalenderzugang(userId);
+  // Der Kalender der gewählten Person, sonst der eigene.
+  const ziel = input.fuerPlatz
+    ? ((await kalenderzugangFuerPlatz(input.fuerPlatz)) ?? (await kalenderzugang(userId)))
+    : await kalenderzugang(userId);
   if (!ziel) return { created: false, reason: "Kein iCloud-Kalender verbunden." };
 
   const client = await createICloudClient({ username: ziel.username, password: ziel.password });

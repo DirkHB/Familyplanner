@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useName } from "@/components/app/HaushaltContext";
+import type { Platz as Person } from "@/lib/haushalt/platz";
+import { besitzform } from "@/lib/text/genitiv";
 import { motion, AnimatePresence } from "motion/react";
 import {
   saveNotes,
@@ -98,6 +101,7 @@ export function EventDetail({
               </div>
             )}
           </div>
+          <KalenderHinweis platz={vm.kalenderPlatz} />
         </div>
 
         {/*
@@ -731,6 +735,34 @@ function BasketIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
       <path d="M8.5 8l3.5-4 3.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * In wessen Kalender der Termin liegt.
+ *
+ * Nur nötig, solange jeder seinen eigenen mitbringt: Wer ihn im eigenen
+ * Telefon sucht und nicht findet, soll hier lesen, warum. Teilen sich beide
+ * einen Kalender — wie wir —, gehört der Kalender niemandem allein, und die
+ * Zeile bleibt weg, statt eine Unterscheidung zu behaupten, die es nicht gibt.
+ */
+function KalenderHinweis({ platz }: { platz: Person | null }) {
+  const name = useName(platz);
+  if (!platz || !name) return null;
+  return (
+    <p className="mt-4 flex items-center gap-1.5 border-t border-white/12 pt-3 text-sm text-surface/60">
+      <CalendarIcon />
+      In {besitzform(name)} Kalender
+    </p>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

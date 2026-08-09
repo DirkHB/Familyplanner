@@ -79,34 +79,11 @@ export type Kalenderzugang = {
   password: string;
 };
 
-/**
- * Über welches Konto schreibt dieser Haushalt in den Kalender?
- *
- * Das eigene zuerst, sonst das des Haushalts. Der Rückfall ist kein Luxus:
- * Wenn nur einer von beiden ein iCloud-Konto hat — etwa weil die andere ein
- * Android-Gerät nutzt —, konnte sie vorher keinen Termin anlegen, obwohl der
- * Kalender beiden gehört.
- */
-export async function kalenderzugang(userId?: string | null): Promise<Kalenderzugang | null> {
-  const mitKalendern = {
-    calendars: { where: { isSynced: true }, orderBy: { name: "asc" as const } },
-  };
-
-  const eigenes = userId
-    ? await prisma.calendarAccount.findFirst({
-        where: { userId, provider: "icloud" },
-        include: mitKalendern,
-      })
-    : null;
-  const account =
-    eigenes ??
-    (await prisma.calendarAccount.findFirst({
-      where: { provider: "icloud" },
-      include: mitKalendern,
-    }));
-
-  const calendar = account?.calendars[0];
-  if (!account || !calendar) return null;
+/** Aus einem Kalender samt Konto den Zugang bauen. */
+function zugangAus(
+  calendar: { id: string; url: string },
+  account: { id: string; username: string | null; credentialsEncrypted: string },
+): Kalenderzugang {
   return {
     accountId: account.id,
     calendarId: calendar.id,
@@ -114,6 +91,68 @@ export async function kalenderzugang(userId?: string | null): Promise<Kalenderzu
     username: account.username ?? "",
     password: decryptSecret(account.credentialsEncrypted),
   };
+}
+
+/**
+ * In welchen Kalender schreibt die App für diese Person?
+ *
+ * Erst das, was sie selbst festgelegt hat. Dann ihr eigenes Konto. Erst zuletzt
+ * irgendeines des Haushalts.
+ *
+ * Diese Reihenfolge ist der ganze Punkt: Vorher stand der Rückfall an erster
+ * Stelle, sobald jemand kein eigenes Konto hatte — und dann landete ihr Termin
+ * im Kalender des anderen. Für uns fiel das nie auf, wir teilen einen Kalender.
+ * In einem Haushalt, in dem jeder seinen eigenen mitbringt, schreibt so ein
+ * Mensch in fremde Termine hinein.
+ *
+ * Der Rückfall bleibt trotzdem: Wer noch nichts festgelegt hat, soll etwas
+ * eintragen können. Er ist jetzt nur die letzte Antwort statt der ersten.
+ */
+export async function kalenderzugang(userId?: string | null): Promise<Kalenderzugang | null> {
+  const mitKonto = { account: true };
+
+  if (userId) {
+    const ich = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { schreibKalenderId: true },
+    });
+    if (ich?.schreibKalenderId) {
+      const gewaehlt = await prisma.calendar.findUnique({
+        where: { id: ich.schreibKalenderId },
+        include: mitKonto,
+      });
+      // Der gewählte Kalender kann verschwunden sein — abgeschaltet oder das
+      // Konto getrennt. Dann lieber weitersuchen als gar nichts anbieten.
+      if (gewaehlt?.isSynced && gewaehlt.account) return zugangAus(gewaehlt, gewaehlt.account);
+    }
+
+    const eigener = await prisma.calendar.findFirst({
+      where: { isSynced: true, account: { userId, provider: "icloud" } },
+      orderBy: { name: "asc" },
+      include: mitKonto,
+    });
+    if (eigener?.account) return zugangAus(eigener, eigener.account);
+  }
+
+  const irgendeiner = await prisma.calendar.findFirst({
+    where: { isSynced: true, account: { provider: "icloud" } },
+    orderBy: { name: "asc" },
+    include: mitKonto,
+  });
+  return irgendeiner?.account ? zugangAus(irgendeiner, irgendeiner.account) : null;
+}
+
+/**
+ * Dasselbe, aber für einen Platz statt eine Sitzung.
+ *
+ * Dafür gibt es den „Kalender von"-Schalter: Wer einen Termin für die andere
+ * Person anlegt, will ihn in DEREN Kalender haben. Und der Betreuungsblock
+ * („👶 Nicolas · Dirk") gehört dorthin, wo die Betreuung stattfindet — also zu
+ * dem, der sie übernimmt.
+ */
+export async function kalenderzugangFuerPlatz(platz: string): Promise<Kalenderzugang | null> {
+  const person = await prisma.user.findFirst({ where: { slot: platz }, select: { id: true } });
+  return kalenderzugang(person?.id ?? null);
 }
 
 /**

@@ -7,6 +7,7 @@ import { EnableNotifications } from "@/components/push/EnableNotifications";
 import {
   connectAction,
   toggleCalendarAction,
+  setSchreibKalenderAction,
   syncNowAction,
   disconnectAction,
   sendTestPushAction,
@@ -43,7 +44,13 @@ type Cal = {
   lastSyncOk: boolean;
   lastError: string | null;
 };
-type Account = { id: string; username: string; calendars: Cal[] } | null;
+type Account = {
+  id: string;
+  username: string;
+  calendars: Cal[];
+  /** Der Kalender, in den die App für mich schreibt. Leer = erstbester. */
+  schreibKalenderId: string | null;
+} | null;
 
 export type Diagnose = {
   name: string;
@@ -529,6 +536,8 @@ function Connected({ account }: { account: NonNullable<Account> }) {
         )}
       </ul>
 
+      <SchreibKalender account={account} disabled={pending} />
+
       <div className="mt-3 flex items-center justify-between border-t border-surface-muted/60 pt-3">
         <button
           onClick={syncNow}
@@ -549,6 +558,54 @@ function Connected({ account }: { account: NonNullable<Account> }) {
           {result}
         </motion.p>
       )}
+    </div>
+  );
+}
+
+/**
+ * In welchen Kalender die App für mich schreibt.
+ *
+ * Ohne diese Wahl nimmt sie den erstbesten — und wer selbst kein Konto
+ * verbunden hat, schreibt damit in den Kalender des anderen. Das ist der
+ * Unterschied zwischen „unser gemeinsamer Plan" und „jemand trägt in meinem
+ * Kalender herum".
+ *
+ * Nur die eigenen Kalender stehen zur Wahl. Den des anderen anzubieten hieße,
+ * genau den Fehler wieder einzubauen, den die Wahl verhindern soll.
+ */
+function SchreibKalender({ account, disabled }: { account: NonNullable<Account>; disabled: boolean }) {
+  const [gewaehlt, setGewaehlt] = useState(account.schreibKalenderId);
+  const [pending, start] = useTransition();
+  const offen = account.calendars.filter((c) => c.isSynced);
+  if (offen.length === 0) return null;
+
+  return (
+    <div className="mt-4 border-t border-surface-muted/60 pt-4">
+      <p className="font-medium">Neue Termine landen in</p>
+      <p className="mt-0.5 text-sm text-ink-muted">
+        Was du hier anlegst, wird in diesen Kalender geschrieben. Die anderen
+        liest die App nur mit.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {offen.map((cal) => {
+          const aktiv = gewaehlt === cal.id || (!gewaehlt && cal.id === offen[0].id);
+          return (
+            <button
+              key={cal.id}
+              disabled={disabled || pending}
+              onClick={() => {
+                setGewaehlt(cal.id);
+                start(() => setSchreibKalenderAction(cal.id).then(() => undefined));
+              }}
+              className={`rounded-pill px-4 py-2 text-sm font-medium transition-colors ${
+                aktiv ? "bg-accent text-surface" : "bg-surface-muted text-ink"
+              }`}
+            >
+              {cal.name}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -20,6 +20,9 @@ export default function VorschauTermin() {
       notes: "Fragen zu Schlaf & Beikoststart mitnehmen.",
       occurrenceISO: start.toISOString(),
       care: { status: "geklaert", responsibleName: "Dirk", responsiblePerson: "dirk" },
+      // Zeigt die Zeile „In … Kalender" — sichtbar, sobald jeder seinen
+      // eigenen Kalender mitbringt.
+      kalenderPlatz: "dirk",
       prepChecklist: [
         { text: "Versichertenkarte", done: true },
         { text: "U-Heft", done: true },

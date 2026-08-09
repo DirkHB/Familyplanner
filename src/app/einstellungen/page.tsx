@@ -27,7 +27,12 @@ export default async function EinstellungenPage() {
   const ich = userId
     ? await prisma.user.findUnique({
         where: { id: userId },
-        select: { tagVonStunde: true, tagBisStunde: true, notificationPrefs: true },
+        select: {
+          tagVonStunde: true,
+          tagBisStunde: true,
+          notificationPrefs: true,
+          schreibKalenderId: true,
+        },
       })
     : null;
   const prefs = mergePrefs(ich?.notificationPrefs);
@@ -44,6 +49,9 @@ export default async function EinstellungenPage() {
     ? {
         id: account.id,
         username: account.username ?? "iCloud",
+        // Welcher Kalender das Schreibziel ist. Leer heißt: noch nicht
+        // festgelegt, die App nimmt den erstbesten.
+        schreibKalenderId: ich?.schreibKalenderId ?? null,
         calendars: account.calendars.map((c) => ({
           id: c.id,
           name: c.name,

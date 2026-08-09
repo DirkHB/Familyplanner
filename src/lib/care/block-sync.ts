@@ -29,8 +29,14 @@ import {
  * iCloud gerade erreichbar ist.
  */
 
-/** Wohin der Block geschrieben wird — die Frage beantwortet der Haushalt. */
-const schreibziel = () => kalenderzugang();
+/**
+ * Wohin der Block geschrieben wird: in den Kalender dessen, der die Betreuung
+ * übernimmt. „👶 Nicolas · Dirk" gehört in Dirks Kalender, nicht in den
+ * erstbesten des Haushalts — dafür sieht er in seinem Telefon nach, wann er
+ * gebunden ist. Kommt jemand von außen (Oma, Babysitter), gibt es keinen
+ * eigenen Kalender; dann bleibt es beim Haushalt.
+ */
+const schreibziel = (userId: string | null) => kalenderzugang(userId);
 
 /** Zeitfenster des Vorkommens, aus dem der Block entsteht. */
 async function fenster(eventUid: string, occurrenceDate: Date) {
@@ -66,7 +72,7 @@ export async function upsertCareBlock(
   if (!(await getFlag(CARE_BLOCKS))) return;
 
   const [ziel, w, user, profil] = await Promise.all([
-    schreibziel(),
+    schreibziel(userId),
     fenster(eventUid, occurrenceDate),
     userId
       ? prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, slot: true } })

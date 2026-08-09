@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { neuerTerminAction } from "@/app/termine/actions";
 import { BabyIcon } from "@/components/ui/BabyIcon";
 import type { MonthCell } from "@/lib/calendar/month";
+import { useHaushaltNamen } from "@/components/app/HaushaltContext";
+import { PLATZ_A, PLATZ_B, andererPlatz, type Platz } from "@/lib/haushalt/platz";
 
 /**
  * Der Monatsstrom: alle Monate untereinander, durchgehend scrollbar wie im
@@ -33,10 +35,13 @@ export function MonatsStrom({
   monate,
   eventsByDay,
   todayKey,
+  meinPlatz = PLATZ_A,
 }: {
   monate: StromMonat[];
   eventsByDay: Record<string, TagInfo>;
   todayKey: string;
+  /** Wer gerade angemeldet ist — die Vorgabe für „Kalender von". */
+  meinPlatz?: Platz;
 }) {
   const [blattTag, setBlattTag] = useState<string | null>(null);
 
@@ -96,6 +101,7 @@ export function MonatsStrom({
           <TagesBlatt
             tag={blattTag}
             erwartet={eventsByDay[blattTag]?.n ?? 0}
+            meinPlatz={meinPlatz}
             onClose={() => setBlattTag(null)}
           />
         )}
@@ -170,10 +176,12 @@ type TagEvent = {
 function TagesBlatt({
   tag,
   erwartet,
+  meinPlatz,
   onClose,
 }: {
   tag: string;
   erwartet: number;
+  meinPlatz: Platz;
   onClose: () => void;
 }) {
   const [events, setEvents] = useState<TagEvent[] | null>(null);
@@ -216,7 +224,7 @@ function TagesBlatt({
         <h2 className="font-display text-2xl">{tagFmt.format(new Date(`${tag}T12:00:00Z`))}</h2>
 
         {anlegen ? (
-          <NeuerTerminFelder tag={tag} onClose={onClose} />
+          <NeuerTerminFelder tag={tag} meinPlatz={meinPlatz} onClose={onClose} />
         ) : (
           <>
             <div className="mt-4 flex max-h-[45dvh] flex-col gap-2 overflow-y-auto">
@@ -256,7 +264,17 @@ function TagesBlatt({
 }
 
 /** Titel, Zeit, fertig — der Tag ist schon gewählt. */
-function NeuerTerminFelder({ tag, onClose }: { tag: string; onClose: () => void }) {
+function NeuerTerminFelder({
+  tag,
+  meinPlatz,
+  onClose,
+}: {
+  tag: string;
+  meinPlatz: Platz;
+  onClose: () => void;
+}) {
+  const namen = useHaushaltNamen();
+  const [fuerPlatz, setFuerPlatz] = useState<Platz>(meinPlatz);
   const [titel, setTitel] = useState("");
   const [von, setVon] = useState("09:00");
   const [bis, setBis] = useState("10:00");
@@ -267,7 +285,7 @@ function NeuerTerminFelder({ tag, onClose }: { tag: string; onClose: () => void 
   function anlegen() {
     if (!titel.trim() || pending) return;
     start(async () => {
-      const r = await neuerTerminAction({ titel, tag, von, bis });
+      const r = await neuerTerminAction({ titel, tag, von, bis, fuerPlatz });
       if (r.ok) {
         onClose();
         router.refresh();
@@ -307,6 +325,12 @@ function NeuerTerminFelder({ tag, onClose }: { tag: string; onClose: () => void 
           className="min-w-0 flex-1 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base outline-none focus:border-accent"
         />
       </div>
+      <KalenderVon
+        gewaehlt={fuerPlatz}
+        namen={namen}
+        onWechsel={() => setFuerPlatz(andererPlatz(fuerPlatz))}
+      />
+
       <button
         onClick={anlegen}
         disabled={pending || !titel.trim()}
@@ -316,5 +340,52 @@ function NeuerTerminFelder({ tag, onClose }: { tag: string; onClose: () => void 
       </button>
       {fehler && <p className="mt-2 text-sm text-signal">{fehler}</p>}
     </>
+  );
+}
+
+/**
+ * „Kalender von" — in wessen Kalender der neue Termin geschrieben wird.
+ *
+ * Steht auf einem selbst, weil das fast immer stimmt. Ein Tipp wechselt zum
+ * anderen: für den Zahnarzttermin, den man für ihn ausgemacht hat, oder das
+ * Treffen, zu dem nur sie geht. Ohne diesen Schalter landet alles im selben
+ * Kalender, und dann steht im Telefon des einen, was den anderen betrifft.
+ *
+ * Bewusst leise: eine Zeile, kein Formularfeld. Wer sie nicht braucht, liest
+ * darüber hinweg — aber sie sagt vorher, wohin es geht, statt hinterher.
+ */
+function KalenderVon({
+  gewaehlt,
+  namen,
+  onWechsel,
+}: {
+  gewaehlt: Platz;
+  namen: Record<Platz, string>;
+  onWechsel: () => void;
+}) {
+  const andere = gewaehlt === PLATZ_A ? PLATZ_B : PLATZ_A;
+  // Ohne Namen (frisch eingerichtet) hilft die Zeile niemandem.
+  if (!namen[gewaehlt] || !namen[andere]) return null;
+
+  return (
+    <div className="mt-3 flex items-center gap-2 text-sm">
+      <span className="text-ink-muted">Kalender von</span>
+      <button
+        onClick={onWechsel}
+        className="inline-flex items-center gap-1.5 rounded-pill bg-surface-muted px-3 py-1.5 font-medium text-ink"
+      >
+        {namen[gewaehlt]}
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M7 8h11M7 8l3-3M7 8l3 3M17 16H6m11 0l-3-3m3 3l-3 3"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+      <span className="sr-only">Tippen, um zu {namen[andere]} zu wechseln</span>
+    </div>
   );
 }

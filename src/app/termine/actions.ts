@@ -15,6 +15,8 @@ export async function neuerTerminAction(input: {
   tag: string; // YYYY-MM-DD (Berlin)
   von: string; // HH:MM
   bis: string; // HH:MM
+  /** In wessen Kalender der Termin gehört — der „Kalender von"-Schalter. */
+  fuerPlatz?: string;
 }): Promise<{ ok: boolean; grund?: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) return { ok: false, grund: "Nicht angemeldet." };
@@ -40,6 +42,7 @@ export async function neuerTerminAction(input: {
     end,
     allDay: false,
     createdBy: await meinPlatz(session.user.email),
+    fuerPlatz: input.fuerPlatz ?? null,
   });
   if (!res.created) return { ok: false, grund: res.reason ?? "Anlegen fehlgeschlagen." };
 

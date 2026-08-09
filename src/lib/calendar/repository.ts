@@ -63,6 +63,10 @@ export type EventDetailView = {
   notes: string;
   prepChecklist: { text: string; done: boolean }[];
   occurrenceISO: string | null;
+  /** Name des Kalenders, in dem der Termin liegt. */
+  kalenderName: string | null;
+  /** Wem dieser Kalender gehört — null bei einem Kalender ohne Zuordnung. */
+  kalenderPlatz: Platz | null;
   care: {
     status: "offen" | "zugesagt" | "geklaert" | "keine" | "extern";
     responsibleName: string | null;
@@ -82,7 +86,16 @@ export async function getEventView(
     // Dieselbe UID kann in mehreren Kalendern liegen — feste Reihenfolge, damit
     // nicht der Zufall entscheidet, welcher Eintrag gewinnt.
     orderBy: { calendarId: "asc" },
-    select: { rawIcs: true, title: true, location: true, rrule: true },
+    select: {
+      rawIcs: true,
+      title: true,
+      location: true,
+      rrule: true,
+      // In wessen Kalender der Termin liegt. Solange jeder seinen eigenen
+      // mitbringt, ist das eine echte Information: Wer ihn im eigenen Telefon
+      // sucht und nicht findet, weiß sonst nicht, warum.
+      calendar: { select: { name: true, account: { select: { user: { select: { slot: true } } } } } },
+    },
   });
   if (!event) return null;
 
@@ -138,6 +151,8 @@ export async function getEventView(
     end,
     allDay,
     isSeries: !!event.rrule,
+    kalenderName: event.calendar?.name ?? null,
+    kalenderPlatz: (event.calendar?.account?.user?.slot as Platz | null) ?? null,
     category: detail?.category ?? "sonstiges",
     notes: detail?.notes ?? "",
     prepChecklist: prep,
