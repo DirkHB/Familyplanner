@@ -56,34 +56,47 @@ bei [Kind]", „Thomas macht den Einkauf". Solange du nichts einträgst, steht d
 
 ### 2.2 Kalender verbinden
 
-Der wichtigste Schritt, und der einzige, der etwas Arbeit macht.
+Der wichtigste Schritt und der einzige mit etwas Arbeit.
 
-Die App hängt sich an **einen** iCloud-Kalender und schreibt in beide
-Richtungen: Was ihr in Apple Kalender ändert, kommt hier an, und umgekehrt.
+**Ihr braucht keinen gemeinsamen Familienkalender.** Jeder verbindet seinen
+eigenen, die App legt beide übereinander — sie ist die gemeinsame Sicht, eure
+Kalender bleiben eure. Was ihr in Apple Kalender ändert, kommt hier an, und was
+ihr hier anlegt, geht dorthin zurück.
 
-**Vorher in Apple Kalender:** Legt einen Kalender an, den ihr beide seht — oder
-nehmt einen, den ihr schon gemeinsam nutzt. Das ist der, mit dem gearbeitet
-wird.
-
-**Dann brauchst du ein app-spezifisches Passwort.** Dein normales
-Apple-Passwort funktioniert nicht, und das ist gut so:
+**Du brauchst dafür ein app-spezifisches Passwort.** Dein normales
+Apple-Passwort funktioniert nicht — und das ist gut so:
 
 1. Auf [appleid.apple.com](https://appleid.apple.com) anmelden.
 2. Zu **„Anmeldung und Sicherheit"** → **„App-spezifische Passwörter"**.
-3. Auf **„+"** oder „Generieren", als Namen zum Beispiel `Familienplaner`.
+3. Auf **„+"** beziehungsweise „Generieren", als Namen zum Beispiel
+   `Familienplaner`.
 4. Du bekommst ein Passwort in der Form `xxxx-xxxx-xxxx-xxxx`.
    **Das wird nur einmal angezeigt** — direkt kopieren.
 
 Zurück im Assistenten: deine Apple-ID (die E-Mail-Adresse) und dieses Passwort
-eintragen, auf „Verbinden".
+eintragen, auf „Verbinden". Es wird verschlüsselt gespeichert, und du kannst es
+auf appleid.apple.com jederzeit wieder löschen — dann hat die App keinen
+Zugriff mehr.
 
-Das Passwort wird verschlüsselt gespeichert. Du kannst es auf appleid.apple.com
-jederzeit wieder löschen — dann hat die App keinen Zugriff mehr.
+**Danach zwei Handgriffe in den Einstellungen — bitte nicht überspringen:**
 
-> **Yvonne braucht dafür nichts zu tun und kein iPhone.** Es reicht, dass *du*
-> den Kalender verbindest — sie sieht dieselben Termine über die App. Wenn sie
-> die Termine zusätzlich in ihrem Android-Kalender haben will, ist das eine
-> eigene Sache und hat mit der App nichts zu tun.
+- **Alle** deine iCloud-Kalender kommen beim Verbinden herein, auch der
+  Arbeitskalender und alles andere. Schalte aus, was in der gemeinsamen Woche
+  nichts zu suchen hat.
+- Unter **„Neue Termine landen in"** wählst du, in welchen deiner Kalender die
+  App schreibt — normalerweise dein privater, nicht der Arbeitskalender.
+  Arbeitstermine legst du ja ohnehin bei der Arbeit an.
+
+Beim Anlegen steht dann über dem Knopf **„Kalender von …"**. Das steht auf dir
+und wechselt mit einem Tipp zu Yvonne — für den Termin, den du für sie
+ausmachst. Am Termin selbst kannst du später nachlesen, in wessen Kalender er
+liegt.
+
+> **Yvonne und ihr Android-Kalender:** Ihren Google-Kalender kann die App
+> **noch nicht** anbinden. Bis das gelöst ist, hat sie kein eigenes
+> Schreibziel — was sie anlegt, landet in deinem Kalender. Entweder ihr lebt
+> kurz damit, oder sie legt sich eine Apple-ID an (geht auch ohne Apple-Gerät)
+> und verbindet die. Dirk arbeitet daran.
 
 ### 2.3 Yvonne einladen
 

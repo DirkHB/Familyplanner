@@ -9,24 +9,35 @@ Rechne mit **45 bis 60 Minuten**.
 
 ---
 
-## Bevor du anfängst: ein offener Punkt
+## Wie die Kalender zusammenspielen
 
-**Die App ordnet noch fest zu, wer „Person A" und wer „Person B" ist — anhand
-meiner E-Mail-Adresse im Code.** Für Thomas' Haushalt heißt das: Thomas und
-Yvonne landen beide auf demselben Platz. Aufgaben, Betreuung, Avatare und
-Verantwortlichkeiten wären für beide dieselbe Person.
+Kein gemeinsamer Familienkalender in iCloud. **Jeder verbindet seinen eigenen**,
+die App legt beide übereinander, und jeder legt einmal fest, in welchen seiner
+Kalender neu Angelegtes geschrieben wird. Beim Anlegen steht über dem Knopf
+„Kalender von …" — voreingestellt auf einen selbst, ein Tipp wechselt zur
+anderen Person (für den Zahnarzttermin, den man für sie ausgemacht hat).
 
-Die Anzeigenamen kommen bereits aus der Datenbank (Etappe 1), und die Spalte
-`users.slot` ist vorbereitet (Migration 0014) — aber die rund zwanzig Stellen,
-die `personForEmail()` benutzen, lesen sie noch nicht.
+Damit bleibt jeder Termin an genau einem Ort, und niemand muss bei jedem
+Eintrag entscheiden „privat oder Familie?".
 
-**Das muss vor der Übergabe gebaut werden.** Es ist überschaubar: den Platz
-aus `users.slot` statt aus der Adresse lesen und beim ersten Login setzen.
-Sag Bescheid, dann mache ich das — dann streichst du diesen Abschnitt hier.
+**Ein Punkt bleibt offen:** Yvonnes Android-Kalender ist fast sicher ein
+Google-Kalender, und den kann die App noch nicht anbinden — die
+CalDAV-Adresse steht fest auf iCloud. Bis das gelöst ist, hat sie **kein
+eigenes Schreibziel**, und die App fällt für sie auf Thomas' Kalender zurück.
+Das ist genau der Fall, den wir vermeiden wollten; er ist nur noch der letzte
+Ausweg statt die Regel.
 
-Alles Übrige unten stimmt schon und du kannst es vorbereiten.
+Zwei Wege in der Zwischenzeit, beide in Ordnung:
 
----
+1. **Yvonne legt sich eine Apple-ID an** (geht auf appleid.apple.com ohne
+   Apple-Gerät) und verbindet deren Kalender. Dann hat sie ein eigenes
+   Schreibziel. Sie sieht ihn nur über die App — was reicht, wenn sie ohnehin
+   dort arbeitet.
+2. **Sie trägt vorerst nichts selbst ein**, und Thomas legt Gemeinsames an.
+   Weniger schön, aber nichts landet an einer falschen Stelle.
+
+Sag Bescheid, wenn Thomas seinen Google-Kalender testweise per CalDAV
+freigeben kann — dann probieren wir Weg drei.
 
 ## 1. Datenbank bei Neon
 
@@ -142,6 +153,13 @@ Bei **beiden** Services identisch eintragen.
    Allowlist — ich kann mich in ihrer Instanz also gar nicht anmelden, auch
    wenn ich wollte. Das ist Absicht und sollte so bleiben.
 
+**Für unsere eigene Instanz:** Die Reihenfolge bestimmt jetzt auch, in welcher
+Richtung Namen ausgeschrieben werden — auf der Anmeldeseite steht „Für Dirk und
+Constanze", weil deine Adresse vorn steht. Wenn dir „Constanze und Dirk" lieber
+ist, tausch die beiden in Sliplane. Das verschiebt nichts mehr: Unsere Plätze
+stehen seit Migration 0014 in der Datenbank und hängen nicht länger an der
+Umgebungsvariablen.
+
 ## 7. Erster Start prüfen
 
 1. App-Service ausrollen, **Logs öffnen**. Du willst sehen:
@@ -163,6 +181,11 @@ Thomas bekommt von dir:
 
 Alles Weitere macht er selbst: Beim ersten Aufruf von `/woche` landet er
 automatisch im Einrichtungs-Assistenten, weil noch nichts eingerichtet ist.
+
+Sag ihm dabei die beiden Dinge, die in der Anleitung stehen, aber leicht
+überlesen werden: dass beim Verbinden **alle** seine iCloud-Kalender
+hereinkommen und er die überflüssigen abschalten muss, und dass Yvonne bis auf
+Weiteres kein eigenes Schreibziel hat.
 
 ---
 
