@@ -258,6 +258,9 @@ model Request {
   toUserId    String
   toUser      User      @relation("RequestTo", fields: [toUserId], references: [id])
   eventUid    String?
+  /// Das konkrete Vorkommen, um das es geht. Leer = gilt für den Termin
+  /// allgemein (Anfragen von vor Migration 0016).
+  occurrenceDate DateTime? @map("occurrence_date")
   question    String
   type        String    @default("yes_no") // yes_no | choice | free_text | date
   options     Json      @default("[]")
@@ -268,6 +271,7 @@ model Request {
   createdAt   DateTime  @default(now())
 
   @@index([status])
+  @@index([eventUid, occurrenceDate, status], map: "requests_event_occurrence_idx")
   @@map("requests")
 }
 

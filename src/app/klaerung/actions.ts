@@ -13,8 +13,13 @@ import {
 } from "@/lib/care/repository";
 import { dismissTitle, undismissTitle } from "@/lib/care/rules";
 import { answerRequest, resolvePartner } from "@/lib/requests/repository";
-import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { meinPlatz } from "@/lib/haushalt/profil";
+import {
+  schonEntschieden,
+  offeneAnfrage,
+  uebernehmeBetreuung,
+  frageDenAnderen,
+} from "@/lib/care/entscheidung";
 import { notifyUserId } from "@/lib/push/notify";
 import { haushaltProfil } from "@/lib/haushalt/profil";
 import { removeCareBlock } from "@/lib/care/block-sync";
@@ -48,40 +53,10 @@ async function careVorher(uid: string, occurrenceISO: string) {
   return c ? { status: c.status, responsibleUserId: c.responsibleUserId } : null;
 }
 
-/**
- * Die Karte ist ein Schnappschuss vom Öffnen des Stapels. Hat der andere die
- * Betreuung inzwischen geklärt, darf eine veraltete Karte seine Entscheidung
- * nicht überschreiben — sonst nimmt Constanzes „Ich kann nicht" Dirks Zusage
- * wieder weg. Statt zu schreiben, sagt die Leiste dann, was längst gilt.
- */
-async function schonGeklaert(
-  vorher: { status: string; responsibleUserId: string | null } | null,
-  meineId: string,
-): Promise<string | null> {
-  if (!vorher) return null;
-  if (vorher.status === "geklaert" || vorher.status === "zugesagt") {
-    if (vorher.responsibleUserId === meineId) return "Du bist schon eingetragen ✓";
-    if (vorher.responsibleUserId) {
-      const wer = await prisma.user.findUnique({
-        where: { id: vorher.responsibleUserId },
-        select: { email: true, name: true },
-      });
-      const name = wer ? (wer.name ?? notnameAusEmail(wer.email)) : "Der andere";
-      return `${name} ist schon bei ${await kindName()} ✓`;
-    }
-    return "Schon geklärt ✓";
-  }
-  if (vorher.status === "extern") return "Schon geklärt — Babysitter übernimmt ✓";
-  if (vorher.status === "keine") return "Schon geklärt — keine Betreuung nötig";
-  return null; // „offen" behandelt jede Aktion selbst
-}
-
-/** Offene Betreuungs-Anfrage des Partners an mich zu diesem Termin. */
-async function offeneAnfrageAnMich(eventUid: string, meineId: string) {
-  return prisma.request.findFirst({
-    where: { eventUid, toUserId: meineId, status: "open", type: "yes_no" },
-    select: { id: true },
-  });
+/** Offene Betreuungs-Anfrage zu diesem Vorkommen — von wem auch immer. */
+async function offeneAnfrageAnMich(uid: string, occurrenceISO: string, meineId: string) {
+  const a = await offeneAnfrage(uid, occurrenceISO);
+  return a && a.toUserId === meineId ? a : null;
 }
 
 export async function stapelErledigtAction(todoId: string): Promise<Ergebnis> {
@@ -126,28 +101,17 @@ export async function stapelBetreuungIchAction(
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   const vorher = await careVorher(uid, occurrenceISO);
-  const schon = await schonGeklaert(vorher, session.user.id);
-  if (schon) return { ok: true, schon };
 
-  // Hat der andere mich gerade gefragt („Ich kann nicht"), ist mein „Ich mach
-  // das" die Antwort darauf — Ja sagen statt daneben herzuschreiben. Das klärt
-  // die Betreuung, legt den Kalenderblock an und pusht den Fragesteller.
-  const anfrage = await offeneAnfrageAnMich(uid, session.user.id);
-  if (anfrage) {
-    await answerRequest(anfrage.id, session.user.id, "Ja");
-    invalidateKalender();
-    reval();
-    return { ok: true, undo: { art: "antwort-zurueck", requestId: anfrage.id, eventUid: uid } };
-  }
+  // Die Entscheidung selbst steht in lib/care/entscheidung.ts — hier bleibt
+  // nur, was der Stapel darüber hinaus braucht: die Gegenbuchung.
+  const r = await uebernehmeBetreuung(uid, occurrenceISO, session.user.id);
+  if (r.art === "schon") return { ok: true, schon: r.text };
 
-  await takeCare(uid, new Date(occurrenceISO), session.user.id);
-  // Eine eigene, noch offene Anfrage an den anderen ist damit gegenstandslos.
-  await prisma.request.deleteMany({
-    where: { eventUid: uid, fromUserId: session.user.id, status: "open", type: "yes_no" },
-  });
   invalidateKalender();
   reval();
-  return { ok: true, undo: { art: "care-stand", uid, occurrenceISO, vorher } };
+  return r.art === "antwort"
+    ? { ok: true, undo: { art: "antwort-zurueck", requestId: r.requestId, eventUid: uid } }
+    : { ok: true, undo: { art: "care-stand", uid, occurrenceISO, vorher } };
 }
 
 /**
@@ -166,7 +130,7 @@ export async function stapelBetreuungUnnoetigAction(
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   const vorher = await careVorher(uid, occurrenceISO);
-  const schon = await schonGeklaert(vorher, session.user.id);
+  const schon = await schonEntschieden(vorher, session.user.id);
   if (schon) return { ok: true, schon };
 
   await dismissCare(uid, new Date(occurrenceISO));
@@ -206,29 +170,26 @@ export async function stapelKannNichtAction(
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   const vorher = await careVorher(uid, occurrenceISO);
-  const schon = await schonGeklaert(vorher, session.user.id);
+  const schon = await schonEntschieden(vorher, session.user.id);
   if (schon) return { ok: true, schon };
 
   if (vorher?.status === "offen") {
     // Der andere hat schon „Ich kann nicht" gesagt und mich gefragt. Mein
     // „Ich kann nicht" ist das Nein darauf — damit steht fest: Ihr könnt
     // beide nicht, und die Eskalation (Babysitter?) übernimmt.
-    const anfrage = await offeneAnfrageAnMich(uid, session.user.id);
+    const anfrage = await offeneAnfrageAnMich(uid, occurrenceISO, session.user.id);
     if (anfrage) {
       await answerRequest(anfrage.id, session.user.id, "Nein");
       invalidateKalender();
       reval();
       return { ok: true, undo: { art: "antwort-zurueck", requestId: anfrage.id, eventUid: uid } };
     }
-    // Meine eigene Anfrage läuft bereits — nichts doppelt verschicken.
-    const meine = await prisma.request.findFirst({
-      where: { eventUid: uid, fromUserId: session.user.id, status: "open", type: "yes_no" },
-      select: { id: true },
-    });
-    if (meine) return { ok: true, schon: "Deine Anfrage ist schon unterwegs" };
   }
 
-  const requestId = await requestCare(uid, new Date(occurrenceISO), session.user.id, title);
+  const gefragt = await frageDenAnderen(uid, occurrenceISO, session.user.id, title);
+  if (gefragt.art === "schon") return { ok: true, schon: gefragt.text };
+  if (gefragt.art === "lief-schon") return { ok: true, schon: "Deine Anfrage ist schon unterwegs" };
+  const requestId = gefragt.requestId;
   invalidateKalender();
   reval();
   return {
@@ -251,7 +212,7 @@ export async function stapelBabysitterAction(
   if (!session?.user?.id) return { ok: false };
   const iso = occurrenceISO ?? new Date().toISOString();
   const vorher = await careVorher(uid, iso);
-  const schon = await schonGeklaert(vorher, session.user.id);
+  const schon = await schonEntschieden(vorher, session.user.id);
   if (schon) return { ok: true, schon };
 
   const name = wer?.trim() || "Babysitter";
@@ -291,7 +252,7 @@ export async function stapelFrageAbendAction(
   if (!session?.user?.id || !session.user.email) return { ok: false };
   const iso = occurrenceISO ?? new Date().toISOString();
   const vorher = await careVorher(uid, iso);
-  const schon = await schonGeklaert(vorher, session.user.id);
+  const schon = await schonEntschieden(vorher, session.user.id);
   if (schon) return { ok: true, schon };
 
   const tag = dayKey(new Date(iso));
@@ -346,7 +307,7 @@ export async function stapelEskalationGeklaertAction(
   if (!session?.user?.id) return { ok: false };
   const iso = occurrenceISO ?? new Date().toISOString();
   const vorher = await careVorher(uid, iso);
-  const schon = await schonGeklaert(vorher, session.user.id);
+  const schon = await schonEntschieden(vorher, session.user.id);
   if (schon) return { ok: true, schon };
   await dismissCare(uid, new Date(iso));
   invalidateKalender();

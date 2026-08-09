@@ -382,14 +382,26 @@ function CareQuickAction({
         >
           <button
             disabled={pending}
-            onClick={() => start(async () => { await takeCareAction(uid, occurrenceISO); setDone("Du machst es ✓"); })}
+            onClick={() =>
+              start(async () => {
+                const r = await takeCareAction(uid, occurrenceISO);
+                setDone(r?.schon ?? "Du machst es ✓");
+              })
+            }
             className="px-4 py-2.5 text-left text-sm font-medium text-ink"
           >
             Ich mache es
           </button>
           <button
             disabled={pending}
-            onClick={() => start(async () => { await requestCareAction(uid, occurrenceISO, title); setDone("Gefragt ✓"); })}
+            onClick={() =>
+              start(async () => {
+                const r = await requestCareAction(uid, occurrenceISO, title);
+                // Läuft die Frage schon, ist „Gefragt ✓" gelogen — dann hat
+                // dieser Tipp gar nichts ausgelöst.
+                setDone(r?.schon ?? "Gefragt ✓");
+              })
+            }
             className="border-t border-surface-muted/60 px-4 py-2.5 text-left text-sm text-ink"
           >
             Den anderen fragen

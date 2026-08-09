@@ -19,7 +19,9 @@ export default function VorschauTermin() {
       category: "arzt",
       notes: "Fragen zu Schlaf & Beikoststart mitnehmen.",
       occurrenceISO: start.toISOString(),
-      care: { status: "geklaert", responsibleName: "Dirk", responsiblePerson: "dirk" },
+      care: { status: "offen", responsibleName: null, responsiblePerson: null },
+      // Gefragt und noch keine Antwort — der Zustand, der vorher nicht sichtbar war.
+      anfrage: { vonMir: true, seit: new Date(Date.now() - 95 * 60_000) },
       // Zeigt die Zeile „In … Kalender" — sichtbar, sobald jeder seinen
       // eigenen Kalender mitbringt.
       kalenderPlatz: "dirk",

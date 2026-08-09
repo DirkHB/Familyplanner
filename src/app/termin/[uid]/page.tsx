@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { EventDetail } from "@/components/event/EventDetail";
 import { getEventView } from "@/lib/calendar/repository";
 import { haushaltProfil } from "@/lib/haushalt/profil";
@@ -14,9 +15,10 @@ export default async function TerminPage({
 }: {
   params: Promise<{ uid: string }>;
 }) {
+  const session = await auth();
   const { uid } = await params;
   const decoded = decodeURIComponent(uid);
-  const view = await getEventView(decoded);
+  const view = await getEventView(decoded, new Date(), session?.user?.id ?? null);
   const kind = (await haushaltProfil()).kind;
   if (!view) notFound();
 

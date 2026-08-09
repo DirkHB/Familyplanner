@@ -160,6 +160,8 @@ export type DetailVM = {
   care: CareVM;
   /** In wessen Kalender der Termin liegt — „In Yvonnes Kalender". */
   kalenderPlatz: Person | null;
+  /** Offene Betreuungsfrage zu diesem Vorkommen, fertig beschriftet. */
+  anfrage: { vonMir: boolean; seitLabel: string } | null;
   /**
    * Ein von der App selbst angelegter Betreuungsblock („👶 Nicolas · Dirk").
    * Der ist die Antwort auf eine Betreuungsfrage, nicht selbst ein Termin —
@@ -188,8 +190,20 @@ export type DetailInput = {
   occurrenceISO?: string | null;
   care?: CareVM;
   kalenderPlatz?: Person | null;
+  anfrage?: { vonMir: boolean; seit: Date } | null;
   careBlockAnlass?: string | null;
 };
+
+/** „seit 20 Min." — grob reicht, es geht um „wartet schon länger". */
+function seitWann(seit: Date, now: Date = new Date()): string {
+  const min = Math.max(0, Math.floor((now.getTime() - seit.getTime()) / 60_000));
+  if (min < 1) return "gerade eben";
+  if (min < 60) return `seit ${min} Min.`;
+  const std = Math.floor(min / 60);
+  if (std < 24) return std === 1 ? "seit 1 Std." : `seit ${std} Std.`;
+  const tage = Math.floor(std / 24);
+  return tage === 1 ? "seit gestern" : `seit ${tage} Tagen`;
+}
 
 export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
   const cat = categoryOf(v.category);
@@ -212,6 +226,9 @@ export function buildDetailVM(v: DetailInput, readOnly = false): DetailVM {
     occurrenceISO: v.occurrenceISO ?? null,
     care: v.care ?? null,
     kalenderPlatz: v.kalenderPlatz ?? null,
+    anfrage: v.anfrage
+      ? { vonMir: v.anfrage.vonMir, seitLabel: seitWann(v.anfrage.seit) }
+      : null,
     isCareBlock: istBlock,
     careBlockAnlass: v.careBlockAnlass ?? null,
     readOnly,

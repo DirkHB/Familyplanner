@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { meinPlatz, haushaltProfil, nameFuerSlot } from "@/lib/haushalt/profil";
+import {
+  uebernehmeBetreuung,
+  frageDenAnderen,
+  ziehFrageZurueck,
+} from "@/lib/care/entscheidung";
 import { redirect } from "next/navigation";
 import { takeCare, requestCare, dismissCare } from "@/lib/care/repository";
 import { dismissTitle } from "@/lib/care/rules";
@@ -81,20 +86,42 @@ export async function saveNotes(uid: string, notes: string): Promise<{ ok: boole
   return { ok: true };
 }
 
+/**
+ * „Ich mache es" vom Termin aus.
+ *
+ * Läuft über dieselbe Entscheidung wie der Klärungs-Stapel. Vorher stand hier
+ * nur `takeCare` — ohne Frische-Prüfung (die Zusage des anderen wurde still
+ * überschrieben) und ohne Aufräumen (eine eigene Frage blieb beim anderen
+ * stehen, er wurde weiter erinnert).
+ */
 export async function takeCareAction(uid: string, occurrenceISO: string) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
-  await takeCare(uid, new Date(occurrenceISO), session.user.id);
+  const r = await uebernehmeBetreuung(uid, occurrenceISO, session.user.id);
   invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
-  return { ok: true };
+  return r.art === "schon" ? { ok: true, schon: r.text } : { ok: true };
 }
 
+/** „Den anderen fragen" — genau einmal, bis eine Antwort da ist. */
 export async function requestCareAction(uid: string, occurrenceISO: string, title: string) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
-  await requestCare(uid, new Date(occurrenceISO), session.user.id, title);
+  const r = await frageDenAnderen(uid, occurrenceISO, session.user.id, title);
+  invalidateKalender();
+  revalidatePath(`/termin/${encodeURIComponent(uid)}`);
+  revalidatePath("/woche");
+  if (r.art === "schon") return { ok: true, schon: r.text };
+  if (r.art === "lief-schon") return { ok: true, schon: "Deine Frage ist schon unterwegs" };
+  return { ok: true };
+}
+
+/** Die eigene Frage zurückziehen, ohne selbst zu übernehmen. */
+export async function withdrawRequestAction(uid: string, occurrenceISO: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await ziehFrageZurueck(uid, occurrenceISO, session.user.id);
   invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");

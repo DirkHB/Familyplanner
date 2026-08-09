@@ -30,6 +30,8 @@ export async function createRequest(input: {
   type: RequestType;
   options?: string[];
   eventUid?: string | null;
+  /** Das konkrete Vorkommen, falls die Frage einem Termin-Tag gilt. */
+  occurrenceDate?: Date | null;
   dueDate?: Date | null;
 }) {
   const partner = await resolvePartner(input.fromUserId);
@@ -42,6 +44,7 @@ export async function createRequest(input: {
       type: input.type,
       options: input.options ?? [],
       eventUid: input.eventUid ?? null,
+      occurrenceDate: input.occurrenceDate ?? null,
       dueDate: input.dueDate ?? null,
       status: "open",
     },
@@ -73,6 +76,7 @@ type AnsweredRequest = {
   fromUserId: string;
   toUserId: string;
   eventUid: string | null;
+  occurrenceDate: Date | null;
   type: string;
   question: string;
   toUser: { email: string; name: string | null };
@@ -85,10 +89,25 @@ async function applyAnswerEffects(req: AnsweredRequest, answer: string) {
   const yes = answer.trim().toLowerCase() === "ja";
 
   if (req.eventUid && req.type === "yes_no") {
-    const assignment = await prisma.careAssignment.findFirst({
-      where: { eventUid: req.eventUid, status: "offen" },
-      orderBy: { occurrenceDate: "asc" },
-    });
+    /*
+     * Die Antwort gilt dem Vorkommen, nach dem gefragt wurde. Vorher stand
+     * hier „die erste offene" — bei einer Serie klärte ein „Ja" zur Frage über
+     * den 19. also den 12. und ließ den 19. offen. Anfragen von vor Migration
+     * 0016 tragen kein Vorkommen; für die bleibt es beim alten Verhalten.
+     */
+    const assignment = req.occurrenceDate
+      ? await prisma.careAssignment.findUnique({
+          where: {
+            eventUid_occurrenceDate: {
+              eventUid: req.eventUid,
+              occurrenceDate: req.occurrenceDate,
+            },
+          },
+        })
+      : await prisma.careAssignment.findFirst({
+          where: { eventUid: req.eventUid, status: "offen" },
+          orderBy: { occurrenceDate: "asc" },
+        });
     const event = await prisma.event.findFirst({
       where: { uid: req.eventUid },
       select: { title: true },

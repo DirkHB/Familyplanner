@@ -67,6 +67,12 @@ export type EventDetailView = {
   kalenderName: string | null;
   /** Wem dieser Kalender gehört — null bei einem Kalender ohne Zuordnung. */
   kalenderPlatz: Platz | null;
+  /**
+   * Eine offene Betreuungsfrage zu diesem Vorkommen. `vonMir` unterscheidet
+   * „ich warte auf Antwort" von „ich soll antworten" — zwei völlig
+   * verschiedene Zustände, die vorher beide gleich aussahen.
+   */
+  anfrage: { vonMir: boolean; seit: Date } | null;
   care: {
     status: "offen" | "zugesagt" | "geklaert" | "keine" | "extern";
     responsibleName: string | null;
@@ -80,6 +86,8 @@ export type EventDetailView = {
 export async function getEventView(
   uid: string,
   now: Date = new Date(),
+  /** Wer fragt — entscheidet, ob eine offene Frage meine ist oder an mich geht. */
+  meineUserId?: string | null,
 ): Promise<EventDetailView | null> {
   const event = await prisma.event.findFirst({
     where: { uid },
@@ -124,6 +132,24 @@ export async function getEventView(
     : [];
 
   // Betreuung für dieses Vorkommen laden.
+  // Eine offene Frage zu genau diesem Vorkommen — für den gesperrten Knopf.
+  let anfrage: EventDetailView["anfrage"] = null;
+  if (start && meineUserId) {
+    const occDate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+    const offen = await prisma.request.findFirst({
+      where: {
+        eventUid: uid,
+        status: "open",
+        type: "yes_no",
+        // Anfragen von vor Migration 0016 tragen kein Vorkommen.
+        OR: [{ occurrenceDate: occDate }, { occurrenceDate: null }],
+      },
+      orderBy: { createdAt: "desc" },
+      select: { fromUserId: true, createdAt: true },
+    });
+    if (offen) anfrage = { vonMir: offen.fromUserId === meineUserId, seit: offen.createdAt };
+  }
+
   let care: EventDetailView["care"] = null;
   if (start) {
     const occDate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
@@ -153,6 +179,7 @@ export async function getEventView(
     isSeries: !!event.rrule,
     kalenderName: event.calendar?.name ?? null,
     kalenderPlatz: (event.calendar?.account?.user?.slot as Platz | null) ?? null,
+    anfrage,
     category: detail?.category ?? "sonstiges",
     notes: detail?.notes ?? "",
     prepChecklist: prep,

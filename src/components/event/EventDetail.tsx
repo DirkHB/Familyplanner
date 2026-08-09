@@ -10,6 +10,7 @@ import {
   saveNotes,
   takeCareAction,
   requestCareAction,
+  withdrawRequestAction,
   dismissCareAction,
   withdrawCareBlockAction,
   deleteEventAction,
@@ -56,7 +57,7 @@ function BackButton() {
 export function EventDetail({
   vm,
   shopping,
-  kind = "dem Kind",
+  kind = "das Baby",
 }: {
   vm: DetailVM;
   shopping?: EventShoppingData | null;
@@ -291,6 +292,14 @@ function CareBlock({ vm, kind }: { vm: DetailVM; kind: string }) {
   const canAct = !vm.readOnly && !!vm.occurrenceISO;
 
   const geklaert = care?.status === "geklaert" && care.responsiblePerson;
+  /*
+   * Zwei Zustände, die vorher beide gleich aussahen: Ich habe gefragt und
+   * warte — oder ich bin gefragt worden. Im ersten Fall ist ein zweiter Tipp
+   * auf „Den anderen fragen" nur eine weitere Karte und eine weitere
+   * Erinnerung für ihn, im zweiten wäre er schlicht sinnlos.
+   */
+  const gefragt = vm.anfrage?.vonMir === true;
+  const sollAntworten = vm.anfrage?.vonMir === false;
 
   return (
     <section className="mt-4 rounded-card bg-surface p-5 shadow-card">
@@ -359,15 +368,23 @@ function CareBlock({ vm, kind }: { vm: DetailVM; kind: string }) {
         </div>
       ) : (
         <div>
+          {/* Der Stand in einem Satz. „Eine Anfrage ist unterwegs" stand hier
+              früher immer, sobald die Betreuung offen war — auch wenn nie
+              jemand gefragt hatte, und auch beim Gefragten selbst. */}
           <p className="mb-3 text-sm text-ink-muted">
             {aendern
               ? `Bisher: ${care?.status === "extern" ? (care.externName ?? "Babysitter") : care?.responsibleName} ist da.`
-              : care?.status === "offen"
-                ? "Noch offen — eine Anfrage ist unterwegs."
-                : "Noch nicht geklärt."}
+              : gefragt
+                ? `Gefragt — noch keine Antwort, ${vm.anfrage!.seitLabel}`
+                : sollAntworten
+                  ? "Du bist gefragt — antworte oben in den Anfragen."
+                  : "Noch nicht geklärt."}
           </p>
           {canAct && (
             <div className="flex flex-col gap-2">
+              {/* Bleibt immer offen: Wenn sich bei mir etwas ändert, will ich
+                  übernehmen können, ohne auf die Antwort zu warten. Das nimmt
+                  dem anderen die Frage automatisch wieder ab. */}
               <button
                 disabled={pending}
                 onClick={() => start(() => takeCareAction(vm.uid, vm.occurrenceISO!).then(() => {}))}
@@ -375,15 +392,27 @@ function CareBlock({ vm, kind }: { vm: DetailVM; kind: string }) {
               >
                 Ich mache es
               </button>
-              <button
-                disabled={pending}
-                onClick={() =>
-                  start(() => requestCareAction(vm.uid, vm.occurrenceISO!, vm.title).then(() => {}))
-                }
-                className="rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-60"
-              >
-                Den anderen fragen
-              </button>
+              {gefragt ? (
+                <button
+                  disabled={pending}
+                  onClick={() =>
+                    start(() => withdrawRequestAction(vm.uid, vm.occurrenceISO!).then(() => {}))
+                  }
+                  className="rounded-pill border border-dashed border-ink-muted/40 px-5 py-3 text-sm font-medium text-ink-muted disabled:opacity-60"
+                >
+                  Frage zurückziehen
+                </button>
+              ) : (
+                <button
+                  disabled={pending || sollAntworten}
+                  onClick={() =>
+                    start(() => requestCareAction(vm.uid, vm.occurrenceISO!, vm.title).then(() => {}))
+                  }
+                  className="rounded-pill bg-surface-muted px-5 py-3 font-medium text-ink disabled:opacity-40"
+                >
+                  Den anderen fragen
+                </button>
+              )}
               <button
                 disabled={pending}
                 onClick={() =>

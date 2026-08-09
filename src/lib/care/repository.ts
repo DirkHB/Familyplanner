@@ -134,6 +134,8 @@ export async function requestCare(
       question: `Kannst du bei „${eventTitle}" auf ${(await haushaltProfil()).kind} aufpassen?`,
       type: "yes_no",
       eventUid,
+      // Ohne das Vorkommen trifft die Antwort bei einer Serie den falschen Tag.
+      occurrenceDate,
     });
     // Die Kennung braucht der Stapel, um die Anfrage bei „Rückgängig"
     // wieder einzusammeln, bevor sie beantwortet wird.
