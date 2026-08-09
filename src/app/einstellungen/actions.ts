@@ -153,37 +153,37 @@ export async function setHaushaltNamenAction(input: {
   if (!session?.user?.id) return { ok: false, grund: "Nicht angemeldet." };
 
   const { prisma } = await import("@/lib/prisma");
-  const { parseAllowlist } = await import("@/lib/auth/allowlist");
-  const { setKindName, invalidateProfil } = await import("@/lib/haushalt/profil");
+  const { haushaltProfil, setKindName, invalidateProfil } = await import(
+    "@/lib/haushalt/profil"
+  );
   const { platzNachReihenfolge } = await import("@/lib/haushalt/platz");
-  const { aktuellerHaushalt } = await import("@/lib/haushalt/aktuell");
 
-  // Nur Adressen, die ohnehin Zugang haben — von außen lässt sich hier
-  // niemand hineinschreiben.
-  const reihenfolge = parseAllowlist(process.env.ALLOWED_EMAILS);
-  const erlaubt = new Set(reihenfolge);
+  // Umbenannt werden dürfen nur die Menschen, die hier auch wohnen. Vorher
+  // entschied das eine Umgebungsvariable für die ganze Instanz — in einer App
+  // mit mehreren Haushalten hätte damit jeder die Namen aller anderen
+  // umschreiben können.
+  const profil = await haushaltProfil();
+  const platzFuer = new Map(profil.erwachsene.map((e, i) => [e.email, e.slot ?? platzNachReihenfolge(i)]));
   for (const n of input.namen) {
     const email = n.email.trim().toLowerCase();
     const name = n.name.trim();
-    if (!erlaubt.has(email) || !name) continue;
+    const platz = platzFuer.get(email);
+    if (!platz || !name) continue;
     /*
      * Hier wird der Platz festgeschrieben — der einzige Moment, in dem ein
-     * Haushalt ihn wirklich festlegt. Danach steht er in der Datenbank und
-     * überlebt jedes Umsortieren von ALLOWED_EMAILS. Ohne das hinge die
-     * Zuordnung an einer Umgebungsvariablen, und wer sie umstellt, tauscht
-     * rückwirkend alle Aufgaben zwischen zwei Menschen.
+     * Haushalt ihn wirklich festlegt. Danach steht er in der Datenbank, und
+     * kein Umsortieren tauscht rückwirkend die Aufgaben zweier Menschen.
      */
-    const platz = platzNachReihenfolge(reihenfolge.indexOf(email));
     const vorhanden = await prisma.user.findUnique({ where: { email } });
-    await prisma.user.upsert({
-      where: { email },
-      create: { householdId: await aktuellerHaushalt("Namen speichern"), email, name, slot: platz },
+    if (!vorhanden) continue;
+    await prisma.user.update({
+      where: { id: vorhanden.id },
       // Ein einmal vergebener Platz bleibt; nur der Name wird aktualisiert.
-      update: { name, ...(vorhanden?.slot ? {} : { slot: platz }) },
+      data: { name, ...(vorhanden.slot ? {} : { slot: platz }) },
     });
   }
   await setKindName(input.kind);
-  invalidateProfil();
+  await invalidateProfil();
   revalidatePath("/einstellungen");
   revalidatePath("/woche");
   return { ok: true };

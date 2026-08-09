@@ -161,7 +161,7 @@ export async function runSyncForAllAccounts(): Promise<SyncSummary> {
   });
 
   // Frische Daten sofort sichtbar machen (60-s-Ansichts-Cache verwerfen).
-  if (summary.upserted > 0 || summary.deleted > 0) invalidateKalender();
+  if (summary.upserted > 0 || summary.deleted > 0) await invalidateKalender();
 
   return summary;
 }

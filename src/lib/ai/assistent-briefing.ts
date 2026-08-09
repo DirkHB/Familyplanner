@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { haushaltId } from "@/lib/haushalt/id";
+import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
 import { haushaltProfil, beideNamen, nameFuerSlot, type HaushaltProfil } from "@/lib/haushalt/profil";
 import { HAUPTLISTE_FILTER } from "@/lib/haushalt/singletons";
 import { getAnthropic, aiConfigured, AI_MODEL } from "./client";
@@ -193,9 +193,12 @@ export async function generiereAssistentBriefing(now: Date = new Date()): Promis
     const kontext = await sammleKontext(now);
     const hash = createHash("sha256").update(kontext).digest("hex").slice(0, 16);
     const tag = dayKey(now);
+    // Der zusammengesetzte Schlüssel muss den Haushalt nennen — bei eindeutigen
+    // Schlüsseln lässt Prisma nichts anderes zu, der Riegel kommt dort nicht ran.
+    const haushalt = await aktuellerHaushalt("Assistent-Briefing");
 
     const cached = await prisma.briefing.findUnique({
-      where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND, dayKey: tag } },
+      where: { householdId_kind_dayKey: { householdId: haushalt, kind: KIND, dayKey: tag } },
     });
     if (cached) {
       try {
@@ -209,8 +212,8 @@ export async function generiereAssistentBriefing(now: Date = new Date()): Promis
     const text = await frageAssistent(kontext, await haushaltProfil());
     if (!text) return null;
     await prisma.briefing.upsert({
-      where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND, dayKey: tag } },
-      create: { householdId: haushaltId(), kind: KIND, dayKey: tag, summary: JSON.stringify({ hash, text }) },
+      where: { householdId_kind_dayKey: { householdId: haushalt, kind: KIND, dayKey: tag } },
+      create: { kind: KIND, dayKey: tag, summary: JSON.stringify({ hash, text }) },
       update: { summary: JSON.stringify({ hash, text }) },
     });
     return text;

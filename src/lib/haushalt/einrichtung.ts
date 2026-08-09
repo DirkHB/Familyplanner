@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { getHaushaltFlag, setHaushaltFlag } from "./singletons";
 import { haushaltProfil, KIND_VORGABE } from "./profil";
 
@@ -27,7 +27,7 @@ export type EinrichtungStatus = {
   erledigt: Record<SchrittName, boolean>;
   /** Was noch offen ist — der Assistent beginnt beim ersten davon. */
   offen: SchrittName[];
-  /** Die Adresse der zweiten Person, falls eine in der Allowlist steht. */
+  /** Die Adresse der zweiten Person, falls schon eine im Haushalt wohnt. */
   partnerEmail: string | null;
   /** Hat sich die zweite Person schon einmal angemeldet? */
   partnerDa: boolean;
@@ -46,9 +46,12 @@ export async function einrichtungStatus(meineEmail?: string | null): Promise<Ein
     prisma.user.findMany({ select: { email: true, emailVerified: true } }),
   ]);
 
+  // Die zweite Person kommt nicht mehr aus einer Umgebungsvariablen, sondern
+  // aus dem Haushalt selbst: Wer eingeladen wurde und die Einladung eingelöst
+  // hat, steht in der Tabelle. Solange dort niemand steht, ist der Schritt
+  // „Partner" offen — und das ist genau die Frage, die der Assistent stellt.
   const meine = (meineEmail ?? "").trim().toLowerCase();
-  const partnerEmail =
-    parseAllowlist(process.env.ALLOWED_EMAILS).find((e) => e !== meine) ?? null;
+  const partnerEmail = profil.erwachsene.find((e) => e.email !== meine)?.email ?? null;
   const partnerDa = partnerEmail
     ? users.some((u) => u.email.toLowerCase() === partnerEmail && !!u.emailVerified)
     : false;

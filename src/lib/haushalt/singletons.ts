@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
-import { haushaltId } from "./id";
 
 /**
  * Die drei Dinge, von denen es „genau eins" gibt.
@@ -12,9 +11,10 @@ import { haushaltId } from "./id";
  * zurückgibt. Deshalb hat jede dieser Fragen ab jetzt genau eine Stelle,
  * und diese Stelle kennt den Haushalt.
  *
- * Heute ist die Antwort trivial, weil jede Datenbank einem Haushalt gehört.
- * Ändert sich das, sind es diese drei Funktionen — und nicht die zwölf
- * Aufrufer.
+ * Die Suche selbst ist inzwischen wieder unauffällig: Der Riegel in
+ * lib/prisma setzt den Haushalt in jede Bedingung ein, `findFirst` findet
+ * also nur noch im eigenen Haushalt. Die drei Funktionen bleiben trotzdem —
+ * damit die Frage „welche Einkaufsliste?" einen Ort hat und nicht zwölf.
  */
 
 /* --------------------------- 1. Die Einkaufsliste --------------------------- */
@@ -153,10 +153,16 @@ export async function kalenderzugangFuerPlatz(platz: string): Promise<Kalenderzu
 }
 
 /**
- * Gehört dieses Kalenderkonto zu diesem Haushalt? Heute immer ja — es gibt
- * nur einen. Die Frage steht trotzdem da, weil sie später den Unterschied
- * zwischen „darf löschen" und „darf nicht" ausmacht.
+ * Gehört dieses Kalenderkonto zu diesem Haushalt?
+ *
+ * Die Antwort war lange „immer ja", weil es nur einen gab. Jetzt fragt sie
+ * wirklich nach: Der Riegel filtert die Suche auf den eigenen Haushalt, ein
+ * fremdes Konto wird also gar nicht erst gefunden.
  */
-export async function gehoertZumHaushalt(_accountId: string): Promise<boolean> {
-  return true;
+export async function gehoertZumHaushalt(accountId: string): Promise<boolean> {
+  const treffer = await prisma.calendarAccount.findFirst({
+    where: { id: accountId },
+    select: { id: true },
+  });
+  return treffer !== null;
 }

@@ -83,6 +83,6 @@ export async function updateEvent(
   await prisma.activityLog.create({
     data: { entityType: "event", entityId: uid, action: "updated", actor: userId, detail: { title: input.title } },
   });
-  invalidateKalender();
+  await invalidateKalender();
   return { updated: true };
 }

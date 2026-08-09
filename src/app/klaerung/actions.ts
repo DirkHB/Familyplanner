@@ -107,7 +107,7 @@ export async function stapelBetreuungIchAction(
   const r = await uebernehmeBetreuung(uid, occurrenceISO, session.user.id);
   if (r.art === "schon") return { ok: true, schon: r.text };
 
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return r.art === "antwort"
     ? { ok: true, undo: { art: "antwort-zurueck", requestId: r.requestId, eventUid: uid } }
@@ -153,7 +153,7 @@ export async function stapelBetreuungUnnoetigAction(
       tag: `care-${anfrage.id}`,
     }).catch(() => {});
   }
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return {
     ok: true,
@@ -180,7 +180,7 @@ export async function stapelKannNichtAction(
     const anfrage = await offeneAnfrageAnMich(uid, occurrenceISO, session.user.id);
     if (anfrage) {
       await answerRequest(anfrage.id, session.user.id, "Nein");
-      invalidateKalender();
+      await invalidateKalender();
       reval();
       return { ok: true, undo: { art: "antwort-zurueck", requestId: anfrage.id, eventUid: uid } };
     }
@@ -190,7 +190,7 @@ export async function stapelKannNichtAction(
   if (gefragt.art === "schon") return { ok: true, schon: gefragt.text };
   if (gefragt.art === "lief-schon") return { ok: true, schon: "Deine Anfrage ist schon unterwegs" };
   const requestId = gefragt.requestId;
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return {
     ok: true,
@@ -231,7 +231,7 @@ export async function stapelBabysitterAction(
   } catch {
     /* Push ist best effort. */
   }
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return { ok: true, undo: { art: "care-stand", uid, occurrenceISO: iso, vorher } };
 }
@@ -290,7 +290,7 @@ export async function stapelAntwortAction(
     select: { eventUid: true },
   });
   await answerRequest(requestId, session.user.id, antwort);
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return {
     ok: true,
@@ -310,7 +310,7 @@ export async function stapelEskalationGeklaertAction(
   const schon = await schonEntschieden(vorher, session.user.id);
   if (schon) return { ok: true, schon };
   await dismissCare(uid, new Date(iso));
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return { ok: true, undo: { art: "care-stand", uid, occurrenceISO: iso, vorher } };
 }
@@ -455,7 +455,7 @@ export async function stapelRueckgaengigAction(u: StapelUndo): Promise<{ ok: boo
     }
   }
 
-  invalidateKalender();
+  await invalidateKalender();
   reval();
   return { ok: true };
 }

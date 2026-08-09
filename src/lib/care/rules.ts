@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { haushaltId } from "@/lib/haushalt/id";
+import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
 import { titleKey } from "./gaps";
 
 /**
@@ -14,7 +14,7 @@ import { titleKey } from "./gaps";
 
 export async function getDismissedTitleKeys(): Promise<Set<string>> {
   const rows = await prisma.careRule.findMany({
-    where: { householdId: haushaltId(), decision: "keine" },
+    where: { decision: "keine" },
     select: { titleKey: true },
   });
   return new Set(rows.map((r) => r.titleKey));
@@ -23,9 +23,13 @@ export async function getDismissedTitleKeys(): Promise<Set<string>> {
 export async function dismissTitle(title: string, userId?: string): Promise<void> {
   const key = titleKey(title);
   if (!key) return;
+  const haushalt = await aktuellerHaushalt("Betreuungsregel");
   await prisma.careRule.upsert({
-    where: { householdId_titleKey: { householdId: haushaltId(), titleKey: key } },
-    create: { householdId: haushaltId(), titleKey: key, decision: "keine", createdBy: userId ?? null },
+    // Der zusammengesetzte Schlüssel muss den Haushalt nennen: Bei Abfragen
+    // über einen eindeutigen Schlüssel lässt Prisma nichts anderes zu, der
+    // Riegel kann ihn dort also nicht einsetzen.
+    where: { householdId_titleKey: { householdId: haushalt, titleKey: key } },
+    create: { titleKey: key, decision: "keine", createdBy: userId ?? null },
     update: { decision: "keine" },
   });
 }
@@ -33,13 +37,13 @@ export async function dismissTitle(title: string, userId?: string): Promise<void
 /** Zurücknehmen — falls doch einmal falsch abgewinkt. */
 export async function undismissTitle(title: string): Promise<void> {
   await prisma.careRule.deleteMany({
-    where: { householdId: haushaltId(), titleKey: titleKey(title) },
+    where: { titleKey: titleKey(title) },
   });
 }
 
 export async function listDismissed(): Promise<{ titleKey: string; createdAt: Date }[]> {
   return prisma.careRule.findMany({
-    where: { householdId: haushaltId(), decision: "keine" },
+    where: { decision: "keine" },
     select: { titleKey: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });

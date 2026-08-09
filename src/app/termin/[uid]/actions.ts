@@ -82,7 +82,7 @@ export async function saveNotes(uid: string, notes: string): Promise<{ ok: boole
     create: { eventUid: uid, notes, createdBy: by },
     update: { notes },
   });
-  invalidateKalender(); // Notiz-Vorschau in der Woche
+  await invalidateKalender(); // Notiz-Vorschau in der Woche
   return { ok: true };
 }
 
@@ -98,7 +98,7 @@ export async function takeCareAction(uid: string, occurrenceISO: string) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   const r = await uebernehmeBetreuung(uid, occurrenceISO, session.user.id);
-  invalidateKalender();
+  await invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
   return r.art === "schon" ? { ok: true, schon: r.text } : { ok: true };
@@ -109,7 +109,7 @@ export async function requestCareAction(uid: string, occurrenceISO: string, titl
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   const r = await frageDenAnderen(uid, occurrenceISO, session.user.id, title);
-  invalidateKalender();
+  await invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
   if (r.art === "schon") return { ok: true, schon: r.text };
@@ -122,7 +122,7 @@ export async function withdrawRequestAction(uid: string, occurrenceISO: string) 
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   await ziehFrageZurueck(uid, occurrenceISO, session.user.id);
-  invalidateKalender();
+  await invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
   return { ok: true };
@@ -150,7 +150,7 @@ export async function withdrawCareBlockAction(
     // Kein Anlass mehr auffindbar (Termin gelöscht) — dann bleibt nur, den
     // verwaisten Block wegzuräumen. Zurück in die Woche.
     await removeCareBlockByUid(blockUid);
-    invalidateKalender();
+    await invalidateKalender();
     revalidatePath("/woche");
     return { ok: true, weiterZu: "/woche" };
   }
@@ -181,7 +181,7 @@ export async function withdrawCareBlockAction(
     ).catch(() => null);
   }
 
-  invalidateKalender();
+  await invalidateKalender();
   revalidatePath("/woche");
   const ziel = `/termin/${encodeURIComponent(anlass.eventUid)}`;
   revalidatePath(ziel);
@@ -203,7 +203,7 @@ export async function dismissCareAction(uid: string, occurrenceISO: string, titl
   if (!session?.user?.id) return { ok: false };
   await dismissCare(uid, new Date(occurrenceISO));
   await dismissTitle(title, session.user.id);
-  invalidateKalender();
+  await invalidateKalender();
   revalidatePath(`/termin/${encodeURIComponent(uid)}`);
   revalidatePath("/woche");
   return { ok: true };
@@ -215,7 +215,7 @@ export async function deleteEventAction(uid: string): Promise<{ ok: boolean; rea
   if (!session?.user?.id) return { ok: false, reason: "Nicht angemeldet." };
   const res = await deleteEvent(session.user.id, uid);
   if (!res.deleted) return { ok: false, reason: res.reason };
-  invalidateKalender();
+  await invalidateKalender();
   revalidatePath("/woche");
   revalidatePath("/termine");
   redirect("/woche");

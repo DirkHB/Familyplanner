@@ -1,24 +1,25 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
-import { stelleUserSicher } from "@/lib/haushalt/profil";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
+import { haushaltProfil, stelleUserSicher } from "@/lib/haushalt/profil";
 import { notifyUserId } from "@/lib/push/notify";
 
 export type RequestType = "yes_no" | "choice" | "free_text" | "date";
 
 /**
- * Zwei-Personen-Modell: Anfragen gehen immer an den jeweils anderen. Wir stellen sicher,
- * dass beide Nutzerzeilen existieren (aus der Allowlist), damit Anfragen nie ins Leere gehen.
+ * Zwei-Personen-Modell: Anfragen gehen immer an den jeweils anderen — an die
+ * andere Person DIESES Haushalts. Wohnt dort noch niemand sonst, gibt es
+ * niemanden zu fragen, und die Anfrage unterbleibt, statt ins Leere zu gehen.
  */
 export async function resolvePartner(
   userId: string,
 ): Promise<{ id: string; email: string; slot: string | null } | null> {
   const me = await prisma.user.findUnique({ where: { id: userId } });
   if (!me) return null;
-  const others = parseAllowlist(process.env.ALLOWED_EMAILS).filter(
-    (e) => e.toLowerCase() !== me.email.toLowerCase(),
-  );
-  const partnerEmail = others[0];
+  const profil = await haushaltProfil();
+  const partnerEmail = profil.erwachsene.find(
+    (e) => e.email !== me.email.toLowerCase(),
+  )?.email;
   if (!partnerEmail) return null;
   const partner = await stelleUserSicher(partnerEmail);
   return { id: partner.id, email: partner.email, slot: partner.slot };

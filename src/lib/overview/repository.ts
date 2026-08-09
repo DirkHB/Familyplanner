@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { haushaltId } from "@/lib/haushalt/id";
+import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey, formatTime, formatWeekday, formatMonthDay } from "@/lib/calendar/format";
 import { buildOverview, type Overview, type OverviewEvent, type OverviewTodo } from "./build";
@@ -75,15 +75,18 @@ export async function getOverview(kind: Horizon, now: Date = new Date()): Promis
 /** Zuletzt gespeichertes Briefing (Push verlinkt hierher). */
 export async function getLatestBriefing(kind: "morgen" | "woche") {
   return prisma.briefing.findFirst({
-    where: { householdId: haushaltId(), kind },
+    where: { kind },
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function saveBriefing(kind: "morgen" | "woche", day: string, summary: string) {
+  // Der zusammengesetzte Schlüssel muss den Haushalt nennen — bei eindeutigen
+  // Schlüsseln lässt Prisma nichts anderes zu, der Riegel kommt dort nicht ran.
+  const haushalt = await aktuellerHaushalt("Briefing speichern");
   return prisma.briefing.upsert({
-    where: { householdId_kind_dayKey: { householdId: haushaltId(), kind, dayKey: day } },
-    create: { householdId: haushaltId(), kind, dayKey: day, summary },
+    where: { householdId_kind_dayKey: { householdId: haushalt, kind, dayKey: day } },
+    create: { kind, dayKey: day, summary },
     update: { summary },
   });
 }

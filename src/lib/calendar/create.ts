@@ -93,6 +93,6 @@ export async function createEvent(
     await requestCare(uid, input.start, userId, input.title);
   }
 
-  invalidateKalender();
+  await invalidateKalender();
   return { created: true, uid };
 }

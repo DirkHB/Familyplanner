@@ -7,7 +7,8 @@ import { PLATZ_A, type Platz as Person } from "@/lib/haushalt/platz";
 import type { Occurrence } from "./types";
 import type { EventMeta } from "./view-model";
 import { careWindow } from "@/lib/care/gaps";
-import { haushaltId } from "@/lib/haushalt/id";
+import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
+import { mitHaushalt } from "@/lib/haushalt/kontext";
 
 /**
  * Gebündelte, kurz gecachte Bereichsdaten für Woche/Monat: Vorkommen + Zusatzdaten
@@ -21,15 +22,12 @@ import { haushaltId } from "@/lib/haushalt/id";
  * Termins den Zwischenspeicher aller anderen leeren — und schlimmer, alle
  * würden sich denselben Eintrag teilen.
  */
-export function kalenderTag(haushalt: string = haushaltId()): string {
+export function kalenderTag(haushalt: string): string {
   return `kalender:${haushalt}`;
 }
 
-/** Beibehalten für Aufrufer, die nur den Tag dieses Haushalts meinen. */
-export const KALENDER_TAG = kalenderTag();
-
-export function invalidateKalender() {
-  revalidateTag(kalenderTag());
+export async function invalidateKalender() {
+  revalidateTag(kalenderTag(await aktuellerHaushalt("Kalender-Zwischenspeicher")));
 }
 
 type Wire = {
@@ -63,7 +61,10 @@ function ladeFuer(haushalt: string) {
 
 const baueLader = (haushalt: string) =>
   unstable_cache(
-  async (fromISO: string, toISO: string): Promise<Wire> => {
+  // Der Haushalt wird hier noch einmal ausdrücklich gesetzt: Was Next.js
+  // zwischenspeichert, läuft nicht zwingend im Kontext der Anfrage, die es
+  // angefordert hat — beim Nachladen im Hintergrund ganz sicher nicht.
+  (fromISO: string, toISO: string): Promise<Wire> => mitHaushalt(haushalt, async () => {
     const from = new Date(fromISO);
     const to = new Date(toISO);
 
@@ -114,7 +115,7 @@ const baueLader = (haushalt: string) =>
         note: c.status === "extern" ? c.note : null,
       })),
     };
-  },
+  }),
     ["kalender-range", haushalt],
     { revalidate: 60, tags: [kalenderTag(haushalt)] },
   );
@@ -122,7 +123,8 @@ const baueLader = (haushalt: string) =>
 export type CareOcc = { status: string; person: Person | null; externName?: string | null };
 
 export async function getRangeData(from: Date, to: Date) {
-  const d = await ladeFuer(haushaltId())(from.toISOString(), to.toISOString());
+  const haushalt = await aktuellerHaushalt("Bereichsdaten");
+  const d = await ladeFuer(haushalt)(from.toISOString(), to.toISOString());
   const occurrences: Occurrence[] = d.occ.map((o) => ({
     ...o,
     start: new Date(o.start),

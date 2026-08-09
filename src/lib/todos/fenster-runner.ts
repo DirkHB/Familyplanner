@@ -1,10 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { haushaltId } from "@/lib/haushalt/id";
+import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import { freieBloecke, berlinStunde, dauerLabel, STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
-import { parseAllowlist } from "@/lib/auth/allowlist";
 import { haushaltProfil, stelleUserSicher } from "@/lib/haushalt/profil";
 import { platzFuerEmail } from "@/lib/haushalt/platz";
 import { mergePrefs } from "@/lib/push/quiet-hours";
@@ -41,16 +40,17 @@ export async function runAufgabenFenster(now: Date = new Date()): Promise<Fenste
   const heuteStart = startOfDayBerlin(now);
   const uebermorgen = new Date(heuteStart.getTime() + 2 * 86_400_000);
 
-  const emails = parseAllowlist(process.env.ALLOWED_EMAILS);
-  if (emails.length === 0) return summary;
+  const profil = await haushaltProfil();
+  if (profil.erwachsene.length === 0) return summary;
+  const haushalt = await aktuellerHaushalt("Aufgaben-Fenster");
 
   // Termine für heute und morgen einmal für alle holen — der Kalender ist
   // gemeinsam, die freien Blöcke sind es damit auch.
   const { occurrences } = await getRangeData(heuteStart, uebermorgen);
   const morgenKey = dayKey(new Date(heuteStart.getTime() + 86_400_000 + 43_200_000));
 
-  for (const email of emails) {
-    const person = platzFuerEmail(await haushaltProfil(), email);
+  for (const { email } of profil.erwachsene) {
+    const person = platzFuerEmail(profil, email);
     const user = await stelleUserSicher(email);
     summary.geprueft++;
 
@@ -59,7 +59,7 @@ export async function runAufgabenFenster(now: Date = new Date()): Promise<Fenste
 
     // Schon gesendet heute? Dann ist für heute Schluss.
     const schon = await prisma.briefing.findUnique({
-      where: { householdId_kind_dayKey: { householdId: haushaltId(), kind: KIND(person), dayKey: heute } },
+      where: { householdId_kind_dayKey: { householdId: haushalt, kind: KIND(person), dayKey: heute } },
     });
     if (schon) continue;
 
@@ -124,8 +124,6 @@ export async function runAufgabenFenster(now: Date = new Date()): Promise<Fenste
       await prisma.briefing
         .create({
           data: {
-            householdId: haushaltId(),
-
             kind: KIND(person),
             dayKey: heute,
             summary: text,

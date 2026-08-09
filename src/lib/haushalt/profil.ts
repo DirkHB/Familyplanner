@@ -1,9 +1,9 @@
 import "server-only";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist, notnameAusEmail } from "@/lib/auth/allowlist";
-import { haushaltId } from "./id";
+import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { aktuellerHaushalt } from "./aktuell";
+import { mitHaushalt } from "./kontext";
 import {
   PLATZ_A,
   istPlatzWert,
@@ -21,9 +21,14 @@ import {
  * unbekannte Adresse wurde zu „Constanze", also wären dort beide dieselbe
  * Person gewesen.
  *
- * Jetzt kommen die Namen aus der Datenbank. Zwei Erwachsene in fester
- * Reihenfolge (die erste Adresse der Allowlist ist Person A) und ein Kind,
- * dessen Name in den Einstellungen liegt.
+ * Danach kam die Antwort aus ALLOWED_EMAILS. Das war ein Schritt weiter und
+ * trotzdem eine Sackgasse: eine Umgebungsvariable kennt nur eine Wohnung. Wer
+ * einen zweiten Haushalt einlädt, müsste sie ändern — und jeder dritte
+ * Haushalt stünde in derselben Liste wie der erste.
+ *
+ * Jetzt sind die Bewohner das, was in der Tabelle steht: die Nutzerzeilen
+ * dieses Haushalts, in der Reihenfolge, in der sie dazugekommen sind. Der
+ * erste ist Person A. Das Kind heißt, was in den Einstellungen steht.
  *
  * Kurz zwischengespeichert, weil fast jede Ansicht ihn braucht; jede Änderung
  * am Profil räumt den Speicher selbst ab.
@@ -46,10 +51,10 @@ export type HaushaltProfil = {
 export const KIND_VORGABE = "das Baby";
 export const KIND_SCHLUESSEL = "kind.name";
 
-const TAG = () => `haushalt-profil:${haushaltId()}`;
+const TAG = (haushalt: string) => `haushalt-profil:${haushalt}`;
 
-export function invalidateProfil() {
-  revalidateTag(TAG());
+export async function invalidateProfil() {
+  revalidateTag(TAG(await aktuellerHaushalt("Profil-Zwischenspeicher")));
 }
 
 /**
@@ -78,37 +83,54 @@ export function beideNamen(p: HaushaltProfil): string {
 }
 
 async function ladeProfil(): Promise<HaushaltProfil> {
-  const emails = parseAllowlist(process.env.ALLOWED_EMAILS);
   const [users, kindWert] = await Promise.all([
-    prisma.user.findMany({ select: { email: true, name: true, slot: true } }),
+    prisma.user.findMany({
+      // Wer zuerst da war, ist Person A. Das ist keine Rangfolge, sondern die
+      // einzige Reihenfolge, die sich nicht mehr ändert — Namen und Adressen
+      // dürfen das.
+      orderBy: [{ createdAt: "asc" }, { email: "asc" }],
+      select: { email: true, name: true, slot: true },
+    }),
     prisma.appSetting.findFirst({ where: { key: KIND_SCHLUESSEL } }),
   ]);
-  // Ein Platz-Wert ist kein Name. Steht er in der Spalte, gilt der Name als
-  // nicht gesetzt — dann fragt der Assistent danach, statt ihn anzuzeigen.
-  const nameFuer = new Map(
-    users.map((u) => [u.email.toLowerCase(), istPlatzWert(u.name) ? null : u.name] as const),
-  );
-  const slotFuer = new Map(users.map((u) => [u.email.toLowerCase(), u.slot]));
 
-  const erwachsene: PersonProfil[] = emails.map((email, i) => ({
-    // Die Reihenfolge der Allowlist bestimmt den Platz. Wer schon einen in
-    // der Datenbank hat, behält ihn — sonst verlören Aufgaben ihre Zuordnung,
-    // sobald jemand die Umgebungsvariable umsortiert.
-    slot: (slotFuer.get(email) as Platz | null) ?? platzNachReihenfolge(i),
-    name: nameFuer.get(email) ?? notnameAusEmail(email),
-    email,
+  const erwachsene: PersonProfil[] = users.map((u, i) => ({
+    // Wer schon einen Platz in der Datenbank hat, behält ihn — sonst verlören
+    // Aufgaben und Betreuungen ihre Zuordnung, sobald jemand dazukommt.
+    slot: (u.slot as Platz | null) ?? platzNachReihenfolge(i),
+    // Ein Platz-Wert ist kein Name. Steht er in der Spalte, gilt der Name als
+    // nicht gesetzt — dann fragt der Assistent danach, statt ihn anzuzeigen.
+    name: !u.name || istPlatzWert(u.name) ? notnameAusEmail(u.email) : u.name,
+    email: u.email.toLowerCase(),
   }));
 
   return { erwachsene, kind: kindWert?.value?.trim() || KIND_VORGABE };
 }
 
-const geladen = unstable_cache(ladeProfil, ["haushalt-profil"], {
-  revalidate: 300,
-  tags: [TAG()],
-});
+/**
+ * Ein Zwischenspeicher je Haushalt — Schlüssel und Marke tragen ihn beide.
+ * Ohne das teilten sich zwei Haushalte denselben Eintrag, und die zweite
+ * Familie sähe die Namen der ersten.
+ */
+const lader = new Map<string, () => Promise<HaushaltProfil>>();
+
+function ladeFuer(haushalt: string) {
+  const vorhanden = lader.get(haushalt);
+  if (vorhanden) return vorhanden;
+  const neu = unstable_cache(
+    // Was zwischengespeichert wird, läuft nicht zwingend im Kontext der
+    // Anfrage, die es angefordert hat — der Haushalt wird deshalb ausdrücklich
+    // wieder gesetzt.
+    () => mitHaushalt(haushalt, ladeProfil),
+    ["haushalt-profil", haushalt],
+    { revalidate: 300, tags: [TAG(haushalt)] },
+  );
+  lader.set(haushalt, neu);
+  return neu;
+}
 
 export async function haushaltProfil(): Promise<HaushaltProfil> {
-  return geladen();
+  return ladeFuer(await aktuellerHaushalt("Haushaltsprofil"))();
 }
 
 /** Der Platz der angemeldeten Person — der Einstieg für fast jede Aktion. */
@@ -140,14 +162,28 @@ export async function stelleUserSicher(email: string) {
   }
   // Beim Nutzer steht der Haushalt ausdrücklich da und wird nicht eingesetzt:
   // Wer zu wem gehört, ist die eine Zuordnung, die man sehen können muss.
-  return prisma.user.create({
+  const angelegt = await prisma.user.create({
     data: {
       householdId: await aktuellerHaushalt("stelleUserSicher"),
       email: adresse,
-      name: eintrag?.name ?? notnameAusEmail(adresse),
-      slot: eintrag?.slot ?? PLATZ_A,
+      name: notnameAusEmail(adresse),
+      slot: freierPlatz(profil),
     },
   });
+  await invalidateProfil();
+  return angelegt;
+}
+
+/**
+ * Der Platz, den in diesem Haushalt noch niemand hat.
+ *
+ * Zwei Erwachsene teilen sich eine Wohnung; kommt wider Erwarten ein dritter
+ * dazu, bekommt er Platz A. Das ist keine gute Antwort, aber eine ehrliche —
+ * besser als ein Platz, der nirgends vorgesehen ist und dann überall fehlt.
+ */
+function freierPlatz(profil: HaushaltProfil): Platz {
+  const belegt = new Set(profil.erwachsene.map((e) => e.slot));
+  return platzNachReihenfolge(belegt.has(PLATZ_A) ? 1 : 0);
 }
 
 /** Den Namen des Kindes setzen. Leer heißt: zurück zur neutralen Vorgabe. */
@@ -162,5 +198,5 @@ export async function setKindName(name: string): Promise<void> {
   } else {
     await prisma.appSetting.create({ data: { key: KIND_SCHLUESSEL, value: wert } });
   }
-  invalidateProfil();
+  await invalidateProfil();
 }

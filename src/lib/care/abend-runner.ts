@@ -2,8 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getRangeData } from "@/lib/calendar/range-data";
 import { startOfDayBerlin, dayKey, formatTime } from "@/lib/calendar/format";
-import { parseAllowlist } from "@/lib/auth/allowlist";
-import { stelleUserSicher } from "@/lib/haushalt/profil";
+import { haushaltProfil, stelleUserSicher } from "@/lib/haushalt/profil";
 import { notifyUserId } from "@/lib/push/notify";
 
 /**
@@ -49,8 +48,9 @@ export async function runCareAbend(now: Date = new Date()): Promise<AbendSummary
   const { occurrences } = await getRangeData(now, bis);
 
   // Beide Nutzerzeilen sicherstellen — Pushes dürfen nie ins Leere gehen.
+  const profil = await haushaltProfil();
   const nutzer = await Promise.all(
-    parseAllowlist(process.env.ALLOWED_EMAILS).map((email) => stelleUserSicher(email)),
+    profil.erwachsene.map(({ email }) => stelleUserSicher(email)),
   );
 
   for (const a of offene) {

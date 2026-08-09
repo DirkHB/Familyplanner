@@ -74,8 +74,7 @@ export async function runWeeklyPlan(userId: string | null, now: Date = new Date(
 
 /** Sonntagabend-Push „Eure Woche" an beide (Worker, So 19:00). */
 export async function runWeeklySummaryPush(): Promise<{ pushed: number }> {
-  const { parseAllowlist } = await import("@/lib/auth/allowlist");
-  const { stelleUserSicher } = await import("@/lib/haushalt/profil");
+  const { haushaltProfil, stelleUserSicher } = await import("@/lib/haushalt/profil");
   const { notifyUserId } = await import("@/lib/push/notify");
   const { aiConfigured } = await import("./client");
 
@@ -90,7 +89,8 @@ export async function runWeeklySummaryPush(): Promise<{ pushed: number }> {
   }
 
   let pushed = 0;
-  for (const email of parseAllowlist(process.env.ALLOWED_EMAILS)) {
+  const profil = await haushaltProfil();
+  for (const { email } of profil.erwachsene) {
     const user = await stelleUserSicher(email);
     pushed += await notifyUserId(user.id, {
       title: "Eure Woche 🌱",

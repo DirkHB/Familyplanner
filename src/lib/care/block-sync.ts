@@ -203,7 +203,7 @@ export async function synchronisiereTag(occurrenceDate: Date): Promise<void> {
       .catch(() => null);
   }
 
-  if (geaendert) invalidateKalender();
+  if (geaendert) await invalidateKalender();
 }
 
 /** Einen einzelnen Soll-Block schreiben. `true`, wenn sich etwas geändert hat. */
@@ -403,5 +403,5 @@ export async function removeCareBlockByUid(uid: string): Promise<void> {
   }
   await prisma.event.deleteMany({ where: { uid } });
   await prisma.careAssignment.updateMany({ where: { blockUid: uid }, data: { blockUid: null } });
-  invalidateKalender();
+  await invalidateKalender();
 }

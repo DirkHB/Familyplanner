@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { parseAllowlist } from "@/lib/auth/allowlist";
-import { stelleUserSicher } from "@/lib/haushalt/profil";
+import { haushaltProfil, stelleUserSicher } from "@/lib/haushalt/profil";
 import { notifyUserId } from "@/lib/push/notify";
 import { dayKey, greetingFor } from "@/lib/calendar/format";
 import { briefingText } from "./build";
@@ -27,7 +26,8 @@ export async function runBriefing(
 
   const title = kind === "morgen" ? `${greetingFor(now)} ☀️` : "Eure neue Woche 🌱";
   let pushed = 0;
-  for (const email of parseAllowlist(process.env.ALLOWED_EMAILS)) {
+  const profil = await haushaltProfil();
+  for (const { email } of profil.erwachsene) {
     const user = await stelleUserSicher(email);
     pushed += await notifyUserId(user.id, {
       title,
