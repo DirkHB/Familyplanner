@@ -16,17 +16,17 @@ anzeigen", das kann Apple Kalender. Sondern vorausdenken und nachhalten.
 
 ## Was du von Dirk bekommst
 
-Eine **Einladungsmail**. Mehr nicht — keine Adresse zum Merken, kein Passwort,
-keine Registrierung.
+Eine **Einladung** — als Mail, oder einfach als Link per Nachricht. Mehr nicht:
+keine Adresse zum Merken, kein Passwort, keine Registrierung.
 
-Der Link darin funktioniert einmal, gilt zwei Wochen und nur für die Adresse,
-an die er ging. Weiterleiten bringt also nichts.
+Der Link funktioniert einmal, gilt zwei Wochen und nur für die Adresse, an die
+die Einladung ging. Weiterleiten bringt also nichts.
 
 ---
 
 ## Schritt 1 — Anmelden
 
-1. Den Link aus der Einladungsmail antippen.
+1. Den Einladungslink antippen (aus der Mail oder aus der Nachricht von Dirk).
 2. Auf **Einladung annehmen** tippen.
 3. Du bekommst eine zweite Mail mit einem Anmeldelink. **Den anklicken.**
 

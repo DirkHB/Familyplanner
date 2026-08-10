@@ -22,13 +22,27 @@ nachlesen will, findet es in der Git-Geschichte.
 3. Fertig. Du musst nichts weiter tun — nicht im Code, nicht in Sliplane,
    nicht in der Datenbank.
 
-Die andere Seite bekommt eine Mail mit einem Link. Der Link
+Die andere Seite bekommt eine Mail mit einem Link.
+
+**Der Link steht auch bei dir auf dem Bildschirm** — direkt unter der
+Bestätigung, mit einem Knopf zum Kopieren. Er ist genau derselbe, den die Mail
+enthält. Du kannst ihn also per WhatsApp, iMessage oder wie auch immer
+weitergeben, wenn dir das lieber ist oder wenn die Mail nicht ankommt. Der Link
+ist der Zugang; die Mail ist nur der Bote.
+
+Er steht dort **einmal**, direkt nach dem Verschicken. Danach nicht mehr: In
+der Datenbank liegt nur sein Abdruck, wiederherstellen kann ihn niemand. Ist er
+weg, lade dieselbe Adresse einfach noch einmal ein — das ersetzt die alte
+Einladung und zeigt dir einen frischen Link.
+
+Der Link
 
 - funktioniert **einmal**,
 - gilt **zwei Wochen**,
-- und nur die Adresse, an die er ging, kann ihn einlösen. Weiterleiten bringt
-  nichts: Wer ihn antippt, löst nur aus, dass eine Anmeldemail an die
-  ursprüngliche Adresse geht.
+- und nur die Adresse, an die er ging, kann ihn einlösen. Auf welchem Weg er
+  dorthin kommt, ist egal — als Mail oder von dir weitergereicht. Landet er bei
+  jemand anderem, nützt er dem nichts: Wer ihn antippt, löst nur aus, dass eine
+  Anmeldemail an die ursprüngliche Adresse geht.
 
 Beim Einlösen entsteht ein **neuer Haushalt**. Die Person landet direkt im
 Einrichtungs-Assistenten: Namen, Kalender verbinden, die zweite Person
@@ -38,6 +52,11 @@ brauchst du nicht noch einmal gefragt zu werden.
 Eine offene Einladung kannst du auf derselben Seite zurücknehmen, solange sie
 niemand eingelöst hat. Dieselbe Adresse noch einmal einzuladen ersetzt die
 alte Einladung; es liegen nie zwei gültige Links für einen Menschen herum.
+
+**Wenn die Mail nicht ankommt:** Nimm den Link vom Bildschirm — damit ist
+niemand aufgehalten. Zum Nachsehen, woran es lag, steht der Versand im
+Resend-Dashboard unter „Emails", und was die App selbst nicht geschafft hat,
+steht im Sliplane-Log des App-Dienstes als Zeile mit `"service":"einladung"`.
 
 ---
 
