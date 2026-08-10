@@ -82,7 +82,7 @@ eintragen, auf „Verbinden". Es wird verschlüsselt gespeichert, und du kannst 
 auf appleid.apple.com jederzeit wieder löschen — dann hat die App keinen
 Zugriff mehr.
 
-**Danach zwei Handgriffe in den Einstellungen — bitte nicht überspringen:**
+**Danach drei Handgriffe in den Einstellungen — bitte nicht überspringen:**
 
 - **Alle** deine iCloud-Kalender kommen beim Verbinden herein, auch der
   Arbeitskalender und alles andere. Schalte aus, was in der gemeinsamen Woche
@@ -90,6 +90,10 @@ Zugriff mehr.
 - Unter **„Neue Termine landen in"** wählst du, in welchen deiner Kalender die
   App schreibt — normalerweise dein privater, nicht der Arbeitskalender.
   Arbeitstermine legst du ja ohnehin bei der Arbeit an.
+- **„Eintrag im Kalender"** ist bei euch zunächst **aus**. Angeschaltet trägt
+  die App jede Betreuungszusage als „👶 Kind · Name" in den Kalender ein —
+  sichtbar auf dem Sperrbildschirm, ohne die App zu öffnen. Wir möchten das
+  nicht ungefragt in euren Kalender schreiben, deshalb entscheidet ihr.
 
 Beim Anlegen steht dann über dem Knopf **„Kalender von …"**. Das steht auf dir
 und wechselt mit einem Tipp zu Yvonne — für den Termin, den du für sie
@@ -186,9 +190,11 @@ Beschreibung.
 
 ## Zwei Dinge, die du wissen solltest
 
-**Eure Daten liegen getrennt von unseren.** Eigene Datenbank, eigene App —
-Dirk und Constanze sehen eure Termine nicht in ihrer App, und ihr ihre nicht.
+**Eure Daten sind von unseren getrennt.** Ihr benutzt dieselbe App wie Dirk und
+Constanze, aber jede Zeile in der Datenbank gehört genau einem Haushalt, und
+jede Abfrage filtert danach. Sie sehen eure Termine nicht, und ihr ihre nicht.
 
 **Aber:** Dirk betreibt den Server und hat damit technisch Zugriff auf die
-Datenbank. Das ist bei jedem, der etwas für jemanden hostet, so — er sagt es
-lieber vorher, als dass ihr es später herausfindet.
+Datenbank. Die Trennung schützt die Familien voreinander, nicht vor ihm. Das
+ist bei jedem, der etwas für jemanden hostet, so — er sagt es lieber vorher,
+als dass ihr es später herausfindet.
