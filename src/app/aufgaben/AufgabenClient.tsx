@@ -9,6 +9,7 @@ import { containersByList, NEUE_LISTE, type TodoVM } from "@/lib/todos/group";
 import { MAX_NAME_LAENGE } from "@/lib/names";
 import Link from "next/link";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
+import { FabKnopf } from "@/components/app/FabErfassen";
 import { createTodoListAction } from "@/app/einstellungen/actions";
 import { useRouter } from "next/navigation";
 import { OHNE_LISTE as OHNE } from "@/lib/todos/group";
@@ -55,11 +56,13 @@ export function AufgabenClient({
 }) {
   const [filter, setFilter] = useState<Filter>("alle");
   const [showForm, setShowForm] = useState(false);
+  const formularRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [, start] = useTransition();
 
   /* --------------- Ziehen zwischen Listen (Pointer, auch Touch) --------------- */
   const containerEls = useRef(new Map<string, HTMLElement>());
+
   const [zug, setZug] = useState<Zug | null>(null);
   const [zugZiel, setZugZiel] = useState<string | null>(null);
   const [bearbeite, setBearbeite] = useState<TodoVM | null>(null);
@@ -79,6 +82,15 @@ export function AufgabenClient({
     }
     return null;
   }
+  /**
+   * Das Formular steht oben, der Knopf schwebt unten rechts. Wer weit unten
+   * in einer langen Liste tippt, sähe sonst gar nichts passieren.
+   */
+  useEffect(() => {
+    if (!showForm) return;
+    formularRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showForm]);
+
   function zugStart(e: React.PointerEvent, t: TodoVM, von: string) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -116,28 +128,24 @@ export function AufgabenClient({
   return (
     <AppShell
       floating={
-        <AnimatePresence>
-          {einkaufFrage && (
-            <EinkaufNachfrage treffer={einkaufFrage} onWeg={() => setEinkaufFrage(null)} />
-          )}
-        </AnimatePresence>
+        <>
+          <AnimatePresence>
+            {einkaufFrage && (
+              <EinkaufNachfrage treffer={einkaufFrage} onWeg={() => setEinkaufFrage(null)} />
+            )}
+          </AnimatePresence>
+          <FabKnopf
+            onClick={() => setShowForm((s) => !s)}
+            label="Aufgabe hinzufügen"
+            offen={showForm}
+          />
+        </>
       }
     >
       <>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-display text-4xl">Aufgaben</h1>
-            <p className="mt-2 text-ink-muted">Was ansteht — und wer dran ist</p>
-          </div>
-          <button
-            onClick={() => setShowForm((s) => !s)}
-            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-surface shadow-card"
-            aria-label="Aufgabe hinzufügen"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
-          </button>
+        <div>
+          <h1 className="font-display text-4xl">Aufgaben</h1>
+          <p className="mt-2 text-ink-muted">Was ansteht — und wer dran ist</p>
         </div>
 
         {/* Personenfilter und „+ Liste" in einer Reihe: Der Chip steht damit
@@ -166,12 +174,17 @@ export function AufgabenClient({
           </span>
         </div>
 
-        {showForm && <CreateForm me={me} todoLists={todoLists} onDone={() => setShowForm(false)} />}
+        {/* Das Formular steht oben, der Knopf unten rechts. Wer weit unten in
+            einer langen Liste tippt, sähe sonst gar nichts passieren —
+            deshalb holt die Seite es sich in den Blick. */}
+        <div ref={formularRef}>
+          {showForm && <CreateForm me={me} todoLists={todoLists} onDone={() => setShowForm(false)} />}
+        </div>
 
         {nichtsOffen && !showForm && (
           <div className="mt-6 rounded-card bg-surface p-6 text-center shadow-card">
             <p className="font-display text-xl">Nichts offen</p>
-            <p className="mt-2 text-ink-muted">Leg oben rechts eine Aufgabe an — für dich oder den anderen.</p>
+            <p className="mt-2 text-ink-muted">Leg unten rechts eine Aufgabe an — für dich oder den anderen.</p>
           </div>
         )}
 
@@ -323,13 +336,18 @@ function EinkaufNachfrage({ treffer, onWeg }: { treffer: EinkaufTreffer; onWeg: 
     return () => clearTimeout(t);
   }, [erledigt, onWeg]);
 
+  /*
+   * Eine Reihe über dem „+": 6rem ist dessen Unterkante, 3.5rem seine Höhe,
+   * 0.75rem der Abstand. Auf gleicher Höhe verdeckte der Knopf das rechte
+   * Ende des Streifens — und damit gelegentlich das „Auch abhaken".
+   */
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 16 }}
       className="absolute inset-x-0 z-30 flex justify-center px-5"
-      style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+      style={{ bottom: "calc(6rem + 3.5rem + 0.75rem + env(safe-area-inset-bottom))" }}
     >
       <div className="flex max-w-full items-center gap-3 rounded-card bg-surface px-4 py-3 shadow-hero">
         {erledigt ? (
