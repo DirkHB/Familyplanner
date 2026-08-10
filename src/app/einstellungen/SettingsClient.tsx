@@ -446,6 +446,7 @@ function CareBlocksZeile({ an }: { an: boolean }) {
         <>
           Wer übernimmt, bekommt „👶 Kind · Name" in den gemeinsamen Kalender — sichtbar auf
           dem Sperrbildschirm. Nimmst du eine Zusage zurück, verschwindet der Eintrag.
+          Der Schalter wirkt sofort auch auf alles, was schon abgesprochen ist.
           <BloeckeNeuSchreiben />
         </>
       }

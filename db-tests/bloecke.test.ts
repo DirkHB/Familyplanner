@@ -213,4 +213,44 @@ describe("Betreuungsblöcke für einen Tag", () => {
     expect(anlass?.anlaesse.sort()).toEqual(["Ausweisdokumente", "Bestätigung"]);
     expect(anlass?.responsibleUserId).toBe(conny);
   });
+
+  it("rechnet nur die Tage neu, an denen etwas abgesprochen ist", async () => {
+    // Der Anlass: Jemand ändert seinen Namen. Im Blocktitel steht er mit
+    // drin, also müssen die Blöcke neu geschrieben werden — aber eben nur
+    // die, die es gibt, nicht hundertzwölf Tage am Stück.
+    const { schreibeBetroffeneBloeckeNeu } = await import("@/lib/care/block-sync");
+    const jetzt = new Date("2026-08-10T10:00:00.000Z");
+
+    await termin("a", "Zahnarzt", 9, 10);
+    await betreuung("a", dirk);
+    // Zweiter Tag, damit sich „ein Tag" nicht zufällig richtig anfühlt.
+    await prisma.careAssignment.create({
+      data: {
+        householdId: HAUSHALT, eventUid: "b", occurrenceDate: new Date("2026-08-12T00:00:00.000Z"),
+        responsibleUserId: conny, status: "geklaert",
+      },
+    });
+    // Weit außerhalb des Zeitraums — was ein halbes Jahr her ist, liest
+    // niemand mehr nach.
+    await prisma.careAssignment.create({
+      data: {
+        householdId: HAUSHALT, eventUid: "c", occurrenceDate: new Date("2026-01-05T00:00:00.000Z"),
+        responsibleUserId: dirk, status: "geklaert",
+      },
+    });
+
+    const r = await imHaushalt(() => schreibeBetroffeneBloeckeNeu(jetzt));
+    expect(r.tage).toBe(2);
+  });
+
+  it("fasst zwei Absprachen am selben Tag zu einem Lauf zusammen", async () => {
+    const { schreibeBetroffeneBloeckeNeu } = await import("@/lib/care/block-sync");
+    await termin("a", "Bestätigung", 11, 12);
+    await termin("b", "Ausweisdokumente", 11, 12);
+    await betreuung("a", conny);
+    await betreuung("b", conny);
+
+    const r = await imHaushalt(() => schreibeBetroffeneBloeckeNeu(TAG));
+    expect(r.tage).toBe(1);
+  });
 });

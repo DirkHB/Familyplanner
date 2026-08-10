@@ -16,7 +16,7 @@ import { auth } from "@/auth";
  */
 export async function ladeHaushaltEinAction(
   email: string,
-): Promise<{ ok: boolean; grund?: string }> {
+): Promise<{ ok: boolean; link?: string; mailRaus?: boolean; grund?: string }> {
   const wache = await nurVerwaltung();
   if (!wache.ok) return wache;
 
@@ -36,14 +36,39 @@ export async function ladeHaushaltEinAction(
   });
   if (schonDa) return { ok: false, grund: "Diese Adresse ist schon dabei." };
 
+  /*
+   * Erst die Einladung, dann die Mail — und beide getrennt betrachtet.
+   *
+   * Vorher lag beides in einem try: Ging die Mail nicht raus, hieß es „hat
+   * nicht geklappt", obwohl die Einladung längst gültig war. Man stand dann
+   * mit einem Zugang da, den niemand kennt, und ohne einen Grund, der
+   * irgendwo stünde.
+   */
+  const { token } = await ladeEin({ email: adresse, householdId: null });
+  const link = linkFuer(token);
+
   try {
-    const { token } = await ladeEin({ email: adresse, householdId: null });
-    const mail = neuerHaushaltEmail({ vonName: wache.name, url: linkFuer(token) });
+    const mail = neuerHaushaltEmail({ vonName: wache.name, url: link });
     await sendEmail({ to: adresse, subject: mail.subject, html: mail.html, text: mail.text });
     revalidatePath("/einladungen");
-    return { ok: true };
-  } catch {
-    return { ok: false, grund: "Die Mail ging nicht raus. Versuch es gleich noch einmal." };
+    return { ok: true, link, mailRaus: true };
+  } catch (err) {
+    // Der Grund gehört ins Log, nicht ins Nichts. Resend sagt genau, was es
+    // nicht mochte — bisher hat das niemand je zu sehen bekommen.
+    console.error(
+      JSON.stringify({
+        service: "einladung",
+        an: adresse,
+        message: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    revalidatePath("/einladungen");
+    return {
+      ok: true,
+      link,
+      mailRaus: false,
+      grund: "Die Einladung gilt, aber die Mail ging nicht raus. Schick den Link selbst.",
+    };
   }
 }
 

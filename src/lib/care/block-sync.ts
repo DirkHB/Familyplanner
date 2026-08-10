@@ -301,6 +301,36 @@ export async function schreibeBloeckeNeu(
 }
 
 /**
+ * Nur die Tage neu rechnen, an denen überhaupt etwas abgesprochen ist.
+ *
+ * Der große Reparaturweg geht stur über hundertzwölf Tage — richtig, wenn man
+ * nicht weiß, was kaputt ist. Für die alltäglichen Anlässe (jemand ändert
+ * einen Namen, jemand legt den Schalter um) ist das zu grob: Es sind fast
+ * immer eine Handvoll Tage, und der Rest ist Warten.
+ *
+ * Der Zeitraum bleibt derselbe wie beim Knopf. Was länger als vier Wochen her
+ * ist, liest ohnehin niemand mehr nach.
+ */
+export async function schreibeBetroffeneBloeckeNeu(
+  jetzt: Date = new Date(),
+): Promise<{ tage: number }> {
+  const von = tagesAnker(new Date(jetzt.getTime() - 28 * 86_400_000));
+  const bis = tagesAnker(new Date(jetzt.getTime() + 84 * 86_400_000));
+
+  const tage = await prisma.careAssignment.findMany({
+    where: { occurrenceDate: { gte: von, lte: bis } },
+    distinct: ["occurrenceDate"],
+    select: { occurrenceDate: true },
+    orderBy: { occurrenceDate: "asc" },
+  });
+
+  for (const t of tage) {
+    await synchronisiereTag(t.occurrenceDate).catch(() => null);
+  }
+  return { tage: tage.length };
+}
+
+/**
  * Block anlegen oder aktualisieren.
  *
  * Die Aufrufer kennen weiter nur „hier hat sich eine Betreuung geändert" — was

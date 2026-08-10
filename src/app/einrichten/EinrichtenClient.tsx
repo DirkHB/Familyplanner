@@ -16,6 +16,7 @@ import {
   ziehPartnerEinladungZurueckAction,
   einrichtungFertigAction,
 } from "./actions";
+import { LinkZumWeitergeben } from "@/components/ui/LinkZumWeitergeben";
 import type { EinrichtungStatus, SchrittName } from "@/lib/haushalt/einrichtung";
 
 /**
@@ -285,6 +286,7 @@ function SchrittKalender({ erledigt }: { erledigt: boolean }) {
 function SchrittPartner({ status }: { status: EinrichtungStatus }) {
   const [pending, start] = useTransition();
   const [gesagt, setGesagt] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const router = useRouter();
 
@@ -343,10 +345,13 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
         onClick={() =>
           start(async () => {
             const r = await ladePartnerEinAction(email);
-            setGesagt(r.ok ? "Einladung ist raus ✓" : (r.grund ?? "Hat nicht geklappt."));
+            setGesagt(r.grund ?? (r.mailRaus ? "Einladung ist raus ✓" : "Hat nicht geklappt."));
+            setLink(r.link ?? null);
             // Erst danach steht im Schritt „Einladung ist unterwegs" — sonst
-            // sieht man die Rückmeldung, aber nicht den neuen Zustand.
-            if (r.ok) router.refresh();
+            // sieht man die Rückmeldung, aber nicht den neuen Zustand. Bei
+            // klemmender Mail bleibt der Schritt stehen, damit der Link
+            // sichtbar ist: Er ist der einzige Weg, den es dann noch gibt.
+            if (r.ok && r.mailRaus) router.refresh();
           })
         }
         className="rounded-pill bg-ink px-5 py-3 font-medium text-surface disabled:opacity-60"
@@ -354,6 +359,12 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
         {pending ? "Schicke …" : "Einladung schicken"}
       </button>
       {gesagt && <p className="text-sm text-ink-muted">{gesagt}</p>}
+      {link && (
+        <LinkZumWeitergeben
+          link={link}
+          hinweis="Falls die Mail nicht ankommt: Dieser Link tut dasselbe."
+        />
+      )}
     </div>
   );
 }

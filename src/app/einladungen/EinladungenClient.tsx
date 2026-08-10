@@ -8,6 +8,7 @@ import {
   ziehEinladungZurueckAction,
   loescheHaushaltAction,
 } from "./actions";
+import { LinkZumWeitergeben } from "@/components/ui/LinkZumWeitergeben";
 
 type OffeneEinladung = { id: string; email: string; bis: string; abgelaufen: boolean };
 type Haushalt = {
@@ -30,6 +31,7 @@ export function EinladungenClient({
 }) {
   const [email, setEmail] = useState("");
   const [gesagt, setGesagt] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   return (
@@ -78,7 +80,10 @@ export function EinladungenClient({
               onClick={() =>
                 start(async () => {
                   const r = await ladeHaushaltEinAction(email);
-                  setGesagt(r.ok ? "Einladung ist raus ✓" : (r.grund ?? "Hat nicht geklappt."));
+                  setGesagt(
+                    r.grund ?? (r.mailRaus ? "Einladung ist raus ✓" : "Hat nicht geklappt."),
+                  );
+                  setLink(r.link ?? null);
                   if (r.ok) setEmail("");
                 })
               }
@@ -87,6 +92,14 @@ export function EinladungenClient({
               {pending ? "Schicke …" : "Einladung schicken"}
             </motion.button>
             {gesagt && <p className="text-sm text-ink-muted">{gesagt}</p>}
+            {/* Der Link steht hier einmal — falls die Mail nicht ankommt, und
+                weil man ihn manchmal lieber selbst schickt. */}
+            {link && (
+              <LinkZumWeitergeben
+                link={link}
+                hinweis="Falls die Mail nicht ankommt: Dieser Link tut dasselbe."
+              />
+            )}
           </div>
         </section>
 

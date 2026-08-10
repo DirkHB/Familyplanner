@@ -184,6 +184,19 @@ export async function setHaushaltNamenAction(input: {
   }
   await setKindName(input.kind);
   await invalidateProfil();
+
+  /*
+   * Im Kalender steht der Name mit drin („👶 Nicolas · Dirk"). Wer ihn hier
+   * ändert, hat ihn dort noch nicht geändert — und merkt das erst Tage
+   * später, wenn er in Apple Kalender schaut. Deshalb schreiben wir die
+   * betroffenen Blöcke gleich neu.
+   *
+   * Der Fehler beim Schreiben wird verschluckt: Der Name ist gespeichert, das
+   * ist das, wonach gefragt wurde. Ist iCloud gerade nicht erreichbar, holt
+   * es der Knopf „Blöcke neu schreiben" nach.
+   */
+  const { schreibeBetroffeneBloeckeNeu } = await import("@/lib/care/block-sync");
+  await schreibeBetroffeneBloeckeNeu().catch(() => null);
   revalidatePath("/einstellungen");
   revalidatePath("/woche");
   return { ok: true };
@@ -217,13 +230,29 @@ export async function bloeckeNeuSchreibenAction(): Promise<{ ok: boolean; tage: 
   return { ok: true, tage: r.tage };
 }
 
+/**
+ * Betreuungsblöcke ein- oder ausschalten.
+ *
+ * Der Schalter allein tat bisher nichts am Kalender: Einschalten legte für
+ * bestehende Absprachen keinen Eintrag an, Ausschalten ließ die alten stehen.
+ * Ein Schalter, der erst beim nächsten Anfassen wirkt, ist keiner — man dreht
+ * daran, schaut in den Kalender und glaubt, es sei kaputt.
+ *
+ * Beide Richtungen laufen über dieselbe Rechnung: Ist der Schalter aus, ist
+ * der Soll-Stand leer, und derselbe Weg räumt auf, statt zu schreiben.
+ */
 export async function setCareBlocksAction(an: boolean) {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
   const { setFlag, CARE_BLOCKS } = await import("@/lib/settings/store");
   await setFlag(CARE_BLOCKS, an);
+
+  const { schreibeBetroffeneBloeckeNeu } = await import("@/lib/care/block-sync");
+  const r = await schreibeBetroffeneBloeckeNeu().catch(() => ({ tage: 0 }));
+
   revalidatePath("/einstellungen");
-  return { ok: true };
+  revalidatePath("/woche");
+  return { ok: true, tage: r.tage };
 }
 
 /* --------------------------- Aufgabenlisten & Läden --------------------------- */

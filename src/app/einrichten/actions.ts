@@ -24,7 +24,7 @@ import { auth } from "@/auth";
  */
 export async function ladePartnerEinAction(
   email: string,
-): Promise<{ ok: boolean; grund?: string }> {
+): Promise<{ ok: boolean; link?: string; mailRaus?: boolean; grund?: string }> {
   const session = await auth();
   if (!session?.user?.email || !session.user.householdId) {
     return { ok: false, grund: "Nicht angemeldet." };
@@ -82,20 +82,33 @@ export async function ladePartnerEinAction(
   const meine = session.user.email.trim().toLowerCase();
   const vonName = profil.erwachsene.find((e) => e.email === meine)?.name ?? "Jemand";
 
+  // Erst die Einladung, dann die Mail — getrennt, damit ein Postfach-Problem
+  // nicht als „hat nicht geklappt" durchgeht, obwohl der Zugang längst gilt.
+  const { token } = await ladeEin({ email: adresse, householdId: session.user.householdId });
+  const link = linkFuer(token);
+
   try {
-    const { token } = await ladeEin({ email: adresse, householdId: session.user.householdId });
-    const mail = einladungEmail({
-      an: adresse,
-      vonName,
-      kind: profil.kind,
-      url: linkFuer(token),
-    });
+    const mail = einladungEmail({ an: adresse, vonName, kind: profil.kind, url: link });
     await sendEmail({ to: adresse, subject: mail.subject, html: mail.html, text: mail.text });
     revalidatePath("/einrichten");
     revalidatePath("/einstellungen");
-    return { ok: true };
-  } catch {
-    return { ok: false, grund: "Die Mail ging nicht raus. Versuch es gleich noch einmal." };
+    return { ok: true, link, mailRaus: true };
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        service: "einladung",
+        an: adresse,
+        message: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    revalidatePath("/einrichten");
+    revalidatePath("/einstellungen");
+    return {
+      ok: true,
+      link,
+      mailRaus: false,
+      grund: "Die Einladung gilt, aber die Mail ging nicht raus. Schick ihr den Link selbst.",
+    };
   }
 }
 
