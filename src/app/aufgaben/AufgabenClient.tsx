@@ -9,6 +9,7 @@ import { containersByList, NEUE_LISTE, type TodoVM } from "@/lib/todos/group";
 import { MAX_NAME_LAENGE } from "@/lib/names";
 import Link from "next/link";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
+import { DatumFeld } from "@/components/ui/DatumFeld";
 import { FabKnopf } from "@/components/app/FabErfassen";
 import { createTodoListAction } from "@/app/einstellungen/actions";
 import { useRouter } from "next/navigation";
@@ -612,16 +613,12 @@ function TodoBlatt({
           placeholder="Notiz (optional)"
           className="mt-2.5 w-full rounded-card border border-surface-muted bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
         />
+        {/* Dasselbe Feld wie beim Anlegen — daneben stünde sonst dieselbe
+            Frage in zwei verschiedenen Gestalten. */}
+        <div className="mt-2.5">
+          <DatumFeld wert={due} onWert={setDue} />
+        </div>
         <div className="mt-2.5 flex gap-2.5">
-          <label className="block min-w-0 flex-1 text-sm text-ink-muted">
-            Bis wann?
-            <input
-              type="date"
-              value={due}
-              onChange={(e) => setDue(e.target.value)}
-              className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-surface px-3 py-2.5 text-base text-ink outline-none focus:border-accent"
-            />
-          </label>
           <label className="block min-w-0 flex-1 text-sm text-ink-muted">
             Liste
             <select
@@ -688,14 +685,7 @@ function CreateForm({
         className="rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-accent"
       />
       <div className="flex flex-col gap-3">
-        <label className="block text-sm text-ink-muted">
-          Bis wann?
-          <input
-            name="dueDate"
-            type="date"
-            className="mt-1 block w-full min-w-0 appearance-none rounded-card border border-surface-muted bg-bg px-4 py-2.5 text-base text-ink outline-none focus:border-accent"
-          />
-        </label>
+        <DatumFeld name="dueDate" />
         <label className="block text-sm text-ink-muted">
           Wer macht&apos;s?
           <select
