@@ -20,6 +20,40 @@ export async function addItemAction(text: string, store?: string) {
   return { ok: true };
 }
 
+/**
+ * Ein ganzer Zettel auf einmal — „Tomaten, Käse, Brot" oder eine Zeile je
+ * Artikel, alles in dasselbe Geschäft.
+ *
+ * Das Zerlegen passiert auf dem Server, nicht im Browser: Die KI räumt dabei
+ * auf, und ihr Schlüssel bleibt hier. Fällt sie aus, kommt die Liste trotzdem
+ * an — dann eben so, wie sie getippt wurde.
+ *
+ * Zurück kommt, was wirklich angelegt wurde. Der Browser zeigt es an, statt
+ * zu behaupten, es habe schon geklappt: Wer „Milch 1,5%, Brot" eintippt, will
+ * sehen, dass daraus zwei Zeilen wurden und nicht drei.
+ */
+export async function addManyAction(
+  text: string,
+  store?: string,
+): Promise<{ ok: boolean; artikel: string[]; grund?: string }> {
+  const p = await person();
+  if (!p) return { ok: false, artikel: [], grund: "Nicht angemeldet." };
+  if (!text.trim()) return { ok: false, artikel: [], grund: "Da steht noch nichts." };
+
+  const { zerlegeMitKi } = await import("@/lib/ai/einkauf-zerlegen");
+  const { artikel } = await zerlegeMitKi(text);
+  if (artikel.length === 0) {
+    return { ok: false, artikel: [], grund: "Daraus konnte ich nichts machen." };
+  }
+
+  const ziel = store ? storeIdFromGroupKey(store) : null;
+  for (const eintrag of artikel) {
+    await addItem(eintrag, p, ziel);
+  }
+  revalidatePath("/einkauf");
+  return { ok: true, artikel };
+}
+
 export async function toggleItemAction(id: string) {
   const p = await person();
   if (!p) return { ok: false };

@@ -8,6 +8,8 @@ import { SwipeRow } from "@/components/ui/SwipeRow";
 import { AppShell } from "@/components/app/AppShell";
 import { PLATZ_A, PLATZ_B, type Platz as Person } from "@/lib/haushalt/platz";
 import { OHNE_LADEN } from "@/lib/shopping/stores";
+import { FabKnopf } from "@/components/app/FabErfassen";
+import { ErfassenSheet } from "./ErfassenSheet";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
 import { createStoreAction } from "@/app/einstellungen/actions";
 
@@ -45,18 +47,16 @@ export function EinkaufClient({
   suggestions?: string[];
 }) {
   const [usedSuggestions, setUsedSuggestions] = useState<string[]>([]);
-  const [addTo, setAddTo] = useState<string | null>(null);
-  const [storeText, setStoreText] = useState("");
   const router = useRouter();
   const [, start] = useTransition();
   const [override, setOverride] = useState<Record<string, boolean>>({});
   const [removed, setRemoved] = useState<Record<string, boolean>>({});
   const [storeOverride, setStoreOverride] = useState<Record<string, string>>({});
   const [pendingAdds, setPendingAdds] = useState<string[]>([]);
-  const [text, setText] = useState("");
   const [queued, setQueued] = useState(0);
   const [online, setOnline] = useState(true);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [erfassen, setErfassen] = useState(false);
   const [hoverStore, setHoverStore] = useState<string | null>(null);
   const sectionEls = useRef(new Map<string, HTMLElement>());
 
@@ -131,12 +131,6 @@ export function EinkaufClient({
       catch { enqueue(localQueueStore, op); setPendingAdds((p) => [...p, t]); setQueued((n) => n + 1); }
     });
   }
-  function add(e: React.FormEvent) {
-    e.preventDefault();
-    const t = text.trim();
-    setText("");
-    addText(t);
-  }
   function addSuggestion(t: string) {
     setUsedSuggestions((u) => [...u, t]);
     addText(t);
@@ -185,47 +179,26 @@ export function EinkaufClient({
     setHoverStore(null);
   }
 
-  const addBar = (
-    <form
-      onSubmit={add}
-      className="relative z-30 mx-auto w-full max-w-md px-5 pb-3"
-    >
-      {suggestions.filter((x) => !usedSuggestions.includes(x)).length > 0 && (
-        <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-0.5">
-          {suggestions.filter((x) => !usedSuggestions.includes(x)).map((x) => (
-            <button
-              key={x}
-              type="button"
-              onClick={() => addSuggestion(x)}
-              className="shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm text-ink shadow-card"
-            >
-              + {x}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-hero">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Was fehlt noch?"
-          className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-ink-muted/70"
-        />
-        <button
-          type="submit"
-          aria-label="Hinzufügen"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-surface"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-    </form>
-  );
+  /*
+   * Die Vorschläge standen bis eben über dem Eingabefeld unten. Das Feld ist
+   * weg — Erfassen passiert jetzt im Blatt hinter dem „+". Die Vorschläge
+   * bleiben aber sichtbar: Sie sind ein Tipp, keine Eingabe, und wer sie erst
+   * aufklappen muss, sieht sie nie.
+   */
+  const offeneVorschlaege = suggestions.filter((x) => !usedSuggestions.includes(x));
+
+  /** Die Geschäfte für das Blatt — dieselben Fächer, die auch die Liste zeigt. */
+  const geschaefte = sections.map((s) => ({ key: s.store, label: s.label }));
 
   return (
-    <AppShell bottomBar={addBar} floating={drag ? <DragGhost drag={drag} /> : null}>
+    <AppShell
+      floating={
+        <>
+          {drag && <DragGhost drag={drag} />}
+          <FabKnopf onClick={() => setErfassen(true)} label="Sachen auf die Liste setzen" />
+        </>
+      }
+    >
       <>
         <h1 className="font-display text-4xl">Einkaufsliste</h1>
         <p className="mt-2 flex items-center gap-2 text-ink-muted">
@@ -235,6 +208,21 @@ export function EinkaufClient({
           </span>
           Gemeinsam mit {partnerName} · {openCount} offen
         </p>
+        {offeneVorschlaege.length > 0 && (
+          <div className="no-scrollbar mt-4 flex gap-1.5 overflow-x-auto pb-0.5">
+            {offeneVorschlaege.map((x) => (
+              <button
+                key={x}
+                type="button"
+                onClick={() => addSuggestion(x)}
+                className="shrink-0 rounded-pill bg-surface px-3 py-1.5 text-sm text-ink shadow-card"
+              >
+                + {x}
+              </button>
+            ))}
+          </div>
+        )}
+
         {(!online || queued > 0) && (
           <div className="mt-3 inline-flex items-center gap-2 rounded-pill bg-counter-light px-3 py-1.5 text-sm font-medium text-signal">
             <span className="h-2 w-2 rounded-full bg-signal" />
@@ -256,41 +244,13 @@ export function EinkaufClient({
                   : ""
               }`}
             >
-              <div className="mb-1 flex items-center justify-between px-1">
+              {/* Hier saß bis eben ein zweites, kleineres „+" je Fach mit
+                  eigenem Eingabefeld. Zwei verschieden aussehende Plus-Zeichen
+                  auf einer Seite sind zwei Knöpfe für dieselbe Sache — und das
+                  Geschäft wählt man jetzt im Blatt, in einem Tipp. */}
+              <div className="mb-1 px-1">
                 <p className="eyebrow text-accent">{s.label}</p>
-                <button
-                  onClick={() => { setAddTo(addTo === s.store ? null : s.store); setStoreText(""); }}
-                  aria-label={`Zu ${s.label} hinzufügen`}
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-muted text-ink-muted"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-                  </svg>
-                </button>
               </div>
-              {addTo === s.store && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const t = storeText.trim();
-                    setStoreText("");
-                    setAddTo(null);
-                    addText(t, s.store);
-                  }}
-                  className="mb-2 flex gap-2 px-1"
-                >
-                  <input
-                    autoFocus
-                    value={storeText}
-                    onChange={(e) => setStoreText(e.target.value)}
-                    placeholder={`Was fehlt bei ${s.label}?`}
-                    className="min-w-0 flex-1 rounded-pill border border-surface-muted bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
-                  />
-                  <button type="submit" className="rounded-pill bg-accent px-3 py-2 text-sm font-medium text-surface">
-                    Add
-                  </button>
-                </form>
-              )}
               {s.open.length + s.done.length === 0 && pendingAddsFor(s.store, pendingAdds).length === 0 ? (
                 <p className="px-1 py-1.5 text-xs text-ink-muted/60">
                   {drag ? "Hierher ziehen" : "Leer"}
@@ -330,8 +290,8 @@ export function EinkaufClient({
               bleibt für Umbenennen und Löschen. */}
           <div className="px-1 pt-1">
             <NeuesFachChip
-              label="+ Laden"
-              placeholder="Wie heißt der Laden?"
+              label="+ Geschäft"
+              placeholder="Wie heißt das Geschäft?"
               onCreate={createStoreAction}
             />
           </div>
@@ -358,6 +318,16 @@ export function EinkaufClient({
             >
               Alles erledigt ✓
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {erfassen && (
+            <ErfassenSheet
+              geschaefte={geschaefte}
+              onZu={() => setErfassen(false)}
+              onGespeichert={() => router.refresh()}
+            />
           )}
         </AnimatePresence>
       </>
