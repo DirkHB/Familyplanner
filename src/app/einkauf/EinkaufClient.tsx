@@ -56,6 +56,8 @@ export function EinkaufClient({
   const [queued, setQueued] = useState(0);
   const [online, setOnline] = useState(true);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [addTo, setAddTo] = useState<string | null>(null);
+  const [storeText, setStoreText] = useState("");
   const [erfassen, setErfassen] = useState(false);
   const [hoverStore, setHoverStore] = useState<string | null>(null);
   const sectionEls = useRef(new Map<string, HTMLElement>());
@@ -244,13 +246,77 @@ export function EinkaufClient({
                   : ""
               }`}
             >
-              {/* Hier saß bis eben ein zweites, kleineres „+" je Fach mit
-                  eigenem Eingabefeld. Zwei verschieden aussehende Plus-Zeichen
-                  auf einer Seite sind zwei Knöpfe für dieselbe Sache — und das
-                  Geschäft wählt man jetzt im Blatt, in einem Tipp. */}
-              <div className="mb-1 px-1">
+              {/*
+               * Zwei Wege, und beide haben ihren Fall. Das große „+" unten
+               * rechts ist für den Wocheneinkauf: viele Sachen, ein Geschäft,
+               * einmal nachdenken. Dieses kleine hier ist für die eine Sache,
+               * die einem gerade einfällt — das Geschäft steht schon fest,
+               * weil man es angetippt hat.
+               *
+               * Deshalb sieht es bewusst anders aus als das große: klein,
+               * unbunt, am Rand. Es ist kein zweiter Hauptknopf, sondern eine
+               * Abkürzung an genau der Stelle, an der sie gilt.
+               */}
+              <div className="mb-1 flex items-center justify-between px-1">
                 <p className="eyebrow text-accent">{s.label}</p>
+                <button
+                  onClick={() => { setAddTo(addTo === s.store ? null : s.store); setStoreText(""); }}
+                  aria-label={`Eine Sache bei ${s.label}`}
+                  aria-expanded={addTo === s.store}
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-muted text-ink-muted"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    style={{
+                      transform: addTo === s.store ? "rotate(45deg)" : "none",
+                      transition: "transform 180ms cubic-bezier(0.16,1,0.3,1)",
+                    }}
+                    aria-hidden
+                  >
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
+              {addTo === s.store && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const t = storeText.trim();
+                    setStoreText("");
+                    setAddTo(null);
+                    addText(t, s.store);
+                  }}
+                  className="mb-2 flex gap-2 px-1"
+                >
+                  <input
+                    autoFocus
+                    value={storeText}
+                    onChange={(e) => setStoreText(e.target.value)}
+                    placeholder={`Was fehlt bei ${s.label}?`}
+                    className="min-w-0 flex-1 rounded-pill border border-surface-muted bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                  {/* Ein Pfeil statt einer Beschriftung: Hier stand „Add" —
+                      das einzige englische Wort in der ganzen App. */}
+                  <button
+                    type="submit"
+                    aria-label="Hinzufügen"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-surface"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path
+                        d="M5 12h13M12 5l7 7-7 7"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </form>
+              )}
               {s.open.length + s.done.length === 0 && pendingAddsFor(s.store, pendingAdds).length === 0 ? (
                 <p className="px-1 py-1.5 text-xs text-ink-muted/60">
                   {drag ? "Hierher ziehen" : "Leer"}
