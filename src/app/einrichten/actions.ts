@@ -39,10 +39,31 @@ export async function ladePartnerEinAction(
   }
 
   const { prismaRoh } = await import("@/lib/prisma");
-  const { ladeEin, linkFuer } = await import("@/lib/einladung/store");
+  const { ladeEin, linkFuer, offeneEinladungenDesHaushalts } = await import(
+    "@/lib/einladung/store"
+  );
   const { haushaltProfil } = await import("@/lib/haushalt/profil");
   const { sendEmail } = await import("@/lib/email/send");
   const { einladungEmail } = await import("@/lib/email/einladung");
+
+  /*
+   * Ein Haushalt sind zwei Menschen. Nicht als Grundsatz, sondern weil die App
+   * so gebaut ist: Es gibt Platz A und Platz B, und ein dritter Mensch bekäme
+   * denselben Platz wie der zweite. Aufgaben und Betreuungen zweier Menschen
+   * würden sich still vermischen — ein Fehler, den man nicht sieht, sondern
+   * irgendwann bemerkt. Eine offene Einladung zählt dabei mit; sonst lädt man
+   * zwei ein und der zweite steht vor derselben Verwechslung.
+   */
+  const belegt =
+    (await haushaltProfil()).erwachsene.length +
+    (await offeneEinladungenDesHaushalts(session.user.householdId)).length;
+  if (belegt >= 2) {
+    return {
+      ok: false,
+      grund:
+        "Ihr seid schon zu zweit — oder eine Einladung ist noch unterwegs. Mehr als zwei kann die App nicht auseinanderhalten.",
+    };
+  }
 
   // Wer schon irgendwo wohnt, kann nicht zweimal einziehen. Ohne diese Frage
   // bekäme die Person eine Einladung, die beim Einlösen scheitert — und der
@@ -86,5 +107,28 @@ export async function einrichtungFertigAction(): Promise<{ ok: boolean }> {
   await einrichtungAbschliessen();
   revalidatePath("/woche");
   revalidatePath("/einrichten");
+  return { ok: true };
+}
+
+/**
+ * Eine noch nicht eingelöste Einladung zurücknehmen.
+ *
+ * Zum Beispiel, weil man sich in der Adresse vertippt hat. Ohne das bliebe nur
+ * warten: Zwei Wochen lang stünde im Assistenten „Einladung ist unterwegs" an
+ * eine Adresse, die es nicht gibt.
+ *
+ * Eingelöste Einladungen bleiben stehen. Sie sind kein Zugang mehr, sondern
+ * die Auskunft darüber, wie jemand hereingekommen ist.
+ */
+export async function ziehPartnerEinladungZurueckAction(): Promise<{ ok: boolean }> {
+  const session = await auth();
+  if (!session?.user?.householdId) return { ok: false };
+
+  const { prismaRoh } = await import("@/lib/prisma");
+  await prismaRoh.invite.deleteMany({
+    where: { householdId: session.user.householdId, usedAt: null },
+  });
+  revalidatePath("/einrichten");
+  revalidatePath("/einstellungen");
   return { ok: true };
 }

@@ -3,10 +3,23 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ladeHaushaltEinAction, ziehEinladungZurueckAction } from "./actions";
+import {
+  ladeHaushaltEinAction,
+  ziehEinladungZurueckAction,
+  loescheHaushaltAction,
+} from "./actions";
 
 type OffeneEinladung = { id: string; email: string; bis: string; abgelaufen: boolean };
-type Haushalt = { id: string; seit: string; menschen: string[] };
+type Haushalt = {
+  id: string;
+  seit: string;
+  menschen: string[];
+  termine: number;
+  aufgaben: number;
+  /** Was zum Löschen abgetippt werden muss — die Adresse des Ersten. */
+  abtippen: string;
+  eigener: boolean;
+};
 
 export function EinladungenClient({
   offen,
@@ -112,16 +125,87 @@ export function EinladungenClient({
           <h2 className="mb-3 font-display text-xl">Haushalte</h2>
           <ul className="flex flex-col gap-2">
             {haushalte.map((h) => (
-              <li key={h.id} className="rounded-card bg-surface px-4 py-3 shadow-card">
-                <span className="block">
-                  {h.menschen.length > 0 ? h.menschen.join(" und ") : "Noch niemand angemeldet"}
-                </span>
-                <span className="text-sm text-ink-muted">seit {h.seit}</span>
-              </li>
+              <HaushaltZeile key={h.id} h={h} />
             ))}
           </ul>
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * Ein Haushalt in der Liste — und darunter, aufgeklappt, der einzige
+ * unwiderrufliche Knopf dieser App.
+ *
+ * Er liegt bewusst nicht offen: Wer die Liste nur anschaut, soll ihn nicht
+ * sehen. Und die Bestätigung wird abgetippt, nicht angeklickt — ein
+ * „Wirklich?"-Fenster klickt man weg, ohne es gelesen zu haben.
+ */
+function HaushaltZeile({ h }: { h: Haushalt }) {
+  const [offen, setOffen] = useState(false);
+  const [eingabe, setEingabe] = useState("");
+  const [gesagt, setGesagt] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  return (
+    <li className="rounded-card bg-surface px-4 py-3 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block truncate">
+            {h.menschen.length > 0 ? h.menschen.join(" und ") : "Noch niemand angemeldet"}
+            {h.eigener && <span className="text-ink-muted"> · ihr</span>}
+          </span>
+          <span className="text-sm text-ink-muted">
+            seit {h.seit} · {h.termine} {h.termine === 1 ? "Termin" : "Termine"} ·{" "}
+            {h.aufgaben} {h.aufgaben === 1 ? "Aufgabe" : "Aufgaben"}
+          </span>
+        </span>
+        {!h.eigener && (
+          <button
+            type="button"
+            onClick={() => {
+              setOffen((o) => !o);
+              setGesagt(null);
+            }}
+            aria-expanded={offen}
+            className="shrink-0 text-sm text-ink-muted underline"
+          >
+            {offen ? "abbrechen" : "löschen"}
+          </button>
+        )}
+      </div>
+
+      {offen && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-surface-muted pt-3">
+          <p className="text-sm text-ink-muted">
+            Löscht alles: Termine, Aufgaben, Einkauf, Betreuungen, Zugänge. Das lässt sich nicht
+            rückgängig machen. Tipp zur Bestätigung{" "}
+            <span className="font-medium text-ink">{h.abtippen}</span> ab.
+          </p>
+          <input
+            value={eingabe}
+            onChange={(e) => setEingabe(e.target.value)}
+            autoComplete="off"
+            placeholder={h.abtippen}
+            className="w-full rounded-card border border-surface-muted bg-bg px-4 py-3 outline-none focus:border-signal"
+          />
+          <button
+            type="button"
+            disabled={pending || eingabe.trim().toLowerCase() !== h.abtippen.toLowerCase()}
+            onClick={() =>
+              start(async () => {
+                const r = await loescheHaushaltAction(h.id, eingabe);
+                if (!r.ok) setGesagt(r.grund ?? "Hat nicht geklappt.");
+              })
+            }
+            className="rounded-pill bg-signal px-5 py-3 font-medium text-surface disabled:opacity-40"
+          >
+            {pending ? "Lösche …" : "Endgültig löschen"}
+          </button>
+          {gesagt && <p className="text-sm text-signal">{gesagt}</p>}
+        </div>
+      )}
+    </li>
   );
 }

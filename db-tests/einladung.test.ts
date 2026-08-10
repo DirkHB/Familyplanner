@@ -125,4 +125,36 @@ describe("Einladungen", () => {
     expect(zeile?.expiresAt.getTime()).toBeGreaterThan(Date.now());
     expect(zeile?.expiresAt.getTime()).toBeLessThanOrEqual(laeuftAb().getTime() + 1000);
   });
+
+  it("räumt beim Löschen des Haushalts seine Einladungen mit weg", async () => {
+    const haus = await prisma.household.create({ data: { name: "Zum Testen" } });
+    await ladeEin({ email: "zweite@example.com", householdId: haus.id });
+    await prisma.user.create({
+      data: { householdId: haus.id, email: "erste@example.com", name: "Erste" },
+    });
+
+    await prisma.household.delete({ where: { id: haus.id } });
+
+    // Bliebe die Einladung stehen, könnte sie eingelöst werden und zeigte auf
+    // einen Haushalt, den es nicht mehr gibt.
+    expect(await prisma.invite.count({ where: { email: "zweite@example.com" } })).toBe(0);
+    expect(await prisma.user.count({ where: { email: "erste@example.com" } })).toBe(0);
+    expect(await darfSichAnmelden("zweite@example.com")).toBe(false);
+    expect(await darfSichAnmelden("erste@example.com")).toBe(false);
+  });
+
+  it("zählt eine offene Einladung als belegten Platz", async () => {
+    // Die Regel „ein Haushalt sind zwei" muss die Unterwegs-Einladung
+    // mitzählen. Sonst lädt man zwei ein, und der zweite bekommt denselben
+    // Platz wie der erste.
+    const haus = await prisma.household.create({ data: {} });
+    await prisma.user.create({
+      data: { householdId: haus.id, email: "erste@example.com", name: "Erste" },
+    });
+    await ladeEin({ email: "zweite@example.com", householdId: haus.id });
+
+    const bewohner = await prisma.user.count({ where: { householdId: haus.id } });
+    const unterwegs = (await offeneEinladungenDesHaushalts(haus.id)).length;
+    expect(bewohner + unterwegs).toBe(2);
+  });
 });

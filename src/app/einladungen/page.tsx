@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prismaRoh } from "@/lib/prisma";
 import { EinladungenClient } from "./EinladungenClient";
+import { abtippen } from "@/lib/einladung/abtippen";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,9 @@ export default async function EinladungenPage() {
   if (!ich?.isAdmin) redirect("/");
 
   const jetzt = new Date();
-  const [offen, haushalte] = await Promise.all([
+  // Die Zahlen sind kein Schmuck: Sie beantworten die einzige Frage, die vor
+  // dem Löschen zählt — steckt da noch etwas drin?
+  const [offen, haushalte, termine, aufgaben] = await Promise.all([
     prismaRoh.invite.findMany({
       where: { usedAt: null, householdId: null },
       orderBy: { createdAt: "desc" },
@@ -48,7 +51,12 @@ export default async function EinladungenPage() {
         users: { orderBy: { createdAt: "asc" }, select: { email: true, name: true } },
       },
     }),
+    prismaRoh.event.groupBy({ by: ["householdId"], _count: { _all: true } }),
+    prismaRoh.todo.groupBy({ by: ["householdId"], _count: { _all: true } }),
   ]);
+
+  const termineJe = new Map(termine.map((r) => [r.householdId, r._count._all]));
+  const aufgabenJe = new Map(aufgaben.map((r) => [r.householdId, r._count._all]));
 
   return (
     <EinladungenClient
@@ -62,6 +70,12 @@ export default async function EinladungenPage() {
         id: h.id,
         seit: fmt.format(h.createdAt),
         menschen: h.users.map((u) => u.name ?? u.email),
+        termine: termineJe.get(h.id) ?? 0,
+        aufgaben: aufgabenJe.get(h.id) ?? 0,
+        abtippen: abtippen(h),
+        // Der eigene Haushalt lässt sich hier nicht löschen — das nähme die
+        // Sitzung mit, aus der die Berechtigung dafür kommt.
+        eigener: h.id === session.user.householdId,
       }))}
     />
   );

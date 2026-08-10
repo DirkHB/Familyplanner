@@ -11,7 +11,11 @@ import {
   createStoreAction,
   importPastedListAction,
 } from "@/app/einstellungen/actions";
-import { ladePartnerEinAction, einrichtungFertigAction } from "./actions";
+import {
+  ladePartnerEinAction,
+  ziehPartnerEinladungZurueckAction,
+  einrichtungFertigAction,
+} from "./actions";
 import type { EinrichtungStatus, SchrittName } from "@/lib/haushalt/einrichtung";
 
 /**
@@ -282,6 +286,7 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
   const [pending, start] = useTransition();
   const [gesagt, setGesagt] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const router = useRouter();
 
   if (status.partnerDa) {
     return (
@@ -301,6 +306,20 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
           An <span className="font-medium text-ink">{status.eingeladenEmail}</span>. Sobald sie
           den Link antippt, seht ihr dasselbe. Der Link gilt zwei Wochen.
         </p>
+        {/* Vertippt? Ohne diesen Weg bliebe nur warten — zwei Wochen lang
+            stünde hier eine Adresse, die es nicht gibt. */}
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              await ziehPartnerEinladungZurueckAction();
+              router.refresh();
+            })
+          }
+          className="mt-3 text-sm text-ink-muted underline disabled:opacity-60"
+        >
+          Einladung zurücknehmen
+        </button>
       </>
     );
   }
@@ -325,6 +344,9 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
           start(async () => {
             const r = await ladePartnerEinAction(email);
             setGesagt(r.ok ? "Einladung ist raus ✓" : (r.grund ?? "Hat nicht geklappt."));
+            // Erst danach steht im Schritt „Einladung ist unterwegs" — sonst
+            // sieht man die Rückmeldung, aber nicht den neuen Zustand.
+            if (r.ok) router.refresh();
           })
         }
         className="rounded-pill bg-ink px-5 py-3 font-medium text-surface disabled:opacity-60"

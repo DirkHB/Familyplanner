@@ -60,6 +60,49 @@ export async function ziehEinladungZurueckAction(
   return { ok: true };
 }
 
+/**
+ * Einen Haushalt löschen — mit allem, was darin liegt.
+ *
+ * Das ist die eine unwiderrufliche Handlung in dieser App. Deshalb drei
+ * Riegel: nur die Verwaltung, niemals der eigene Haushalt, und die Bestätigung
+ * muss abgetippt werden. Ein „Wirklich löschen?"-Fenster klickt man weg, ohne
+ * es gelesen zu haben; eine Adresse tippt niemand versehentlich ab.
+ *
+ * Der eigene Haushalt ist ausgenommen, weil das Löschen sonst die Sitzung
+ * mitnähme, aus der die Berechtigung dafür kommt — und niemand mehr da wäre,
+ * der einladen kann.
+ */
+export async function loescheHaushaltAction(
+  id: string,
+  bestaetigung: string,
+): Promise<{ ok: boolean; grund?: string }> {
+  const wache = await nurVerwaltung();
+  if (!wache.ok) return wache;
+
+  const session = await auth();
+  if (session?.user?.householdId === id) {
+    return { ok: false, grund: "Den eigenen Haushalt kannst du hier nicht löschen." };
+  }
+
+  const { prismaRoh } = await import("@/lib/prisma");
+  const { abtippen } = await import("@/lib/einladung/abtippen");
+  const haushalt = await prismaRoh.household.findUnique({
+    where: { id },
+    select: { id: true, users: { orderBy: { createdAt: "asc" }, select: { email: true } } },
+  });
+  if (!haushalt) return { ok: false, grund: "Diesen Haushalt gibt es nicht mehr." };
+
+  if (bestaetigung.trim().toLowerCase() !== abtippen(haushalt).toLowerCase()) {
+    return { ok: false, grund: "Das stimmt nicht überein — nichts gelöscht." };
+  }
+
+  // Die Fremdschlüssel räumen den Rest weg: Termine, Aufgaben, Einkauf,
+  // Betreuungen, Einladungen. Siehe Migration 0018.
+  await prismaRoh.household.delete({ where: { id } });
+  revalidatePath("/einladungen");
+  return { ok: true };
+}
+
 type Wache = { ok: true; name: string } | { ok: false; grund: string };
 
 async function nurVerwaltung(): Promise<Wache> {
