@@ -28,6 +28,7 @@ import { RemindersImport } from "@/components/settings/RemindersImport";
 import { ConnectForm } from "@/components/settings/ConnectForm";
 import { PartnerEinladen } from "@/components/settings/PartnerEinladen";
 import { AboForm } from "@/components/settings/AboForm";
+import { GoogleForm } from "@/components/settings/GoogleForm";
 
 /**
  * Einstellungen als gruppierte Liste mit einem einzigen Aufklapp-Muster.
@@ -80,6 +81,8 @@ export function SettingsClient({
   istVerwaltung = false,
   partner = { schonZuZweit: true, eingeladen: null },
   abos = [],
+  googles = [],
+  dienstadresse = null,
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -101,6 +104,10 @@ export function SettingsClient({
   partner?: { schonZuZweit: boolean; eingeladen: string | null };
   /** Abonnierte Kalender — nur lesend, deshalb getrennt von der Verbindung. */
   abos?: { id: string; name: string }[];
+  /** Verbundene Google-Kalender — lesen UND schreiben. */
+  googles?: { id: string; name: string }[];
+  /** Die Adresse, die man seinem Google-Kalender freigeben muss. */
+  dienstadresse?: string | null;
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -153,6 +160,33 @@ export function SettingsClient({
               <ConnectForm />
             )}
           </Zeile>
+          {/* Der zweite Weg mit Rückweg. Steht zwischen iCloud und dem
+              Abonnement, weil er beides kann: lesen und schreiben. */}
+          <Zeile
+            titel="Google-Kalender"
+            status={googles.length > 0 ? `${googles.length}` : "Nicht verbunden"}
+          >
+            {googles.length > 0 && (
+              <ul className="mb-3 flex flex-col gap-1.5">
+                {googles.map((g) => (
+                  <li key={g.id} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">
+                      {g.name}
+                      <span className="text-ink-muted"> · lesen und schreiben</span>
+                    </span>
+                    <button
+                      onClick={() => disconnectAction(g.id)}
+                      className="shrink-0 text-sm text-ink-muted underline"
+                    >
+                      trennen
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <GoogleForm dienstadresse={dienstadresse} />
+          </Zeile>
+
           {/* Der zweite Weg herein: für Kalender, die die App nicht selbst
               anbinden kann. Steht bewusst hinter dem iCloud-Weg — er ist die
               Ausnahme, nicht die Regel. */}

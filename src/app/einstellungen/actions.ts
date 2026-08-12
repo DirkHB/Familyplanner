@@ -112,6 +112,55 @@ export async function abonniereKalenderAction(
   }
 }
 
+/**
+ * Einen Google-Kalender verbinden.
+ *
+ * Zwei Angaben, beide aus derselben Seite in Googles Einstellungen: die
+ * Kalender-ID (offen, meist eine E-Mail-Adresse) und die geheime Adresse im
+ * iCal-Format. Voraus geht der Handgriff, der nicht hier passieren kann —
+ * die Freigabe an unsere Dienstadresse.
+ */
+export async function verbindeGoogleAction(
+  _prev: { error: string | null; gefunden?: number; name?: string } | null,
+  formData: FormData,
+): Promise<{ error: string | null; gefunden?: number; name?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Nicht angemeldet." };
+
+  const kalenderId = String(formData.get("kalenderId") ?? "").trim();
+  const feedUrl = String(formData.get("feedUrl") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+
+  if (!kalenderId) return { error: "Die Kalender-ID fehlt." };
+  if (!feedUrl) return { error: "Die geheime iCal-Adresse fehlt." };
+  if (!/^(https?|webcal):\/\//i.test(feedUrl)) {
+    return {
+      error:
+        "Die iCal-Adresse sieht nicht wie eine Adresse aus — sie beginnt mit https:// oder webcal://.",
+    };
+  }
+  // Der häufigste Verwechsler: die öffentliche Web-Adresse statt der
+  // geheimen .ics-Adresse. Die eine zeigt eine Seite, die andere Termine.
+  if (!/\.ics(\?|$)/i.test(feedUrl)) {
+    return {
+      error:
+        "Das sieht nach der Web-Ansicht aus, nicht nach dem Kalender. Gebraucht wird die Adresse, die auf .ics endet.",
+    };
+  }
+
+  const { verbindeGoogleKalender } = await import("@/lib/calendar/account");
+  try {
+    const r = await verbindeGoogleKalender(session.user.id, kalenderId, feedUrl, name);
+    revalidatePath("/einstellungen");
+    revalidatePath("/woche");
+    return { error: null, gefunden: r.termine, name: r.name };
+  } catch (err) {
+    // Die Meldung aus der Prüfung sagt, welcher der acht Handgriffe fehlt.
+    // Sie zu verschlucken hieße, jeden davon gleich aussehen zu lassen.
+    return { error: err instanceof Error ? err.message : "Unbekannter Fehler." };
+  }
+}
+
 export async function disconnectAction(accountId: string) {
   const session = await auth();
   if (!session?.user?.id) return;
