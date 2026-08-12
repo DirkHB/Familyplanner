@@ -40,20 +40,30 @@ später in die Sliplane-Umgebungsvariablen.
 
 ## 2. Kalender freigeben
 
-Das ist der Schritt, an dem es hängt.
+Das ist der Schritt, an dem es hängt — und er sitzt nicht dort, wo man ihn
+sucht. Die Freigabe gehört zu **einem einzelnen Kalender**, nicht zu den
+allgemeinen Einstellungen.
 
-1. Google Kalender im Browser, beim gewünschten Kalender **Einstellungen und
-   Freigabe**
-2. Unter **Für bestimmte Personen freigeben** die `client_email` aus der
-   JSON-Datei eintragen — sie sieht aus wie
-   `irgendwas@dein-projekt.iam.gserviceaccount.com`
-3. Berechtigung: **Änderungen an Terminen vornehmen**
-   („Alle Termindetails sehen" reicht nicht — damit kann man nur lesen)
-4. Weiter unten auf derselben Seite steht die **Kalender-ID**. Beim
-   Hauptkalender ist das deine eigene Adresse.
+1. Google Kalender im Browser → Zahnrad → **Einstellungen**
+2. Links in der Seitenleiste unter **„Einstellungen für meine Kalender"** auf
+   den Namen des Kalenders klicken (beim Hauptkalender ist das dein Vorname).
+   Erst damit öffnet sich die Seite, auf der die Freigabe steht.
+3. Zu **„Für bestimmte Personen oder Gruppen freigeben"** scrollen →
+   **„Personen und Gruppen hinzufügen"** → die `client_email` aus der
+   JSON-Datei eintragen. Sie sieht aus wie
+   `irgendwas@dein-projekt.iam.gserviceaccount.com`.
+4. Berechtigung daneben auf **„Änderungen an Terminen vornehmen"** stellen.
+   („Alle Termindetails sehen" reicht nicht — damit kann man nur lesen.)
+5. Weiter unten auf derselben Seite: **„Kalender integrieren"**. Dort stehen
+   die **Kalender-ID** (beim Hauptkalender die eigene Adresse) und die
+   **geheime Adresse im iCal-Format** für die Feed-Prüfung.
 
-Wenn du auch den Feed prüfen willst (empfohlen), hol dir auf derselben Seite
-die **geheime Adresse im iCal-Format**.
+Zwei Dinge, die irritieren, aber in Ordnung sind:
+
+- Google zeigt zur Service-Account-Adresse meist keinen Namen an, nur die
+  Adresse. Es ist ja kein Mensch.
+- Der freigegebene Kalender taucht in keiner Liste des Service Accounts auf.
+  Das Skript geht direkt an die Kalender-ID.
 
 ## 3. Laufen lassen
 
