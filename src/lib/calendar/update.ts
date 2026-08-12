@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { EtagConflictError } from "./caldav";
-import { kannSchreiben } from "./provider";
+import { GOOGLE_PROVIDER, kannSchreiben } from "./provider";
+import { schreiberFuer } from "./schreiber";
 import { invalidateKalender } from "./range-data";
 
 /**
@@ -37,6 +38,58 @@ export async function updateEvent(
       updated: false,
       reason: "Dieser Kalender ist abonniert — ändern geht nur dort, wo er geführt wird.",
     };
+  }
+
+  /*
+   * Google zuerst, und auf kurzem Weg: Dort wird ein Termin über Felder
+   * geändert, nicht über eine Datei. Der lange Weg darunter baut das
+   * vorhandene VEVENT um und lässt alles stehen, was wir nicht kennen —
+   * Alarme, Teilnehmer, Serienregeln. Bei Google gibt es dafür nichts zu
+   * erhalten; Googles eigene Fassung bleibt ohnehin die Wahrheit.
+   */
+  if (account.provider === GOOGLE_PROVIDER) {
+    const felder = {
+      title: input.title,
+      start: !master.allDay && input.start ? input.start : master.start,
+      end: !master.allDay && input.end ? input.end : master.end,
+      allDay: master.allDay,
+      location: master.location,
+    };
+    try {
+      const geschrieben = await schreiberFuer({
+        provider: account.provider,
+        calendarUrl: master.calendar.url,
+        username: account.username ?? "",
+        password: decryptSecret(account.credentialsEncrypted),
+      }).aendern(
+        {
+          uid: master.uid,
+          href: master.href,
+          etag: master.etag,
+          rawIcs: master.rawIcs,
+          providerEventId: master.providerEventId,
+        },
+        felder,
+      );
+      await prisma.event.update({
+        where: { id: master.id },
+        data: {
+          title: felder.title,
+          start: felder.start,
+          end: felder.end,
+          rawIcs: geschrieben.rawIcs,
+          etag: geschrieben.etag,
+          lastSyncedAt: new Date(),
+        },
+      });
+      await invalidateKalender();
+      return { updated: true };
+    } catch (err) {
+      return {
+        updated: false,
+        reason: err instanceof Error ? err.message : "Ändern fehlgeschlagen.",
+      };
+    }
   }
 
   const password = decryptSecret(account.credentialsEncrypted);

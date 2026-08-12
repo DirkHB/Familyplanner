@@ -2,7 +2,11 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { kalenderzugang } from "@/lib/haushalt/singletons";
 import { decryptSecret } from "@/lib/crypto/envelope";
-import { createICloudClient } from "@/lib/calendar/tsdav-client";
+import { schreiberFuer } from "@/lib/calendar/schreiber";
+import { GOOGLE_PROVIDER } from "@/lib/calendar/provider";
+
+/** Bei Google steht in rawIcs nicht das, was wir geschrieben haben. */
+const istGoogle = (provider: string) => provider === GOOGLE_PROVIDER;
 import { buildIcs, ohneZeitstempel } from "@/lib/calendar/ics-builder";
 import { expandOccurrences } from "@/lib/calendar/ical";
 import { invalidateKalender } from "@/lib/calendar/range-data";
@@ -223,16 +227,40 @@ async function schreibeBlock(s: Gewuenscht): Promise<boolean> {
 
   const vorhanden = await prisma.event.findFirst({
     where: { uid: s.uid },
-    select: { etag: true, rawIcs: true, calendarId: true },
+    select: {
+      etag: true,
+      rawIcs: true,
+      calendarId: true,
+      title: true,
+      start: true,
+      end: true,
+    },
   });
-  // Unverändert und am richtigen Ort? Dann nichts tun. Das hält die
-  // Wiederholbarkeit billig — sonst schriebe jede Änderung an einem Tag alle
-  // Blöcke dieses Tages neu nach iCloud.
-  if (
-    vorhanden &&
-    ohneZeitstempel(vorhanden.rawIcs) === ohneZeitstempel(ics) &&
-    vorhanden.calendarId === ziel.calendarId
-  ) {
+  /*
+   * Unverändert und am richtigen Ort? Dann nichts tun. Das hält die
+   * Wiederholbarkeit billig — sonst schriebe jede Änderung an einem Tag alle
+   * Blöcke dieses Tages neu.
+   *
+   * Verglichen wird je nach Anbieter verschieden, und das hat einen Grund.
+   * Bei iCloud steht in `rawIcs` genau die Datei, die wir hingeschrieben
+   * haben — zwei Fassungen zu vergleichen ist deshalb die schärfste Prüfung.
+   * (Ohne `ohneZeitstempel` fände sie immer einen Unterschied: DTSTAMP steht
+   * auf die Sekunde genau.)
+   *
+   * Bei Google nicht. Dort kommt der Block über den Feed in Googles eigener
+   * Fassung zurück — andere Reihenfolge, andere Eigenschaften, unsere Marke
+   * fehlt. Ein .ics-Vergleich schlüge dort bei jeder Runde an und schriebe
+   * alle Blöcke alle fünf Minuten neu. Verglichen werden deshalb die Felder,
+   * die den Block ausmachen.
+   */
+  const unveraendert = istGoogle(ziel.provider)
+    ? vorhanden !== null &&
+      vorhanden.title === s.titel &&
+      vorhanden.start.getTime() === s.start.getTime() &&
+      vorhanden.end.getTime() === s.end.getTime()
+    : vorhanden !== null && ohneZeitstempel(vorhanden.rawIcs) === ohneZeitstempel(ics);
+
+  if (unveraendert && vorhanden?.calendarId === ziel.calendarId) {
     return false;
   }
   // Liegt der Block bisher woanders (die Person hat ihr Schreibziel geändert),
@@ -241,11 +269,38 @@ async function schreibeBlock(s: Gewuenscht): Promise<boolean> {
     await removeCareBlockByUid(s.uid);
   }
 
-  const href = ziel.calendarUrl.replace(/\/$/, "") + "/" + s.uid + ".ics";
   try {
-    const client = await createICloudClient({ username: ziel.username, password: ziel.password });
-    const jetzt = await prisma.event.findFirst({ where: { uid: s.uid }, select: { etag: true } });
-    const put = await client.putEvent(ziel.calendarUrl, href, ics, jetzt?.etag ?? null);
+    const jetzt = await prisma.event.findFirst({
+      where: { uid: s.uid },
+      select: { etag: true, href: true, rawIcs: true, providerEventId: true },
+    });
+    const felder = {
+      title: s.titel,
+      start: s.start,
+      end: s.end,
+      allDay: false,
+      description: careBlockGruppenDescription(s.anlaesse),
+      xProps: { [CARE_MARKER]: s.person },
+    };
+    /*
+     * Anlegen und Ändern sind hier fast dasselbe: Der Block gehört der App,
+     * sie baut ihn jedes Mal vollständig neu. Nur Google will für ein Ändern
+     * seine eigene Kennung sehen, und die gibt es erst an einem vorhandenen.
+     */
+    const schreiber = schreiberFuer(ziel);
+    const put = jetzt?.providerEventId
+      ? await schreiber.aendern(
+          {
+            uid: s.uid,
+            href: jetzt.href,
+            etag: jetzt.etag,
+            rawIcs: jetzt.rawIcs,
+            providerEventId: jetzt.providerEventId,
+          },
+          felder,
+        )
+      : await schreiber.anlegen(s.uid, felder);
+    const href = put.href;
 
     await prisma.event.upsert({
       where: {
@@ -257,11 +312,12 @@ async function schreibeBlock(s: Gewuenscht): Promise<boolean> {
         recurrenceId: "",
         href,
         etag: put.etag,
+        providerEventId: put.providerEventId,
         title: s.titel,
         start: s.start,
         end: s.end,
         allDay: false,
-        rawIcs: ics,
+        rawIcs: put.rawIcs,
         lastSyncedAt: new Date(),
       },
       update: {
@@ -269,8 +325,9 @@ async function schreibeBlock(s: Gewuenscht): Promise<boolean> {
         title: s.titel,
         start: s.start,
         end: s.end,
-        rawIcs: ics,
+        rawIcs: put.rawIcs,
         etag: put.etag,
+        providerEventId: put.providerEventId,
         lastSyncedAt: new Date(),
       },
     });
@@ -480,12 +537,18 @@ export async function removeCareBlockByUid(uid: string): Promise<void> {
   if (!row) return;
 
   try {
-    const password = decryptSecret(row.calendar.account.credentialsEncrypted);
-    const client = await createICloudClient({
+    await schreiberFuer({
+      provider: row.calendar.account.provider,
+      calendarUrl: row.calendar.url,
       username: row.calendar.account.username ?? "",
-      password,
+      password: decryptSecret(row.calendar.account.credentialsEncrypted),
+    }).loeschen({
+      uid: row.uid,
+      href: row.href,
+      etag: row.etag,
+      rawIcs: row.rawIcs,
+      providerEventId: row.providerEventId,
     });
-    await client.deleteEvent(row.href, row.etag ?? "");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     // 404 = in iCloud längst weg; alles andere lassen wir lokal trotzdem sauber.

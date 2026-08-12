@@ -1,7 +1,10 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
-import { ICLOUD_PROVIDER, kannSchreiben } from "@/lib/calendar/provider";
+import { GOOGLE_PROVIDER, ICLOUD_PROVIDER, kannSchreiben } from "@/lib/calendar/provider";
+
+/** Die Anbieter, in die sich schreiben lässt — als Filter für Abfragen. */
+const SCHREIBBAR = [ICLOUD_PROVIDER, GOOGLE_PROVIDER];
 
 /**
  * Die drei Dinge, von denen es „genau eins" gibt.
@@ -75,19 +78,32 @@ export type Kalenderzugang = {
   calendarUrl: string;
   username: string;
   password: string;
+  /**
+   * Woher der Kalender kommt. Bis eben war die Antwort überall „iCloud", und
+   * genau deshalb stand sie nirgends. Jetzt entscheidet sie, wer schreibt.
+   */
+  provider: string;
 };
 
 /** Aus einem Kalender samt Konto den Zugang bauen. */
 function zugangAus(
   calendar: { id: string; url: string },
-  account: { id: string; username: string | null; credentialsEncrypted: string },
+  account: {
+    id: string;
+    username: string | null;
+    credentialsEncrypted: string;
+    provider: string;
+  },
 ): Kalenderzugang {
   return {
     accountId: account.id,
     calendarId: calendar.id,
     calendarUrl: calendar.url,
     username: account.username ?? "",
+    // Bei iCloud das App-Passwort, bei Google die Feed-Adresse. Beides ist ein
+    // Geheimnis, beides liegt verschlüsselt in derselben Spalte.
     password: decryptSecret(account.credentialsEncrypted),
+    provider: account.provider,
   };
 }
 
@@ -133,7 +149,7 @@ export async function kalenderzugang(userId?: string | null): Promise<Kalenderzu
     }
 
     const eigener = await prisma.calendar.findFirst({
-      where: { isSynced: true, account: { userId, provider: ICLOUD_PROVIDER } },
+      where: { isSynced: true, account: { userId, provider: { in: SCHREIBBAR } } },
       orderBy: { name: "asc" },
       include: mitKonto,
     });
@@ -141,7 +157,7 @@ export async function kalenderzugang(userId?: string | null): Promise<Kalenderzu
   }
 
   const irgendeiner = await prisma.calendar.findFirst({
-    where: { isSynced: true, account: { provider: ICLOUD_PROVIDER } },
+    where: { isSynced: true, account: { provider: { in: SCHREIBBAR } } },
     orderBy: { name: "asc" },
     include: mitKonto,
   });

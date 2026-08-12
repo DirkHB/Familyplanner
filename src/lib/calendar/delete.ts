@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
-import { createICloudClient } from "./tsdav-client";
+import { schreiberFuer } from "./schreiber";
 import { gehoertZumHaushalt } from "@/lib/haushalt/singletons";
 import { kannSchreiben } from "./provider";
 import { raeumeBetreuungWeg } from "@/lib/care/block-sync";
@@ -40,15 +40,26 @@ export async function deleteEvent(userId: string, uid: string): Promise<DeleteEv
     };
   }
 
-  const password = decryptSecret(account.credentialsEncrypted);
-  const client = await createICloudClient({ username: account.username ?? "", password });
-
   try {
-    await client.deleteEvent(master.href, master.etag ?? "");
+    await schreiberFuer({
+      provider: account.provider,
+      calendarUrl: master.calendar.url,
+      username: account.username ?? "",
+      password: decryptSecret(account.credentialsEncrypted),
+    }).loeschen({
+      uid: master.uid,
+      href: master.href,
+      etag: master.etag,
+      rawIcs: master.rawIcs,
+      providerEventId: master.providerEventId,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // 404 = in iCloud schon weg — dann lokal trotzdem aufräumen.
-    if (!/404/.test(msg)) return { deleted: false, reason: "Löschen in iCloud fehlgeschlagen." };
+    // Schon weg ist kein Fehler, sondern das Ziel — dann lokal trotzdem
+    // aufräumen. (Der Google-Weg schluckt das selbst, CalDAV meldet 404.)
+    if (!/404/.test(msg)) {
+      return { deleted: false, reason: "Löschen im Kalender fehlgeschlagen." };
+    }
   }
 
   // Lokal spiegeln: Event(-Serie) und Zusatzdaten. Aufgaben bleiben bewusst.

@@ -1,9 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { createICloudClient } from "./tsdav-client";
 import { kalenderzugang, kalenderzugangFuerPlatz } from "@/lib/haushalt/singletons";
-import { buildIcs } from "./ics-builder";
+import { schreiberFuer } from "./schreiber";
 import { requestCare } from "@/lib/care/repository";
 import { invalidateKalender } from "./range-data";
 
@@ -39,13 +38,15 @@ export async function createEvent(
   const ziel = input.fuerPlatz
     ? ((await kalenderzugangFuerPlatz(input.fuerPlatz)) ?? (await kalenderzugang(userId)))
     : await kalenderzugang(userId);
-  if (!ziel) return { created: false, reason: "Kein iCloud-Kalender verbunden." };
+  if (!ziel) return { created: false, reason: "Kein Kalender verbunden." };
 
-  const client = await createICloudClient({ username: ziel.username, password: ziel.password });
-
+  /*
+   * Die UID vergeben wir, nicht der Anbieter — auch bei Google, das dafür
+   * `events.import` statt `events.insert` bekommt. Damit heißt derselbe Termin
+   * überall gleich, und der Rest der App muss nicht wissen, wo er liegt.
+   */
   const uid = `fp-${randomUUID()}@planyourweek.app`;
-  const ics = buildIcs({
-    uid,
+  const geschrieben = await schreiberFuer(ziel).anlegen(uid, {
     title: input.title,
     start: input.start,
     end: input.end,
@@ -53,24 +54,22 @@ export async function createEvent(
     location: input.location ?? null,
     description: input.description ?? null,
   });
-  const href = ziel.calendarUrl.replace(/\/$/, "") + "/" + uid + ".ics";
-
-  const put = await client.putEvent(ziel.calendarUrl, href, ics, null);
 
   await prisma.event.create({
     data: {
       calendarId: ziel.calendarId,
       uid,
       recurrenceId: "",
-      href,
-      etag: put.etag,
+      href: geschrieben.href,
+      etag: geschrieben.etag,
+      providerEventId: geschrieben.providerEventId,
       title: input.title,
       start: input.start,
       end: input.end,
       allDay: input.allDay,
       location: input.location ?? null,
       rrule: null,
-      rawIcs: ics,
+      rawIcs: geschrieben.rawIcs,
       lastSyncedAt: new Date(),
     },
   });

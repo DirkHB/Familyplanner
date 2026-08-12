@@ -226,24 +226,26 @@ model Calendar {
 }
 
 model Event {
-  id           String    @id @default(cuid())
-  householdId  String    @default("KEIN_HAUSHALT") @map("household_id")
-  calendarId   String
-  calendar     Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
-  uid          String // stabile iCalendar-UID
-  href         String
-  etag         String?
-  title        String
-  start        DateTime // UTC
-  end          DateTime // UTC
-  allDay       Boolean   @default(false)
-  location     String?
-  rrule        String?
-  recurrenceId String? // RECURRENCE-ID für Einzelausnahmen einer Serie
-  rawIcs       String    @db.Text
-  status       String    @default("confirmed")
-  lastSyncedAt DateTime  @default(now())
-  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  householdId     String    @default("KEIN_HAUSHALT") @map("household_id")
+  calendarId      String
+  calendar        Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  uid             String // stabile iCalendar-UID
+  href            String
+  etag            String?
+  title           String
+  start           DateTime // UTC
+  end             DateTime // UTC
+  allDay          Boolean   @default(false)
+  location        String?
+  rrule           String?
+  recurrenceId    String? // RECURRENCE-ID für Einzelausnahmen einer Serie
+  rawIcs          String    @db.Text
+  // Googles eigene Kennung. Leer bei iCloud — dort genügt href/etag.
+  providerEventId String?   @map("provider_event_id")
+  status          String    @default("confirmed")
+  lastSyncedAt    DateTime  @default(now())
+  household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   // Eine Reihe (uid) kann mehrere Overrides (recurrenceId) haben.
   @@unique([calendarId, uid, recurrenceId])
