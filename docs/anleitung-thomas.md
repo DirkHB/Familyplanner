@@ -54,7 +54,7 @@ klappt, bleibt er stehen und sagt warum.
 
 Wie ihr beide heißt und wie euer Kind heißt.
 
-Das ist keine Kosmetik: Die App schreibt diese Namen überall hin — „Yvonne ist
+Das ist keine Kosmetik: Die App schreibt diese Namen überall hin — „Johanna ist
 bei [Kind]", „Thomas macht den Einkauf". Solange du nichts einträgst, steht da
 „das Baby".
 
@@ -96,17 +96,17 @@ Zugriff mehr.
   nicht ungefragt in euren Kalender schreiben, deshalb entscheidet ihr.
 
 Beim Anlegen steht dann über dem Knopf **„Kalender von …"**. Das steht auf dir
-und wechselt mit einem Tipp zu Yvonne — für den Termin, den du für sie
+und wechselt mit einem Tipp zu Johanna — für den Termin, den du für sie
 ausmachst. Am Termin selbst kannst du später nachlesen, in wessen Kalender er
 liegt.
 
-> **Yvonne und ihr Android-Kalender:** Ihren Google-Kalender kann die App
+> **Johanna und ihr Android-Kalender:** Ihren Google-Kalender kann die App
 > **noch nicht** anbinden. Bis das gelöst ist, hat sie kein eigenes
 > Schreibziel — was sie anlegt, landet in deinem Kalender. Entweder ihr lebt
 > kurz damit, oder sie legt sich eine Apple-ID an (geht auch ohne Apple-Gerät)
 > und verbindet die. Dirk arbeitet daran.
 
-### 2.3 Yvonne einladen
+### 2.3 Johanna einladen
 
 Ihre E-Mail-Adresse eintragen, Knopf drücken. Sie bekommt denselben Ablauf wie
 du: Link antippen, Einladung annehmen, Anmeldemail anklicken.
@@ -143,7 +143,7 @@ nicht.** Die App muss auf dem Startbildschirm liegen.
 3. **„Zum Home-Bildschirm"** → „Hinzufügen".
 4. Die App vom Home-Bildschirm starten.
 
-**Android (Yvonne):**
+**Android (Johanna):**
 1. Die Adresse in **Chrome** öffnen.
 2. Menü (drei Punkte) → **„App installieren"** oder „Zum Startbildschirm
    hinzufügen".

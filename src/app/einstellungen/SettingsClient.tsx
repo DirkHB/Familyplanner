@@ -26,6 +26,7 @@ import {
 import { FaecherEditor, type Fach } from "@/components/settings/FaecherEditor";
 import { RemindersImport } from "@/components/settings/RemindersImport";
 import { ConnectForm } from "@/components/settings/ConnectForm";
+import { PartnerEinladen } from "@/components/settings/PartnerEinladen";
 
 /**
  * Einstellungen als gruppierte Liste mit einem einzigen Aufklapp-Muster.
@@ -76,6 +77,7 @@ export function SettingsClient({
   fremdeVerbindung = null,
   haushalt = { erwachsene: [], kind: "das Baby" },
   istVerwaltung = false,
+  partner = { schonZuZweit: true, eingeladen: null },
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -93,6 +95,8 @@ export function SettingsClient({
   haushalt?: { erwachsene: { email: string; name: string }[]; kind: string };
   /** Darf neue Haushalte einladen — sieht genau eine Person. */
   istVerwaltung?: boolean;
+  /** Ob die zweite Person schon da ist, und an wen eine Einladung unterwegs ist. */
+  partner?: { schonZuZweit: boolean; eingeladen: string | null };
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -184,6 +188,20 @@ export function SettingsClient({
           <Zeile titel="Namen" status={haushalt.kind}>
             <NamenInhalt haushalt={haushalt} />
           </Zeile>
+          {/* Nur solange jemand fehlt oder unterwegs ist — sind beide da, gibt
+              es hier nichts zu entscheiden. */}
+          {(!partner.schonZuZweit || partner.eingeladen) && (
+            <Zeile
+              titel="Zweite Person"
+              status={partner.eingeladen ? "unterwegs" : "fehlt noch"}
+              defaultOffen={!partner.schonZuZweit && !partner.eingeladen}
+            >
+              <PartnerEinladen
+                schonZuZweit={partner.schonZuZweit}
+                eingeladen={partner.eingeladen}
+              />
+            </Zeile>
+          )}
           {istVerwaltung && (
             <Link
               href="/einladungen"

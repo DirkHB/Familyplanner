@@ -71,7 +71,7 @@ anderen Person (für den Zahnarzttermin, den man für sie ausgemacht hat).
 Damit bleibt jeder Termin an genau einem Ort, und niemand muss bei jedem
 Eintrag entscheiden „privat oder Familie?".
 
-**Ein Punkt bleibt offen:** Yvonnes Android-Kalender ist fast sicher ein
+**Ein Punkt bleibt offen:** Johannas Android-Kalender ist fast sicher ein
 Google-Kalender, und den kann die App noch nicht anbinden — die
 CalDAV-Adresse steht fest auf iCloud. Bis das gelöst ist, hat sie **kein
 eigenes Schreibziel**, und die App fällt für sie auf Thomas' Kalender zurück.
@@ -80,7 +80,7 @@ Ausweg statt die Regel.
 
 Zwei Wege in der Zwischenzeit, beide in Ordnung:
 
-1. **Yvonne legt sich eine Apple-ID an** (geht auf appleid.apple.com ohne
+1. **Johanna legt sich eine Apple-ID an** (geht auf appleid.apple.com ohne
    Apple-Gerät) und verbindet deren Kalender. Dann hat sie ein eigenes
    Schreibziel. Sie sieht ihn nur über die App — was reicht, wenn sie ohnehin
    dort arbeitet.

@@ -290,9 +290,19 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
   const [email, setEmail] = useState("");
   const router = useRouter();
 
+  // Außerhalb der Verzweigungen, damit ihn das Neuladen nach dem Verschicken
+  // nicht mitnimmt — siehe components/settings/PartnerEinladen.
+  const linkKasten = link ? (
+    <LinkZumWeitergeben
+      link={link}
+      hinweis="Falls die Mail nicht ankommt: Dieser Link tut dasselbe."
+    />
+  ) : null;
+
   if (status.partnerDa) {
     return (
       <>
+        {linkKasten}
         <Fertighinweis text="Ihr seid schon zu zweit ✓" />
         <p className="text-ink-muted">
           Beide sehen dieselben Termine, Aufgaben und Absprachen.
@@ -322,6 +332,7 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
         >
           Einladung zurücknehmen
         </button>
+        {linkKasten}
       </>
     );
   }
@@ -359,12 +370,7 @@ function SchrittPartner({ status }: { status: EinrichtungStatus }) {
         {pending ? "Schicke …" : "Einladung schicken"}
       </button>
       {gesagt && <p className="text-sm text-ink-muted">{gesagt}</p>}
-      {link && (
-        <LinkZumWeitergeben
-          link={link}
-          hinweis="Falls die Mail nicht ankommt: Dieser Link tut dasselbe."
-        />
-      )}
+      {linkKasten}
     </div>
   );
 }

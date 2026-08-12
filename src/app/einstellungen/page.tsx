@@ -39,6 +39,14 @@ export default async function EinstellungenPage() {
   const prefs = mergePrefs(ich?.notificationPrefs);
   const profil = await haushaltProfil();
 
+  // Wer noch fehlt: Ist der Haushalt erst zu einem besetzt, gehört das
+  // Einladen hierher — der Assistent ist nach dem Abschließen von nirgends
+  // mehr verlinkt.
+  const { offeneEinladungenDesHaushalts } = await import("@/lib/einladung/store");
+  const offeneEinladung = session?.user?.householdId
+    ? ((await offeneEinladungenDesHaushalts(session.user.householdId))[0]?.email ?? null)
+    : null;
+
   const account = userId
     ? await prisma.calendarAccount.findFirst({
         where: { userId, provider: "icloud" },
@@ -114,6 +122,7 @@ export default async function EinstellungenPage() {
       tagBis={ich?.tagBisStunde ?? null}
       pushPrefs={{ requests: prefs.requests, taskWindow: prefs.taskWindow }}
       istVerwaltung={ich?.isAdmin ?? false}
+      partner={{ schonZuZweit: profil.erwachsene.length >= 2, eingeladen: offeneEinladung }}
       haushalt={{
         erwachsene: profil.erwachsene.map((e) => ({ email: e.email, name: e.name })),
         kind: profil.kind,
