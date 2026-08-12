@@ -89,7 +89,9 @@ export default async function EinstellungenPage() {
 
   // Abonnierte Kalender stehen neben der iCloud-Verbindung, nicht darin: Sie
   // gehören niemandem im Haushalt, sie werden nur gelesen.
-  const { ICS_PROVIDER, GOOGLE_PROVIDER } = await import("@/lib/calendar/provider");
+  const { ICS_PROVIDER, GOOGLE_PROVIDER, ICLOUD_PROVIDER } = await import(
+    "@/lib/calendar/provider",
+  );
   const { dienstkontoAdresse } = await import("@/lib/calendar/google-auth");
   const [abos, googles] = userId
     ? await Promise.all([
@@ -105,6 +107,22 @@ export default async function EinstellungenPage() {
         }),
       ])
     : [[], []];
+
+  /*
+   * Alles, worein diese Person schreiben kann — über alle Anbieter hinweg.
+   * Die Wahl „Neue Termine landen in" hing bis eben am iCloud-Konto und hätte
+   * einen verbundenen Google-Kalender gar nicht erst angeboten.
+   */
+  const schreibZiele = userId
+    ? await prisma.calendar.findMany({
+        where: {
+          isSynced: true,
+          account: { userId, provider: { in: [ICLOUD_PROVIDER, GOOGLE_PROVIDER] } },
+        },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, account: { select: { provider: true } } },
+      })
+    : [];
 
   const [diagnose, abgewinkt] = userId
     ? await Promise.all([diagnoseCalendars(), listDismissed()])
@@ -144,6 +162,12 @@ export default async function EinstellungenPage() {
       abos={abos.map((a) => ({ id: a.id, name: a.username ?? "Abonnement" }))}
       googles={googles.map((a) => ({ id: a.id, name: a.username ?? "Google-Kalender" }))}
       dienstadresse={dienstkontoAdresse()}
+      schreibZiele={schreibZiele.map((c) => ({
+        id: c.id,
+        name: c.name,
+        provider: c.account.provider,
+      }))}
+      schreibKalenderId={ich?.schreibKalenderId ?? null}
       partner={{ schonZuZweit: profil.erwachsene.length >= 2, eingeladen: offeneEinladung }}
       haushalt={{
         erwachsene: profil.erwachsene.map((e) => ({ email: e.email, name: e.name })),

@@ -3,7 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { GOOGLE_PROVIDER, ICLOUD_PROVIDER, kannSchreiben } from "@/lib/calendar/provider";
 
-/** Die Anbieter, in die sich schreiben lässt — als Filter für Abfragen. */
+/**
+ * Die Anbieter, in die sich schreiben lässt — in dieser Reihenfolge.
+ *
+ * Die Reihenfolge ist kein Zufall: Sie entscheidet, wohin die App schreibt,
+ * wenn jemand mehreres verbunden hat und nichts gewählt hat.
+ */
 const SCHREIBBAR = [ICLOUD_PROVIDER, GOOGLE_PROVIDER];
 
 /**
@@ -148,20 +153,38 @@ export async function kalenderzugang(userId?: string | null): Promise<Kalenderzu
       }
     }
 
-    const eigener = await prisma.calendar.findFirst({
-      where: { isSynced: true, account: { userId, provider: { in: SCHREIBBAR } } },
+    /*
+     * Hat jemand beides verbunden, entscheidet nicht der Zufall.
+     *
+     * Vorher stand hier ein einziges findFirst über alle schreibbaren
+     * Anbieter, sortiert nach Kalendername — welcher gewinnt, hing damit am
+     * Alphabet. Für einen Menschen, der iCloud und Google hat, wäre das
+     * Schreibziel je nach Benennung mal hier, mal dort gelandet.
+     *
+     * Die Reihenfolge ist jetzt festgelegt: iCloud zuerst, weil das für alle
+     * bestehenden Haushalte die gewohnte Antwort ist und niemandes Ziel
+     * durch dieses Update wandern soll. Wer es anders will, wählt es — und
+     * die Wahl steht ohnehin vor diesem Rückfall.
+     */
+    for (const provider of SCHREIBBAR) {
+      const eigener = await prisma.calendar.findFirst({
+        where: { isSynced: true, account: { userId, provider } },
+        orderBy: { name: "asc" },
+        include: mitKonto,
+      });
+      if (eigener?.account) return zugangAus(eigener, eigener.account);
+    }
+  }
+
+  for (const provider of SCHREIBBAR) {
+    const irgendeiner = await prisma.calendar.findFirst({
+      where: { isSynced: true, account: { provider } },
       orderBy: { name: "asc" },
       include: mitKonto,
     });
-    if (eigener?.account) return zugangAus(eigener, eigener.account);
+    if (irgendeiner?.account) return zugangAus(irgendeiner, irgendeiner.account);
   }
-
-  const irgendeiner = await prisma.calendar.findFirst({
-    where: { isSynced: true, account: { provider: { in: SCHREIBBAR } } },
-    orderBy: { name: "asc" },
-    include: mitKonto,
-  });
-  return irgendeiner?.account ? zugangAus(irgendeiner, irgendeiner.account) : null;
+  return null;
 }
 
 /**

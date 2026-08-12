@@ -83,6 +83,8 @@ export function SettingsClient({
   abos = [],
   googles = [],
   dienstadresse = null,
+  schreibZiele = [],
+  schreibKalenderId = null,
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -108,6 +110,10 @@ export function SettingsClient({
   googles?: { id: string; name: string }[];
   /** Die Adresse, die man seinem Google-Kalender freigeben muss. */
   dienstadresse?: string | null;
+  /** Alles, worein diese Person schreiben kann — über alle Anbieter hinweg. */
+  schreibZiele?: { id: string; name: string; provider: string }[];
+  /** Der gewählte Schreibkalender. Leer = der erste passende. */
+  schreibKalenderId?: string | null;
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -214,6 +220,17 @@ export function SettingsClient({
             )}
             <AboForm />
           </Zeile>
+          {/* Die Wahl steht unter allen drei Wegen, weil sie über sie hinweg
+              gilt: Wer iCloud und Google verbunden hat, entscheidet hier —
+              sonst entschiede die alphabetische Reihenfolge der Namen. */}
+          {schreibZiele.length > 1 && (
+            <Zeile
+              titel="Neue Termine landen in"
+              status={schreibZiele.find((z) => z.id === schreibKalenderId)?.name ?? "Automatisch"}
+            >
+              <SchreibKalender ziele={schreibZiele} gewaehltId={schreibKalenderId} />
+            </Zeile>
+          )}
 
           <Zeile titel="Dein Tag" status={`${tagVon ?? 7}–${tagBis ?? 21} Uhr`}>
             <TagesfensterInhalt von={tagVon ?? 7} bis={tagBis ?? 21} />
@@ -671,7 +688,6 @@ function Connected({ account }: { account: NonNullable<Account> }) {
         )}
       </ul>
 
-      <SchreibKalender account={account} disabled={pending} />
 
       <div className="mt-3 flex items-center justify-between border-t border-surface-muted/60 pt-3">
         <button
@@ -708,14 +724,21 @@ function Connected({ account }: { account: NonNullable<Account> }) {
  * Nur die eigenen Kalender stehen zur Wahl. Den des anderen anzubieten hieße,
  * genau den Fehler wieder einzubauen, den die Wahl verhindern soll.
  */
-function SchreibKalender({ account, disabled }: { account: NonNullable<Account>; disabled: boolean }) {
-  const [gewaehlt, setGewaehlt] = useState(account.schreibKalenderId);
+function SchreibKalender({
+  ziele,
+  gewaehltId,
+}: {
+  ziele: { id: string; name: string; provider: string }[];
+  gewaehltId: string | null;
+}) {
+  const [gewaehlt, setGewaehlt] = useState(gewaehltId);
   const [pending, start] = useTransition();
-  const offen = account.calendars.filter((c) => c.isSynced);
-  if (offen.length === 0) return null;
+  const offen = ziele;
+  // Bei genau einem Ziel ist die Frage keine — dann steht sie auch nicht da.
+  if (offen.length < 2) return null;
 
   return (
-    <div className="mt-4 border-t border-surface-muted/60 pt-4">
+    <div>
       <p className="font-medium">Neue Termine landen in</p>
       <p className="mt-0.5 text-sm text-ink-muted">
         Was du hier anlegst, wird in diesen Kalender geschrieben. Die anderen
@@ -727,7 +750,7 @@ function SchreibKalender({ account, disabled }: { account: NonNullable<Account>;
           return (
             <button
               key={cal.id}
-              disabled={disabled || pending}
+              disabled={pending}
               onClick={() => {
                 setGewaehlt(cal.id);
                 start(() => setSchreibKalenderAction(cal.id).then(() => undefined));
@@ -737,6 +760,11 @@ function SchreibKalender({ account, disabled }: { account: NonNullable<Account>;
               }`}
             >
               {cal.name}
+              {ziele.some((z) => z.provider !== cal.provider) && (
+                <span className="ml-1.5 opacity-60">
+                  {cal.provider === "google" ? "Google" : "iCloud"}
+                </span>
+              )}
             </button>
           );
         })}

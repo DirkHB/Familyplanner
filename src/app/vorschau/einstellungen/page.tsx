@@ -16,6 +16,14 @@ export default function VorschauEinstellungen() {
           { id: "c3", name: "Reminders", isSynced: false, lastSyncedLabel: null, lastSyncOk: true, lastError: null },
         ],
       }}
+      schreibKalenderId="c1"
+      schreibZiele={[
+        { id: "c1", name: "C&D", provider: "icloud" },
+        { id: "c2", name: "Privat", provider: "icloud" },
+        { id: "g1", name: "Johanna", provider: "google" },
+      ]}
+      dienstadresse="kalender@planyourweek.iam.gserviceaccount.com"
+      googles={[{ id: "g-acc", name: "Johanna" }]}
       careBlocks={true}
       abgewinkt={["müllabfuhr", "schwimmkurs", "krabbelgruppe"]}
       diagnose={[
