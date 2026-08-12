@@ -14,5 +14,12 @@ export default async function EinrichtenPage() {
   if (!session?.user?.email) redirect("/anmelden");
 
   const status = await einrichtungStatus(session.user.email);
-  return <EinrichtenClient status={status} meineEmail={session.user.email} />;
+  const { dienstkontoAdresse } = await import("@/lib/calendar/google-auth");
+  return (
+    <EinrichtenClient
+      status={status}
+      meineEmail={session.user.email}
+      dienstadresse={dienstkontoAdresse()}
+    />
+  );
 }

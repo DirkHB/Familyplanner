@@ -77,26 +77,41 @@ abgeschaltet, seitdem geht nur noch OAuth — und das setzt ein geprüftes
 Entwicklerkonto bei Google voraus, mit Warnbildschirm für jede Person, die
 sich anmeldet.
 
-**Lesen geht trotzdem.** Unter *Einstellungen → Kalender abonnieren* nimmt die
-App die Adresse einer .ics-Datei entgegen. Bei Google steht sie unter
-*Einstellungen → Kalender → Kalender integrieren → Geheime Adresse im
-iCal-Format*. Danach stehen Johannas Termine in der gemeinsamen Woche und
-zählen bei der Betreuung mit. Das Gleiche funktioniert für Outlook,
-Nextcloud, den Vereins- oder Kita-Kalender.
+**Verbinden geht trotzdem — in beide Richtungen.** Unter *Einstellungen →
+Google-Kalender* führt die App durch drei Schritte in Googles Oberfläche.
+Danach stehen Johannas Termine in der gemeinsamen Woche, zählen bei der
+Betreuung mit, **und** sie hat ein eigenes Schreibziel: Was sie anlegt, und
+ihre Betreuungsblöcke, landen in ihrem Kalender statt in Thomas'.
 
-Zwei Dinge dazu, beide unvermeidlich:
+Der Weg dorthin, in Google Kalender am Rechner:
 
-- **Nur in eine Richtung.** Ein Abonnement ist eine Datei, kein Server. Die
-  App kann nichts hineinschreiben; wer es in der App versucht, bekommt eine
-  Absage statt eines Termins, der beim nächsten Abgleich wieder verschwindet.
-  Johanna hat damit weiterhin **kein eigenes Schreibziel** — was sie in der
-  App anlegt, landet in Thomas' Kalender.
-- **Die Adresse ist ein Geheimnis.** Wer sie hat, sieht den Kalender. Sie wird
-  deshalb verschlüsselt gespeichert wie ein Passwort und nirgends wieder
+1. **Freigeben.** Einstellungen → links auf den eigenen Kalender → „Für
+   bestimmte Personen oder Gruppen freigeben" → die Dienstadresse der App
+   eintragen (sie steht im Formular zum Antippen bereit), Berechtigung
+   **„Änderungen an Terminen vornehmen"**.
+2. **Kalender-ID** holen — dieselbe Seite, unter „Kalender integrieren".
+3. **Geheime Adresse im iCal-Format** holen — ebenfalls dort.
+
+Beim Verbinden probiert die App beides wirklich aus, bevor sie etwas
+speichert: Sie legt einen Termin an und löscht ihn sofort wieder, und sie holt
+den Feed einmal. Anders lässt sich nicht feststellen, ob die Freigabe wirklich
+zum Schreiben berechtigt.
+
+Zwei Dinge dazu:
+
+- **Mehr Handgriffe, als uns lieb ist.** Der bequeme Weg — „Mit Google
+  verbinden", Konto wählen, zulassen — setzt eine von Google geprüfte App
+  voraus. Die Prüfung ist Papierkram (Datenschutzerklärung, Domainnachweis,
+  Demo-Video), kein Programmieren; ist sie durch, tritt sie an dieselbe
+  Stelle und der Rest bleibt, wie er ist.
+- **Die iCal-Adresse ist ein Geheimnis.** Wer sie hat, sieht den Kalender. Sie
+  wird verschlüsselt gespeichert wie ein Passwort und nirgends wieder
   angezeigt.
 
-Wer ein eigenes Schreibziel will, kommt nach wie vor nur über eine Apple-ID
-dahin (geht auf appleid.apple.com ohne Apple-Gerät).
+Wer nur **lesen** will — der Vereinskalender, die Kita, ein fremder Kalender
+ohne Schreibbedarf —, nimmt weiterhin *Einstellungen → Kalender abonnieren*.
+Das braucht keine Freigabe, nur die iCal-Adresse, und geht dafür nur in eine
+Richtung.
 
 ---
 

@@ -5,6 +5,10 @@ import { getHaushaltFlag, setHaushaltFlag } from "./singletons";
 import { aktuellerHaushalt } from "./aktuell";
 import { offeneEinladungenDesHaushalts } from "@/lib/einladung/store";
 import { haushaltProfil, KIND_VORGABE } from "./profil";
+import { GOOGLE_PROVIDER, ICLOUD_PROVIDER } from "@/lib/calendar/provider";
+
+/** Anbieter, in die sich schreiben lässt — ein Abonnement genügt nicht. */
+const SCHREIBBARE_ANBIETER = [ICLOUD_PROVIDER, GOOGLE_PROVIDER];
 
 /**
  * Was fehlt diesem Haushalt noch?
@@ -45,7 +49,10 @@ export async function einrichtungStatus(meineEmail?: string | null): Promise<Ein
     await Promise.all([
     haushaltProfil(),
     getHaushaltFlag(FERTIG_FLAG),
-    prisma.calendarAccount.count({ where: { provider: "icloud" } }),
+    // Nicht mehr nur iCloud: Ein Haushalt, der ausschließlich einen
+    // Google-Kalender verbindet, käme sonst über diesen Schritt nie hinaus.
+    // Abonnements zählen bewusst nicht — sie sind kein Schreibziel.
+    prisma.calendarAccount.count({ where: { provider: { in: SCHREIBBARE_ANBIETER } } }),
     prisma.todoList.count(),
     prisma.store.count(),
     prisma.todo.count(),

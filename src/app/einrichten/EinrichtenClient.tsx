@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { ConnectForm } from "@/components/settings/ConnectForm";
+import { GoogleForm } from "@/components/settings/GoogleForm";
 import { NeuesFachChip } from "@/components/ui/NeuesFachChip";
 import {
   setHaushaltNamenAction,
@@ -42,9 +43,12 @@ const REIHENFOLGE: SchrittName[] = ["namen", "kalender", "partner", "aufgaben", 
 export function EinrichtenClient({
   status,
   meineEmail,
+  dienstadresse = null,
 }: {
   status: EinrichtungStatus;
   meineEmail: string;
+  /** Die Adresse, die man seinem Google-Kalender freigeben muss. */
+  dienstadresse?: string | null;
 }) {
   const router = useRouter();
   // Beginn beim ersten offenen Schritt — Erledigtes wird nicht noch einmal gefragt.
@@ -155,7 +159,10 @@ export function EinrichtenClient({
                 />
               )}
               {schritt === "kalender" && (
-                <SchrittKalender erledigt={erledigt.kalender} />
+                <SchrittKalender
+                  erledigt={erledigt.kalender}
+                  dienstadresse={dienstadresse}
+                />
               )}
               {schritt === "partner" && (
                 <SchrittPartner status={status} />
@@ -260,26 +267,92 @@ function SchrittNamen({
   );
 }
 
-function SchrittKalender({ erledigt }: { erledigt: boolean }) {
+function SchrittKalender({
+  erledigt,
+  dienstadresse,
+}: {
+  erledigt: boolean;
+  dienstadresse: string | null;
+}) {
+  /*
+   * Die Frage vor der Frage: Apple oder Google?
+   *
+   * Sie steht hier und nicht in den Formularen, weil sie eine Entscheidung
+   * ist und keine Eingabe. Solange niemand gewählt hat, steht kein Feld da —
+   * zwei Formulare untereinander wären auf einem Telefon eine Wand.
+   */
+  const [wahl, setWahl] = useState<"apple" | "google" | null>(null);
+
   if (erledigt) {
     return (
       <>
         <Fertighinweis text="Der Kalender ist schon verbunden ✓" />
         <p className="text-ink-muted">
-          Termine kommen in beide Richtungen — was ihr hier anlegt, steht auch im Apple
+          Termine kommen in beide Richtungen — was ihr hier anlegt, steht auch in eurem
           Kalender, und umgekehrt.
         </p>
       </>
     );
   }
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-ink-muted">
         Der gemeinsame Kalender ist das Herz der App. Einer von euch verbindet ihn — die
         andere Person sieht dann alles, ohne selbst etwas verbinden zu müssen.
       </p>
-      <ConnectForm />
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <KalenderWahl
+          titel="Apple"
+          unter="iCloud"
+          gewaehlt={wahl === "apple"}
+          onClick={() => setWahl(wahl === "apple" ? null : "apple")}
+        />
+        <KalenderWahl
+          titel="Google"
+          unter="Android & Gmail"
+          gewaehlt={wahl === "google"}
+          onClick={() => setWahl(wahl === "google" ? null : "google")}
+        />
+      </div>
+
+      {wahl === "apple" && <ConnectForm />}
+      {wahl === "google" && <GoogleForm dienstadresse={dienstadresse} />}
+
+      {wahl === null && (
+        <p className="text-sm text-ink-muted">
+          Ihr könnt später beides haben — jede Person bringt ihren eigenen Kalender mit.
+        </p>
+      )}
     </div>
+  );
+}
+
+/** Eine der beiden Karten in der Anbieterwahl. */
+function KalenderWahl({
+  titel,
+  unter,
+  gewaehlt,
+  onClick,
+}: {
+  titel: string;
+  unter: string;
+  gewaehlt: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={gewaehlt}
+      className={`rounded-card border px-4 py-3 text-left transition-colors ${
+        gewaehlt ? "border-accent bg-surface-muted" : "border-surface-muted bg-bg"
+      }`}
+    >
+      <span className="block font-medium text-ink">{titel}</span>
+      <span className="block text-sm text-ink-muted">{unter}</span>
+    </button>
   );
 }
 

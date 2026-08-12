@@ -101,17 +101,22 @@ ausmachst. Am Termin selbst kannst du später nachlesen, in wessen Kalender er
 liegt.
 
 > **Johanna und ihr Android-Kalender:** Ihren Google-Kalender könnt ihr
-> **abonnieren** — dann stehen ihre Termine in der gemeinsamen Woche.
-> In Google: *Einstellungen → Kalender → Kalender integrieren → Geheime
-> Adresse im iCal-Format*. Die Adresse kopieren, in der App unter
-> **Einstellungen → Kalender abonnieren** einsetzen, fertig.
+> **verbinden** — in beide Richtungen. Unter **Einstellungen →
+> Google-Kalender** führt die App durch drei Schritte in Google Kalender am
+> Rechner: den Kalender für die angezeigte Dienstadresse freigeben
+> (Berechtigung *„Änderungen an Terminen vornehmen"*), dann Kalender-ID und
+> geheime iCal-Adresse holen — beide stehen auf derselben Seite unter
+> *„Kalender integrieren"*.
 >
-> Der Haken: Ein Abonnement geht **nur in eine Richtung**. Ihr seht ihre
-> Termine, aber die App kann nichts in ihren Kalender schreiben — was sie in
-> der App anlegt, landet weiter in deinem. Wenn sie ein eigenes Schreibziel
-> will, führt der Weg über eine Apple-ID (geht auch ohne Apple-Gerät).
+> Danach hat Johanna ein eigenes Schreibziel: Ihre Termine und ihre
+> Betreuungsblöcke landen in ihrem Kalender, nicht in deinem.
 >
-> Und: Die Adresse ist ein Geheimnis. Wer sie hat, sieht den Kalender.
+> Es sind mehr Handgriffe, als uns lieb ist — der bequeme Weg setzt eine von
+> Google geprüfte App voraus, und die Prüfung läuft noch. Einmal gemacht,
+> bleibt es gemacht.
+>
+> Die iCal-Adresse ist ein Geheimnis: Wer sie hat, sieht den Kalender. Sie
+> wird verschlüsselt gespeichert und nirgends wieder angezeigt.
 
 ### 2.3 Johanna einladen
 
