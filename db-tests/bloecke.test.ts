@@ -253,4 +253,73 @@ describe("Betreuungsblöcke für einen Tag", () => {
     const r = await imHaushalt(() => schreibeBetroffeneBloeckeNeu(TAG));
     expect(r.tage).toBe(1);
   });
+
+  /*
+   * Der Anlass verschwindet — was wird aus dem Block?
+   *
+   * Gemeldet als: „Tennis mit Kim gelöscht, der Betreuungseintrag für
+   * Constanze blieb stehen." Ein Block ohne Anlass ist schlimmer als kein
+   * Block: Er behauptet einen Termin, den es nicht mehr gibt.
+   */
+  describe("wenn der Termin gelöscht wird", () => {
+    async function mitBlock() {
+      await termin("a", "Tennis mit Kim", 20, 22);
+      await betreuung("a", conny);
+      const { synchronisiereTag } = await import("@/lib/care/block-sync");
+      await imHaushalt(() => synchronisiereTag(TAG));
+      expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(1);
+    }
+
+    it("nimmt den Block mit, wenn in der App gelöscht wird", async () => {
+      await mitBlock();
+      const { raeumeBetreuungWeg } = await import("@/lib/care/block-sync");
+
+      // Genau die Reihenfolge aus lib/calendar/delete.ts.
+      await prisma.event.deleteMany({ where: { uid: "a" } });
+      await prisma.eventDetail.deleteMany({ where: { eventUid: "a" } });
+      await imHaushalt(() => raeumeBetreuungWeg(["a"]));
+
+      expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(0);
+      expect(await prisma.careAssignment.count({ where: { eventUid: "a" } })).toBe(0);
+    });
+
+    it("räumt auch nach, was vorher schon liegengeblieben ist", async () => {
+      await mitBlock();
+      // Der Schaden von gestern: Der Termin ist weg, die Absprache steht noch
+      // da, und niemand hat aufgeräumt.
+      await prisma.event.deleteMany({ where: { uid: "a" } });
+      expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(1);
+
+      // Genau das macht der Knopf „Blöcke neu schreiben".
+      const { schreibeBloeckeNeu } = await import("@/lib/care/block-sync");
+      await imHaushalt(() => schreibeBloeckeNeu(new Date("2026-08-09T12:00:00.000Z"), 3));
+
+      expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(0);
+      expect(await prisma.careAssignment.count({ where: { eventUid: "a" } })).toBe(0);
+    });
+
+    it("lässt eine Serie in Ruhe, deren Haupttermin es noch gibt", async () => {
+      // Die Absprache hängt an einem Vorkommen, die Zeile am Haupttermin. Wer
+      // falsch fragt, löscht jeder Serie ihre Betreuung weg.
+      await termin("serie", "Schwimmkurs", 15, 16);
+      await betreuung("serie", dirk);
+      const { raeumeVerwaisteAbsprachen } = await import("@/lib/care/block-sync");
+
+      expect(await imHaushalt(() => raeumeVerwaisteAbsprachen())).toBe(0);
+      expect(await prisma.careAssignment.count({ where: { eventUid: "serie" } })).toBe(1);
+    });
+
+    it("nimmt den Block mit, wenn in Apple Kalender gelöscht wird", async () => {
+      await mitBlock();
+      const { raeumeBetreuungWeg } = await import("@/lib/care/block-sync");
+
+      // So sieht es der Sync: Die Zeile des Termins ist weg, die Betreuung
+      // steht noch da, und niemand hat den Tag neu gerechnet.
+      await prisma.event.deleteMany({ where: { uid: "a" } });
+      await imHaushalt(() => raeumeBetreuungWeg(["a"]));
+
+      expect(await prisma.event.count({ where: { uid: { startsWith: "fp-care-" } } })).toBe(0);
+      expect(await prisma.careAssignment.count({ where: { eventUid: "a" } })).toBe(0);
+    });
+  });
 });

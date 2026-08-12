@@ -293,6 +293,10 @@ export async function schreibeBloeckeNeu(
   von: Date,
   tage: number,
 ): Promise<{ tage: number }> {
+  // Erst das, was gar keinen Anlass mehr hat — sonst rechnet der Lauf gleich
+  // Blöcke für Termine nach, die es nicht mehr gibt.
+  await raeumeVerwaisteAbsprachen().catch(() => 0);
+
   const start = tagesAnker(von);
   for (let i = 0; i < tage; i++) {
     await synchronisiereTag(new Date(start.getTime() + i * 86_400_000)).catch(() => null);
@@ -386,28 +390,82 @@ export async function anlassFuerBlock(blockUid: string): Promise<{
 }
 
 /**
- * Alle Blöcke zu einem Anlass entfernen — beim Löschen des Termins.
+ * Der Anlass ist weg — dann auch die Betreuung und ihr Block.
  *
- * Die betroffenen Tage einmal neu rechnen genügt: Die Betreuungen zu einem
- * gelöschten Termin führen zu keinem Fenster mehr, also fällt ihr Block weg.
- * Was danach noch als verwaister Block dasteht, räumt derselbe Lauf ab.
+ * Gemeldet als: „Tennis mit Kim gelöscht, der Betreuungseintrag für Constanze
+ * blieb stehen." Ein Block ohne Anlass ist schlimmer als kein Block — er
+ * behauptet einen Termin, den es nicht mehr gibt, und steht dabei auf dem
+ * Sperrbildschirm.
+ *
+ * Die Reihenfolge ist der ganze Fehler von damals: Erst wurde der Tag neu
+ * gerechnet, DANN die Betreuungszeilen gelöscht. Beim Rechnen stand die
+ * Absprache also noch da, der Block blieb im Soll-Stand — und war eine Zeile
+ * später verwaist, ohne dass ihn noch jemand gefunden hätte.
+ *
+ * Jetzt fällt zuerst die Absprache. Sie gehört zum Termin: Wer nicht mehr
+ * stattfindet, für den muss auch niemand mehr aufpassen. Danach rechnet
+ * derselbe Weg wie immer, und der Block fällt von selbst heraus.
  */
-export async function removeCareBlocksForEvent(eventUid: string): Promise<void> {
+export async function raeumeBetreuungWeg(eventUids: string[]): Promise<void> {
+  if (eventUids.length === 0) return;
+
+  // Welche Tage betrifft das? Die Frage muss vor dem Löschen gestellt werden.
   const tage = await prisma.careAssignment.findMany({
-    where: { eventUid },
+    where: { eventUid: { in: eventUids } },
+    distinct: ["occurrenceDate"],
     select: { occurrenceDate: true },
   });
+
+  await prisma.careAssignment.deleteMany({ where: { eventUid: { in: eventUids } } });
   for (const t of tage) await synchronisiereTag(t.occurrenceDate).catch(() => null);
 
-  // Blöcke, deren Betreuungszeile schon weg ist, hätte niemand mehr gefunden —
-  // genau das ist uns einmal passiert und stand danach für immer im Kalender.
-  const verwaist = await prisma.event.findMany({
+  await raeumeVerwaisteBloecke();
+}
+
+/**
+ * Absprachen, deren Termin es nicht mehr gibt.
+ *
+ * Für alles, was gelöscht wurde, bevor beim Löschen aufgeräumt wurde — und
+ * für den Fall, dass ein Lauf einmal abbricht. Ohne das bliebe der alte
+ * Schaden liegen: Der Fehler ist behoben, der Kalendereintrag steht trotzdem
+ * noch da.
+ *
+ * Gefragt wird nach dem Haupttermin, nicht nach dem einzelnen Vorkommen. Bei
+ * einer Serie gibt es genau eine Zeile; wäre die Frage anders gestellt,
+ * verlöre jede Serie ihre Betreuung.
+ */
+export async function raeumeVerwaisteAbsprachen(): Promise<number> {
+  const absprachen = await prisma.careAssignment.findMany({
+    distinct: ["eventUid"],
+    select: { eventUid: true },
+  });
+  const uids = absprachen.map((a) => a.eventUid);
+  if (uids.length === 0) return 0;
+
+  const vorhanden = await prisma.event.findMany({
+    where: { uid: { in: uids }, recurrenceId: "" },
+    select: { uid: true },
+  });
+  const da = new Set(vorhanden.map((e) => e.uid));
+  const ohneAnlass = uids.filter((u) => !da.has(u));
+
+  await raeumeBetreuungWeg(ohneAnlass);
+  return ohneAnlass.length;
+}
+
+/**
+ * Blöcke, zu denen keine Absprache mehr gehört.
+ *
+ * Sie können durch nichts mehr gefunden werden — genau das ist uns einmal
+ * passiert, und der Eintrag stand danach für immer im Kalender.
+ */
+export async function raeumeVerwaisteBloecke(): Promise<void> {
+  const bloecke = await prisma.event.findMany({
     where: { uid: { startsWith: CARE_UID_PREFIX } },
     select: { uid: true },
   });
-  for (const b of verwaist) {
-    const tag = dayKeyFromCareBlockUid(b.uid);
-    if (!tag) continue;
+  for (const b of bloecke) {
+    if (!dayKeyFromCareBlockUid(b.uid)) continue;
     const zugehoerig = await prisma.careAssignment.count({ where: { blockUid: b.uid } });
     if (zugehoerig === 0) await removeCareBlockByUid(b.uid).catch(() => null);
   }

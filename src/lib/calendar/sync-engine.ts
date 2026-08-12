@@ -1,6 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { invalidateKalender } from "./range-data";
+import { raeumeBetreuungWeg } from "@/lib/care/block-sync";
+import { isCareBlockUid } from "@/lib/care/block";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { parseEvents } from "./ical";
@@ -87,10 +89,34 @@ async function syncCalendar(
     }
 
     if (diff.hrefsToDelete.length) {
+      /*
+       * Wer verschwindet, muss vorher gefragt werden.
+       *
+       * An einem gelöschten Termin hängt womöglich eine Betreuungsabsprache,
+       * und an der ein Eintrag im Kalender („👶 Nicolas · Constanze"). Der
+       * verschwindet nicht mit seinem Anlass — er ist ein eigener Termin.
+       * Bis eben blieb er einfach stehen: Wer in Apple Kalender etwas löschte,
+       * hatte danach einen Betreuungseintrag für einen Termin, den es nicht
+       * mehr gab.
+       *
+       * Die eigenen Blöcke bleiben dabei außen vor. Löscht sie jemand von Hand
+       * in Apple Kalender, ist das eine Ansage — die schreiben wir nicht im
+       * nächsten Atemzug zurück.
+       */
+      const verschwunden = await prisma.event.findMany({
+        where: { calendarId: calendar.id, href: { in: diff.hrefsToDelete } },
+        select: { uid: true },
+      });
+
       const del = await prisma.event.deleteMany({
         where: { calendarId: calendar.id, href: { in: diff.hrefsToDelete } },
       });
       summary.deleted += del.count;
+
+      const anlaesse = [
+        ...new Set(verschwunden.map((v) => v.uid).filter((u) => !isCareBlockUid(u))),
+      ];
+      await raeumeBetreuungWeg(anlaesse).catch(() => null);
     }
 
     await prisma.calendar.update({
