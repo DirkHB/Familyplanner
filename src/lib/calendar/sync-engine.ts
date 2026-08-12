@@ -6,7 +6,7 @@ import { isCareBlockUid } from "@/lib/care/block";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { createIcsClient } from "./ics-client";
-import { ICS_PROVIDER } from "./provider";
+import { liestUeberFeed } from "./provider";
 import { parseEvents } from "./ical";
 import { diffPull, type LocalState } from "./sync-diff";
 import type { CalDavClient, RemoteObject } from "./caldav";
@@ -38,7 +38,12 @@ async function clientForAccount(accountId: string): Promise<CalDavClient> {
     where: { id: accountId },
   });
   const geheimnis = decryptSecret(account.credentialsEncrypted);
-  if (account.provider === ICS_PROVIDER) {
+  /*
+   * Ein Google-Kalender wird genauso gelesen wie ein Abonnement — über seine
+   * .ics-Adresse. Der Unterschied liegt allein im Rückweg, und der läuft nicht
+   * über diesen Client, sondern über die Kalender-API (siehe schreiber.ts).
+   */
+  if (liestUeberFeed(account.provider)) {
     return createIcsClient(geheimnis, account.username ?? "Abonnement");
   }
   return createICloudClient({ username: account.username ?? "", password: geheimnis });
