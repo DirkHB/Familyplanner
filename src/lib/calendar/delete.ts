@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { gehoertZumHaushalt } from "@/lib/haushalt/singletons";
+import { kannSchreiben } from "./provider";
 import { raeumeBetreuungWeg } from "@/lib/care/block-sync";
 
 /** App→iCloud: Termin (bzw. ganze Serie) löschen und lokal aufräumen. */
@@ -25,6 +26,18 @@ export async function deleteEvent(userId: string, uid: string): Promise<DeleteEv
    */
   if (!(await gehoertZumHaushalt(account.id))) {
     return { deleted: false, reason: "Dieser Termin gehört nicht zu eurem Kalender." };
+  }
+
+  /*
+   * Ein abonnierter Kalender ist eine Einbahnstraße. Ohne diese Frage würde
+   * hier ein iCloud-Zugang aus einer Feed-Adresse gebaut — das schlüge fehl,
+   * aber mit einer Meldung, aus der niemand schlau wird.
+   */
+  if (!kannSchreiben(account.provider)) {
+    return {
+      deleted: false,
+      reason: "Dieser Kalender ist abonniert — löschen geht nur dort, wo er geführt wird.",
+    };
   }
 
   const password = decryptSecret(account.credentialsEncrypted);

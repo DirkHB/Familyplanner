@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
 import { EtagConflictError } from "./caldav";
+import { kannSchreiben } from "./provider";
 import { invalidateKalender } from "./range-data";
 
 /**
@@ -29,6 +30,15 @@ export async function updateEvent(
   if (master.rrule) return { updated: false, reason: "Serientermine bitte in Apple Kalender ändern." };
 
   const account = master.calendar.account;
+  // Ein abonnierter Kalender wird woanders geführt. Hineinzuschreiben würde
+  // hier scheitern — und beim nächsten Abgleich wäre die Änderung ohnehin weg.
+  if (!kannSchreiben(account.provider)) {
+    return {
+      updated: false,
+      reason: "Dieser Kalender ist abonniert — ändern geht nur dort, wo er geführt wird.",
+    };
+  }
+
   const password = decryptSecret(account.credentialsEncrypted);
   const client = await createICloudClient({ username: account.username ?? "", password });
 

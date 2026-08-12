@@ -76,6 +76,42 @@ export async function syncNowAction(): Promise<{
   };
 }
 
+/**
+ * Einen fremden Kalender abonnieren.
+ *
+ * Der Weg für alles, was die App nicht selbst anbinden kann — vor allem
+ * Google. Nur lesend: Die Termine sind in der gemeinsamen Woche zu sehen,
+ * hineinschreiben kann die App nicht.
+ */
+export async function abonniereKalenderAction(
+  _prev: { error: string | null; gefunden?: number } | null,
+  formData: FormData,
+): Promise<{ error: string | null; gefunden?: number }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Nicht angemeldet." };
+
+  const url = String(formData.get("url") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!url) return { error: "Die Adresse des Kalenders fehlt." };
+  if (!/^(https?|webcal):\/\//i.test(url)) {
+    return { error: "Das sieht nicht nach einer Kalenderadresse aus — sie beginnt mit https:// oder webcal://." };
+  }
+
+  const { abonniereKalender } = await import("@/lib/calendar/account");
+  try {
+    const r = await abonniereKalender(session.user.id, url, name);
+    revalidatePath("/einstellungen");
+    revalidatePath("/woche");
+    return { error: null, gefunden: r.termine };
+  } catch (err) {
+    // Der Grund steht in der Meldung — „zu groß", „kein Kalender", ein
+    // Statuscode. Den zu verschlucken hieße, jeden Tippfehler gleich
+    // aussehen zu lassen.
+    const grund = err instanceof Error ? err.message : "Unbekannter Fehler.";
+    return { error: `Der Kalender ließ sich nicht abonnieren. ${grund}` };
+  }
+}
+
 export async function disconnectAction(accountId: string) {
   const session = await auth();
   if (!session?.user?.id) return;

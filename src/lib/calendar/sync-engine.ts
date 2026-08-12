@@ -5,6 +5,8 @@ import { raeumeBetreuungWeg } from "@/lib/care/block-sync";
 import { isCareBlockUid } from "@/lib/care/block";
 import { decryptSecret } from "@/lib/crypto/envelope";
 import { createICloudClient } from "./tsdav-client";
+import { createIcsClient } from "./ics-client";
+import { ICS_PROVIDER } from "./provider";
 import { parseEvents } from "./ical";
 import { diffPull, type LocalState } from "./sync-diff";
 import type { CalDavClient, RemoteObject } from "./caldav";
@@ -22,12 +24,24 @@ export type SyncSummary = {
   errors: { calendar: string; message: string }[];
 };
 
+/**
+ * Der passende Zugang zum Konto.
+ *
+ * Zwei Arten, und der Unterschied ist grundsätzlich: iCloud ist ein Server,
+ * mit dem man spricht — ein Abonnement ist eine Datei, die man herunterlädt.
+ * Was verschlüsselt gespeichert ist, ist bei iCloud das Passwort und beim
+ * Abonnement die Adresse. Beide sind Geheimnisse: Wer die Adresse hat, sieht
+ * den Kalender.
+ */
 async function clientForAccount(accountId: string): Promise<CalDavClient> {
   const account = await prisma.calendarAccount.findUniqueOrThrow({
     where: { id: accountId },
   });
-  const password = decryptSecret(account.credentialsEncrypted);
-  return createICloudClient({ username: account.username ?? "", password });
+  const geheimnis = decryptSecret(account.credentialsEncrypted);
+  if (account.provider === ICS_PROVIDER) {
+    return createIcsClient(geheimnis, account.username ?? "Abonnement");
+  }
+  return createICloudClient({ username: account.username ?? "", password: geheimnis });
 }
 
 /** Ein RemoteObject in eine Event-Zeile übersetzen (Kalenderfelder aus dem Master-VEVENT). */

@@ -87,6 +87,17 @@ export default async function EinstellungenPage() {
         })
       : null;
 
+  // Abonnierte Kalender stehen neben der iCloud-Verbindung, nicht darin: Sie
+  // gehören niemandem im Haushalt, sie werden nur gelesen.
+  const { ICS_PROVIDER } = await import("@/lib/calendar/provider");
+  const abos = userId
+    ? await prisma.calendarAccount.findMany({
+        where: { provider: ICS_PROVIDER },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, username: true },
+      })
+    : [];
+
   const [diagnose, abgewinkt] = userId
     ? await Promise.all([diagnoseCalendars(), listDismissed()])
     : [[], []];
@@ -122,6 +133,7 @@ export default async function EinstellungenPage() {
       tagBis={ich?.tagBisStunde ?? null}
       pushPrefs={{ requests: prefs.requests, taskWindow: prefs.taskWindow }}
       istVerwaltung={ich?.isAdmin ?? false}
+      abos={abos.map((a) => ({ id: a.id, name: a.username ?? "Abonnement" }))}
       partner={{ schonZuZweit: profil.erwachsene.length >= 2, eingeladen: offeneEinladung }}
       haushalt={{
         erwachsene: profil.erwachsene.map((e) => ({ email: e.email, name: e.name })),

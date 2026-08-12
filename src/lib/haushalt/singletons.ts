@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto/envelope";
+import { ICLOUD_PROVIDER, kannSchreiben } from "@/lib/calendar/provider";
 
 /**
  * Die drei Dinge, von denen es „genau eins" gibt.
@@ -118,13 +119,21 @@ export async function kalenderzugang(userId?: string | null): Promise<Kalenderzu
         where: { id: ich.schreibKalenderId },
         include: mitKonto,
       });
-      // Der gewählte Kalender kann verschwunden sein — abgeschaltet oder das
-      // Konto getrennt. Dann lieber weitersuchen als gar nichts anbieten.
-      if (gewaehlt?.isSynced && gewaehlt.account) return zugangAus(gewaehlt, gewaehlt.account);
+      /*
+       * Der gewählte Kalender kann verschwunden sein — abgeschaltet oder das
+       * Konto getrennt. Dann lieber weitersuchen als gar nichts anbieten.
+       *
+       * Und er kann ein Abonnement sein: Die Frage steht in den Einstellungen
+       * neben den anderen, aber hineinschreiben kann man nicht. Ein Termin
+       * dorthin wäre beim nächsten Abgleich wieder weg.
+       */
+      if (gewaehlt?.isSynced && gewaehlt.account && kannSchreiben(gewaehlt.account.provider)) {
+        return zugangAus(gewaehlt, gewaehlt.account);
+      }
     }
 
     const eigener = await prisma.calendar.findFirst({
-      where: { isSynced: true, account: { userId, provider: "icloud" } },
+      where: { isSynced: true, account: { userId, provider: ICLOUD_PROVIDER } },
       orderBy: { name: "asc" },
       include: mitKonto,
     });
@@ -132,7 +141,7 @@ export async function kalenderzugang(userId?: string | null): Promise<Kalenderzu
   }
 
   const irgendeiner = await prisma.calendar.findFirst({
-    where: { isSynced: true, account: { provider: "icloud" } },
+    where: { isSynced: true, account: { provider: ICLOUD_PROVIDER } },
     orderBy: { name: "asc" },
     include: mitKonto,
   });

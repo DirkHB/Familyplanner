@@ -100,11 +100,18 @@ und wechselt mit einem Tipp zu Johanna — für den Termin, den du für sie
 ausmachst. Am Termin selbst kannst du später nachlesen, in wessen Kalender er
 liegt.
 
-> **Johanna und ihr Android-Kalender:** Ihren Google-Kalender kann die App
-> **noch nicht** anbinden. Bis das gelöst ist, hat sie kein eigenes
-> Schreibziel — was sie anlegt, landet in deinem Kalender. Entweder ihr lebt
-> kurz damit, oder sie legt sich eine Apple-ID an (geht auch ohne Apple-Gerät)
-> und verbindet die. Dirk arbeitet daran.
+> **Johanna und ihr Android-Kalender:** Ihren Google-Kalender könnt ihr
+> **abonnieren** — dann stehen ihre Termine in der gemeinsamen Woche.
+> In Google: *Einstellungen → Kalender → Kalender integrieren → Geheime
+> Adresse im iCal-Format*. Die Adresse kopieren, in der App unter
+> **Einstellungen → Kalender abonnieren** einsetzen, fertig.
+>
+> Der Haken: Ein Abonnement geht **nur in eine Richtung**. Ihr seht ihre
+> Termine, aber die App kann nichts in ihren Kalender schreiben — was sie in
+> der App anlegt, landet weiter in deinem. Wenn sie ein eigenes Schreibziel
+> will, führt der Weg über eine Apple-ID (geht auch ohne Apple-Gerät).
+>
+> Und: Die Adresse ist ein Geheimnis. Wer sie hat, sieht den Kalender.
 
 ### 2.3 Johanna einladen
 

@@ -27,6 +27,7 @@ import { FaecherEditor, type Fach } from "@/components/settings/FaecherEditor";
 import { RemindersImport } from "@/components/settings/RemindersImport";
 import { ConnectForm } from "@/components/settings/ConnectForm";
 import { PartnerEinladen } from "@/components/settings/PartnerEinladen";
+import { AboForm } from "@/components/settings/AboForm";
 
 /**
  * Einstellungen als gruppierte Liste mit einem einzigen Aufklapp-Muster.
@@ -78,6 +79,7 @@ export function SettingsClient({
   haushalt = { erwachsene: [], kind: "das Baby" },
   istVerwaltung = false,
   partner = { schonZuZweit: true, eingeladen: null },
+  abos = [],
 }: {
   account: Account;
   diagnose?: Diagnose[];
@@ -97,6 +99,8 @@ export function SettingsClient({
   istVerwaltung?: boolean;
   /** Ob die zweite Person schon da ist, und an wen eine Einladung unterwegs ist. */
   partner?: { schonZuZweit: boolean; eingeladen: string | null };
+  /** Abonnierte Kalender — nur lesend, deshalb getrennt von der Verbindung. */
+  abos?: { id: string; name: string }[];
 }) {
   const termineGesamt = diagnose.reduce((n, d) => n + d.termine, 0);
 
@@ -149,6 +153,34 @@ export function SettingsClient({
               <ConnectForm />
             )}
           </Zeile>
+          {/* Der zweite Weg herein: für Kalender, die die App nicht selbst
+              anbinden kann. Steht bewusst hinter dem iCloud-Weg — er ist die
+              Ausnahme, nicht die Regel. */}
+          <Zeile
+            titel="Kalender abonnieren"
+            status={abos.length > 0 ? `${abos.length}` : "Google & Co."}
+          >
+            {abos.length > 0 && (
+              <ul className="mb-3 flex flex-col gap-1.5">
+                {abos.map((a) => (
+                  <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">
+                      {a.name}
+                      <span className="text-ink-muted"> · nur lesend</span>
+                    </span>
+                    <button
+                      onClick={() => disconnectAction(a.id)}
+                      className="shrink-0 text-sm text-ink-muted underline"
+                    >
+                      entfernen
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <AboForm />
+          </Zeile>
+
           <Zeile titel="Dein Tag" status={`${tagVon ?? 7}–${tagBis ?? 21} Uhr`}>
             <TagesfensterInhalt von={tagVon ?? 7} bis={tagBis ?? 21} />
           </Zeile>

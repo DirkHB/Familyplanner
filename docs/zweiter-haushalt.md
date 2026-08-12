@@ -71,24 +71,32 @@ anderen Person (für den Zahnarzttermin, den man für sie ausgemacht hat).
 Damit bleibt jeder Termin an genau einem Ort, und niemand muss bei jedem
 Eintrag entscheiden „privat oder Familie?".
 
-**Ein Punkt bleibt offen:** Johannas Android-Kalender ist fast sicher ein
-Google-Kalender, und den kann die App noch nicht anbinden — die
-CalDAV-Adresse steht fest auf iCloud. Bis das gelöst ist, hat sie **kein
-eigenes Schreibziel**, und die App fällt für sie auf Thomas' Kalender zurück.
-Das ist genau der Fall, den wir vermeiden wollten; er ist nur noch der letzte
-Ausweg statt die Regel.
+**Johannas Android-Kalender** ist fast sicher ein Google-Kalender. Verbinden
+kann die App ihn nicht: Google hat CalDAV mit Passwort im März 2025
+abgeschaltet, seitdem geht nur noch OAuth — und das setzt ein geprüftes
+Entwicklerkonto bei Google voraus, mit Warnbildschirm für jede Person, die
+sich anmeldet.
 
-Zwei Wege in der Zwischenzeit, beide in Ordnung:
+**Lesen geht trotzdem.** Unter *Einstellungen → Kalender abonnieren* nimmt die
+App die Adresse einer .ics-Datei entgegen. Bei Google steht sie unter
+*Einstellungen → Kalender → Kalender integrieren → Geheime Adresse im
+iCal-Format*. Danach stehen Johannas Termine in der gemeinsamen Woche und
+zählen bei der Betreuung mit. Das Gleiche funktioniert für Outlook,
+Nextcloud, den Vereins- oder Kita-Kalender.
 
-1. **Johanna legt sich eine Apple-ID an** (geht auf appleid.apple.com ohne
-   Apple-Gerät) und verbindet deren Kalender. Dann hat sie ein eigenes
-   Schreibziel. Sie sieht ihn nur über die App — was reicht, wenn sie ohnehin
-   dort arbeitet.
-2. **Sie trägt vorerst nichts selbst ein**, und Thomas legt Gemeinsames an.
-   Weniger schön, aber nichts landet an einer falschen Stelle.
+Zwei Dinge dazu, beide unvermeidlich:
 
-Sag Bescheid, wenn Thomas seinen Google-Kalender testweise per CalDAV
-freigeben kann — dann probieren wir Weg drei.
+- **Nur in eine Richtung.** Ein Abonnement ist eine Datei, kein Server. Die
+  App kann nichts hineinschreiben; wer es in der App versucht, bekommt eine
+  Absage statt eines Termins, der beim nächsten Abgleich wieder verschwindet.
+  Johanna hat damit weiterhin **kein eigenes Schreibziel** — was sie in der
+  App anlegt, landet in Thomas' Kalender.
+- **Die Adresse ist ein Geheimnis.** Wer sie hat, sieht den Kalender. Sie wird
+  deshalb verschlüsselt gespeichert wie ein Passwort und nirgends wieder
+  angezeigt.
+
+Wer ein eigenes Schreibziel will, kommt nach wie vor nur über eine Apple-ID
+dahin (geht auf appleid.apple.com ohne Apple-Gerät).
 
 ---
 
