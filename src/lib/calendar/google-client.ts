@@ -95,21 +95,42 @@ function alsGoogleTermin(f: Partial<TerminFelder>): Record<string, unknown> {
 
 export type GoogleTermin = { id: string; uid: string };
 
-/** Einen Termin anlegen. Gibt Googles Kennung und die UID zurück. */
+/**
+ * Einen Termin anlegen — mit **unserer** UID.
+ *
+ * Das ist der Grund für `import` statt `insert`: `insert` vergibt die UID
+ * selbst, `import` nimmt eine mitgebrachte an. Der Unterschied klingt klein
+ * und trägt alles Weitere.
+ *
+ * Ein Betreuungsblock hat eine selbst vergebene, wiedererkennbare UID. Daran
+ * hängt, dass ein von Hand gelöschter Block nicht im nächsten Atemzug
+ * zurückgeschrieben wird, und dass beim Löschen eines Termins die richtige
+ * Betreuung mitgeht. Ließen wir Google die UID vergeben, bräuchte jede dieser
+ * Stellen einen Sonderfall — und der Termin käme über den Feed unter einer
+ * fremden Kennung zurück und läge doppelt da.
+ *
+ * Mit `import` bleibt das UID-Schema über alle Anbieter dasselbe, und der
+ * Rest der App muss gar nicht wissen, wo ein Termin liegt.
+ */
 export async function googleAnlegen(
   konto: KontoZugang,
   kalenderId: string,
+  uid: string,
   felder: TerminFelder,
 ): Promise<GoogleTermin> {
   const token = await zugangFuer(konto);
-  const antwort = await ruf(token, `${kalenderPfad(kalenderId)}/events?sendUpdates=none`, {
+  const antwort = await ruf(token, `${kalenderPfad(kalenderId)}/events/import`, {
     method: "POST",
-    body: JSON.stringify(alsGoogleTermin(felder)),
+    body: JSON.stringify({ ...alsGoogleTermin(felder), iCalUID: uid }),
   });
+
   const id = String(antwort.id ?? "");
-  const uid = String(antwort.iCalUID ?? "");
-  if (!id || !uid) {
-    throw new GoogleError(0, "Google hat den Termin ohne Kennung zurückgegeben.");
+  const zurueck = String(antwort.iCalUID ?? "");
+  if (!id) throw new GoogleError(0, "Google hat den Termin ohne Kennung zurückgegeben.");
+  if (zurueck && zurueck !== uid) {
+    // Sollte nicht vorkommen — aber lieber laut scheitern als still einen
+    // Termin anlegen, den wir nie wiederfinden.
+    throw new GoogleError(0, `Google hat die UID geändert: ${uid} wurde zu ${zurueck}.`);
   }
   return { id, uid };
 }
@@ -204,9 +225,12 @@ export async function pruefeGoogleKalender(
   }
 
   const probe = new Date("2001-01-01T09:00:00.000Z");
+  // Mit einer eigenen UID — die Probe prüft genau den Mechanismus, auf dem
+  // später alles steht, und nicht bloß „irgendein Schreibzugriff".
+  const probeUid = `fp-probe-${Date.now()}@planyourweek.app`;
   let probeId: string;
   try {
-    const angelegt = await googleAnlegen(konto, kalenderId, {
+    const angelegt = await googleAnlegen(konto, kalenderId, probeUid, {
       title: "Verbindungstest",
       start: probe,
       end: new Date(probe.getTime() + 3600_000),

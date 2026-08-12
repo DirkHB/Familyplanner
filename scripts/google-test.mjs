@@ -8,13 +8,18 @@
  *   1. Kommt der Service Account überhaupt an den Kalender? (Lesen)
  *   2. Darf er hineinschreiben? (Anlegen, Ändern, Löschen)
  *   3. Wie schnell steht ein neuer Termin im .ics-Feed?
- *   4. Trägt der Feed dieselbe UID, die uns Google beim Anlegen genannt hat?
+ *   4. Nimmt Google eine von uns mitgebrachte UID an — und steht sie danach
+ *      unverändert im Feed?
  *
- * Frage 3 und 4 entscheiden über den Zuschnitt: Wir lesen heute über das
- * Abonnement und wollten nur das Schreiben über die API laufen lassen. Das
- * geht nur auf, wenn der Feed zügig nachzieht und der Termin sich
- * wiedererkennen lässt. Hängt der Feed Stunden hinterher, muss auch das Lesen
- * über die API gehen (events.list mit syncToken) — dann wird es größer.
+ * Frage 3 und 4 entscheiden über den Zuschnitt: Wir lesen über das Abonnement
+ * und schreiben über die API. Das geht nur auf, wenn der Feed zügig nachzieht
+ * und der Termin sich wiedererkennen lässt. Hängt der Feed Stunden hinterher,
+ * muss auch das Lesen über die API gehen — dann wird es größer.
+ *
+ * An Frage 4 hängt noch mehr: Ein Betreuungsblock trägt eine selbst vergebene,
+ * wiedererkennbare UID. Daran hängt, dass ein von Hand gelöschter Block nicht
+ * zurückkehrt. Deshalb wird hier `events.import` benutzt statt `insert` —
+ * `insert` vergibt die UID selbst, `import` nimmt eine mitgebrachte an.
  *
  * Ohne Abhängigkeiten: Der Zugangs-Token wird hier selbst signiert. Drei
  * Aufrufe rechtfertigen kein weiteres Paket im Image — wir hatten schon
@@ -202,6 +207,7 @@ const ergebnis = {
   aendern: false,
   loeschen: false,
   feed: null,
+  eigeneUid: null,
 };
 let token;
 let terminId = null;
@@ -244,9 +250,16 @@ try {
   const ende = new Date(start.getTime() + 3600 * 1000);
 
   try {
-    const angelegt = await api(token, `${kalenderPfad(kalenderId)}/events?sendUpdates=none`, {
+    // Mit EIGENER UID, über `import` statt `insert`. Das ist die Frage, auf
+    // der alles Weitere steht: `insert` vergibt die UID selbst, `import`
+    // nimmt eine mitgebrachte an. Nur so behalten Betreuungsblöcke ihre
+    // wiedererkennbare Kennung, und nur so kommt der Termin über den Feed
+    // unter derselben UID zurück, unter der wir ihn angelegt haben.
+    const wunschUid = `fp-test-${start.getTime()}@planyourweek.app`;
+    const angelegt = await api(token, `${kalenderPfad(kalenderId)}/events/import`, {
       method: "POST",
       body: JSON.stringify({
+        iCalUID: wunschUid,
         summary: TITEL,
         description: "Angelegt von scripts/google-test.mjs. Wird gleich wieder gelöscht.",
         start: { dateTime: start.toISOString(), timeZone: "Europe/Berlin" },
@@ -259,9 +272,15 @@ try {
     ergebnis.uid = angelegt.iCalUID;
     gut(`am ${start.toLocaleDateString("de-DE")}`);
     dazu(`id:       ${angelegt.id}`);
-    dazu(`iCalUID:  ${angelegt.iCalUID}`);
-    dazu("Die iCalUID ist der Schlüssel: Unter ihr taucht der Termin später im");
-    dazu("Feed auf, und nur daran erkennen wir unseren eigenen wieder.");
+    dazu(`gewünscht: ${wunschUid}`);
+    dazu(`bekommen:  ${angelegt.iCalUID}`);
+    if (angelegt.iCalUID === wunschUid) {
+      ergebnis.eigeneUid = true;
+      dazu("Google hat unsere UID übernommen — genau darauf kommt es an.");
+    } else {
+      ergebnis.eigeneUid = false;
+      dazu("Google hat eine andere UID vergeben. Siehe unten.");
+    }
   } catch (err) {
     schlecht(err.message);
     if (err.status === 403) {
@@ -359,6 +378,13 @@ if (!ergebnis.angemeldet) {
   console.log(rot("Lesen geht, Schreiben nicht."));
   console.log("Meist die Berechtigung: Sie muss auf „Änderungen an Terminen");
   console.log("vornehmen“ stehen, nicht auf „Alle Termindetails sehen“.");
+} else if (ergebnis.eigeneUid === false) {
+  console.log(gruen("Schreiben geht.") + " Aber Google behält unsere UID nicht.");
+  console.log("Das ist die unangenehmste Antwort. An der eigenen UID hängt, dass");
+  console.log("ein von Hand gelöschter Betreuungsblock nicht zurückkehrt und dass");
+  console.log("beim Löschen eines Termins die richtige Betreuung mitgeht. Vergibt");
+  console.log("Google die UID selbst, braucht jede dieser Stellen einen Sonderfall.");
+  console.log("Machbar, aber deutlich mehr Arbeit — sag mir das Ergebnis.");
 } else if (ergebnis.feed === null) {
   console.log(gruen("Lesen und Schreiben gehen — der Weg trägt."));
   console.log("Offen bleibt, wie schnell der .ics-Feed nachzieht. Lauf das");
@@ -370,9 +396,11 @@ if (!ergebnis.angemeldet) {
   console.log("der App minutenlang unsichtbar. Dann muss auch das Lesen über die");
   console.log("API laufen — events.list mit syncToken. Mehr Arbeit, aber machbar.");
 } else {
-  console.log(gruen("Alle vier Schritte gehen.") + ` Der Feed zog nach ${ergebnis.feed} Sekunden nach.`);
-  console.log("Damit trägt der geplante Zuschnitt: schreiben über die API, lesen");
-  console.log("weiter über das Abonnement, wiedererkannt an der iCalUID.");
+  console.log(gruen("Alles geht.") + ` Der Feed zog nach ${ergebnis.feed} Sekunden nach,`);
+  console.log("und Google hat unsere eigene UID übernommen.");
+  console.log("Damit trägt der geplante Zuschnitt vollständig: schreiben über die");
+  console.log("API, lesen weiter über das Abonnement, und das UID-Schema bleibt");
+  console.log("über alle Anbieter dasselbe — kein Sonderfall im Rest der App.");
 }
 
 console.log("─".repeat(64) + "\n");

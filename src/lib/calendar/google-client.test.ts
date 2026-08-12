@@ -63,11 +63,16 @@ beforeAll(async () => {
       if (req.method === "GET" && /^\/calendars\/[^/]+$/.test(pfad)) {
         return antworte(200, { summary: "Johannas Kalender" });
       }
-      if (req.method === "POST" && /\/events(\?|$)/.test(pfad)) {
+      if (req.method === "POST" && /\/events\/import$/.test(pfad)) {
         if (modus === "nurlesend") {
           return antworte(403, { error: { message: "You need to have writer access." } });
         }
-        return antworte(200, { id: "evt-7", iCalUID: "evt-7@google.com" });
+        const rein = roh ? JSON.parse(roh) : {};
+        // Google gibt die mitgebrachte UID zurück — darauf beruht alles Weitere.
+        return antworte(200, {
+          id: "evt-7",
+          iCalUID: modus === "fremdeuid" ? "etwas-anderes@google.com" : rein.iCalUID,
+        });
       }
       if (req.method === "PATCH") return antworte(200, { id: "evt-7" });
       if (req.method === "DELETE") {
@@ -128,7 +133,7 @@ describe("Anmeldung", () => {
 
 describe("Termin anlegen", () => {
   it("schickt Uhrzeiten mit Zeitzone und gibt beide Kennungen zurück", async () => {
-    const r = await googleAnlegen(KONTO, "johanna@gmail.com", {
+    const r = await googleAnlegen(KONTO, "johanna@gmail.com", "fp-1@planyourweek.app", {
       title: "Rückbildung",
       start: new Date("2026-08-20T07:00:00.000Z"),
       end: new Date("2026-08-20T08:00:00.000Z"),
@@ -136,7 +141,7 @@ describe("Termin anlegen", () => {
       location: "Praxis",
     });
 
-    expect(r).toEqual({ id: "evt-7", uid: "evt-7@google.com" });
+    expect(r).toEqual({ id: "evt-7", uid: "fp-1@planyourweek.app" });
 
     const post = aufrufe.find((a) => a.methode === "POST" && a.pfad.includes("/events"));
     expect(post?.koerper).toMatchObject({
@@ -144,13 +149,13 @@ describe("Termin anlegen", () => {
       location: "Praxis",
       start: { dateTime: "2026-08-20T07:00:00.000Z", timeZone: "Europe/Berlin" },
     });
-    // Die UID ist der Schlüssel: Unter ihr kommt der Termin über den Feed
-    // zurück, und nur daran erkennen wir unseren eigenen wieder.
-    expect(r.uid).toContain("@google.com");
+    // Die UID bleibt unsere. Unter ihr kommt der Termin über den Feed zurück,
+    // und nur daran erkennen wir unseren eigenen wieder.
+    expect(post?.koerper).toMatchObject({ iCalUID: "fp-1@planyourweek.app" });
   });
 
   it("schickt Ganztagstermine als Datum ohne Uhrzeit", async () => {
-    await googleAnlegen(KONTO, "johanna@gmail.com", {
+    await googleAnlegen(KONTO, "johanna@gmail.com", "fp-2@planyourweek.app", {
       title: "Urlaub",
       start: new Date("2026-08-14T12:00:00.000Z"),
       end: new Date("2026-08-15T12:00:00.000Z"),
@@ -164,15 +169,31 @@ describe("Termin anlegen", () => {
     expect(JSON.stringify(post?.koerper)).not.toContain("dateTime");
   });
 
-  it("schickt keine Einladungen", async () => {
-    await googleAnlegen(KONTO, "j@gmail.com", {
+  it("lädt niemanden ein", async () => {
+    // Ein Service Account darf ohne Domain-Wide Delegation gar keine
+    // Teilnehmer setzen — Google wiese das ab. Wir schreiben Termine, wir
+    // verschicken keine Einladungen.
+    await googleAnlegen(KONTO, "j@gmail.com", "fp-3@planyourweek.app", {
       title: "X",
       start: new Date("2026-08-20T07:00:00Z"),
       end: new Date("2026-08-20T08:00:00Z"),
       allDay: false,
     });
     const post = aufrufe.find((a) => a.methode === "POST" && a.pfad.includes("/events"));
-    expect(post?.pfad).toContain("sendUpdates=none");
+    expect(JSON.stringify(post?.koerper)).not.toContain("attendees");
+  });
+
+  it("scheitert laut, wenn Google die UID austauscht", async () => {
+    // Still hinnehmen hieße: ein Termin im Kalender, den wir nie wiederfinden.
+    modus = "fremdeuid";
+    await expect(
+      googleAnlegen(KONTO, "j@gmail.com", "fp-4@planyourweek.app", {
+        title: "X",
+        start: new Date("2026-08-20T07:00:00Z"),
+        end: new Date("2026-08-20T08:00:00Z"),
+        allDay: false,
+      }),
+    ).rejects.toThrow(/UID geändert/);
   });
 });
 
