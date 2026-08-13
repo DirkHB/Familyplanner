@@ -167,19 +167,48 @@ function DaySection({
                   </span>
                 </div>
               ) : (
-                <div key={seg.keys.join("+")} className="relative">
-                  <span aria-hidden className="absolute -left-4 top-6 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-ink-muted/60" />
-                  {seg.keys.length === 1 ? (
+                seg.keys.length === 1 ? (
+                  <div key={seg.keys[0]} className="relative">
+                    <span aria-hidden className="absolute -left-4 top-6 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-ink-muted/60" />
                     <EventRow ev={byKey.get(seg.keys[0])!} index={i} isNext={seg.keys[0] === nextTodayKey} />
-                  ) : (
-                    /* Parallele Termine: nebeneinander, kompakt. */
-                    <div className="grid grid-cols-2 gap-2">
+                  </div>
+                ) : (
+                  /*
+                   * Überschneidende Termine standen bis eben nebeneinander,
+                   * halb so breit, auf gleicher Höhe. Die Anordnung sollte
+                   * „diese beiden kollidieren" sagen — gelesen wurde sie als
+                   * „gleiche Uhrzeit", und dann widersprachen die Zeiten in
+                   * den Karten dem Layout.
+                   *
+                   * Jetzt bleibt die Liste chronologisch und die Aussage steht
+                   * als Wort da. Das Band auf dem Zeitstrahl fasst zusammen,
+                   * was zusammengehört.
+                   *
+                   * Nebenbei kommt zurück, was die halbe Breite gekostet hat:
+                   * ganze Titel statt „Dinner + Meetin…", die Notizzeile, die
+                   * Beteiligten — und vor allem der Betreuungs-Knopf. Ausgerechnet
+                   * bei kollidierenden Terminen fehlte die Aktion, für die es
+                   * die App gibt.
+                   */
+                  <div key={seg.keys.join("+")} className="relative">
+                    {/* Der Strahl wird auf dieser Strecke dicker. Bewusst in
+                        surface-muted, also der Farbe des Strahls selbst — und
+                        ohne /Deckkraft, weil die auf unseren Tokens nicht
+                        wirkt (siehe die Punkte, die genau daran unsichtbar
+                        sind). */}
+                    <span aria-hidden className="absolute -left-4 bottom-2 top-2 ml-[3px] w-[3px] -translate-x-1/2 rounded-full bg-surface-muted" />
+                    <p className="mb-1.5 inline-flex rounded-pill border border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted">
+                      {seg.keys.length === 2
+                        ? "überschneiden sich"
+                        : `${seg.keys.length} überschneiden sich`}
+                    </p>
+                    <div className="flex flex-col gap-2">
                       {seg.keys.map((k) => (
-                        <EventRow key={k} ev={byKey.get(k)!} index={i} isNext={k === nextTodayKey} kompakt />
+                        <EventRow key={k} ev={byKey.get(k)!} index={i} isNext={k === nextTodayKey} />
                       ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )
               ),
             )}
           </div>
@@ -227,44 +256,11 @@ function EventRow({
   ev,
   index,
   isNext = false,
-  kompakt = false,
 }: {
   ev: EventVM;
   index: number;
   isNext?: boolean;
-  /** Halbbreit neben einem parallelen Termin: Zeit über dem Titel, ohne Beiwerk. */
-  kompakt?: boolean;
 }) {
-  if (kompakt) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.15), ease: [0.16, 1, 0.3, 1] }}
-        className="min-w-0"
-      >
-        <Link
-          href={ev.href}
-          className="block h-full rounded-card bg-surface p-3 shadow-card transition-transform duration-[120ms] ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.99]"
-        >
-          <p className={`tnum font-display text-base ${isNext ? "text-accent" : ""} ${ev.past ? "text-ink-muted line-through" : ""}`}>
-            {ev.time}
-          </p>
-          <p className={`mt-0.5 flex items-center gap-1.5 ${ev.past ? "text-ink-muted line-through" : ""}`}>
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ev.dotColor, opacity: ev.past ? 0.4 : 1 }} />
-            <span className="truncate font-semibold">{ev.title}</span>
-          </p>
-          {ev.care && (
-            <span className="mt-1.5 flex items-center gap-1">
-              <BabyIcon tone={ev.care.status === "offen" ? "offen" : "da"} />
-              {ev.care.person && <Avatar person={ev.care.person} size={18} />}
-            </span>
-          )}
-        </Link>
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
