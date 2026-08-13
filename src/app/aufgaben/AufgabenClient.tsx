@@ -219,7 +219,7 @@ export function AufgabenClient({
                 </header>
               )}
               {c.key === OHNE && todoLists.length > 0 && (
-                <p className="px-4 pb-1 text-xs text-ink-muted/80">
+                <p className="px-4 pb-1 text-xs text-ink-muted">
                   Noch keiner Liste zugeordnet — am Griff ⋮⋮ auf eine Liste ziehen.
                 </p>
               )}
@@ -239,7 +239,7 @@ export function AufgabenClient({
                   ))}
                 </div>
               ) : (
-                <p className="px-4 pb-3 pt-1 text-sm text-ink-muted/70">
+                <p className="px-4 pb-3 pt-1 text-sm text-ink-muted">
                   {zug ? "Hierher ziehen" : "Leer"}
                 </p>
               )}
@@ -301,7 +301,7 @@ function ErledigtContainer({ erledigt }: { erledigt: TodoVM[] }) {
           height="14"
           viewBox="0 0 24 24"
           fill="none"
-          className="ml-auto shrink-0 self-center text-ink-muted/70"
+          className="ml-auto shrink-0 self-center text-ink-muted"
           style={{ transform: offen ? "rotate(90deg)" : "none", transition: "transform 180ms" }}
           aria-hidden
         >
@@ -489,7 +489,7 @@ function TodoRow({
             fill={important ? "var(--color-counter)" : "none"}
             stroke={important ? "var(--color-counter)" : "currentColor"}
             strokeWidth="1.7" strokeLinejoin="round"
-            className={important ? "" : "text-ink-muted/40"}>
+            className={important ? "" : "text-ink-muted"}>
             <path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8L3.5 9.7l5.9-.9L12 3.5Z" />
           </svg>
         </button>
@@ -498,14 +498,14 @@ function TodoRow({
         {assignee ? (
           <Avatar person={assignee} size={24} />
         ) : (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-ink-muted/40 text-[10px] text-ink-muted/60">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-ink-muted/40 text-[10px] text-ink-muted">
             ?
           </span>
         )}
       </button>
       <button
         onClick={() => start(async () => { await deleteTodoAction(todo.id); setGone(true); })}
-        className="pl-1 text-sm text-ink-muted/50"
+        className="pl-1 text-sm text-ink-muted"
         aria-label="Entfernen"
       >
         ✕
@@ -520,7 +520,7 @@ function TodoRow({
           onPointerCancel={onZugEnde}
           onContextMenu={(e) => e.preventDefault()}
           aria-label="In eine andere Liste ziehen"
-          className="-my-1 cursor-grab px-1.5 py-2.5 text-ink-muted/50 active:cursor-grabbing"
+          className="-my-1 cursor-grab px-1.5 py-2.5 text-ink-muted active:cursor-grabbing"
           style={{
             touchAction: "none",
             userSelect: "none",

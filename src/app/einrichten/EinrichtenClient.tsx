@@ -206,7 +206,7 @@ export function EinrichtenClient({
             Später einrichten — alles steht auch in den Einstellungen
           </button>
         )}
-        <p className="mt-3 text-center text-xs text-ink-muted/70">
+        <p className="mt-3 text-center text-xs text-ink-muted">
           Angemeldet als {meineEmail}
         </p>
       </div>

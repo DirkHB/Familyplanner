@@ -80,7 +80,7 @@ export function FaecherEditor({
       </ul>
 
       {faecher.length === 0 && (
-        <p className="mt-3 text-sm text-ink-muted/80">Noch nichts angelegt.</p>
+        <p className="mt-3 text-sm text-ink-muted">Noch nichts angelegt.</p>
       )}
 
       <div className="mt-4 flex gap-2">
@@ -93,7 +93,7 @@ export function FaecherEditor({
           onKeyDown={(e) => e.key === "Enter" && anlegen()}
           maxLength={MAX_NAME_LAENGE}
           placeholder={`${fachWort} hinzufügen`}
-          className="min-w-0 flex-1 rounded-pill bg-bg px-4 py-2.5 text-[15px] outline-none placeholder:text-ink-muted/60"
+          className="min-w-0 flex-1 rounded-pill bg-bg px-4 py-2.5 text-[15px] outline-none placeholder:text-ink-muted"
         />
         <button
           onClick={anlegen}
@@ -215,7 +215,7 @@ function FachZeile({
       </button>
       <button
         onClick={() => setModus("loeschen")}
-        className="shrink-0 text-sm text-ink-muted/70"
+        className="shrink-0 text-sm text-ink-muted"
         aria-label={`${fach.name} löschen`}
       >
         Löschen

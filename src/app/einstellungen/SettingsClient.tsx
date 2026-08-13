@@ -292,7 +292,7 @@ export function SettingsClient({
             >
               <span className="min-w-0 flex-1 font-medium">Einladungen</span>
               <span className="shrink-0 text-sm text-ink-muted">Neue Familien</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-ink-muted/70" aria-hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-ink-muted" aria-hidden>
                 <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
@@ -399,7 +399,7 @@ function Zeile({
           height="14"
           viewBox="0 0 24 24"
           fill="none"
-          className="shrink-0 text-ink-muted/70"
+          className="shrink-0 text-ink-muted"
           style={{ transform: offen ? "rotate(90deg)" : "none", transition: "transform 180ms" }}
           aria-hidden
         >
@@ -883,7 +883,7 @@ function DiagnoseInhalt({ diagnose }: { diagnose: Diagnose[] }) {
           )}
         </div>
       ))}
-      <p className="text-xs text-ink-muted/80">
+      <p className="text-xs text-ink-muted">
         Steht bei vielen Terminen ein Ersteller, kann die App von allein erkennen, wen ein
         Termin bindet. Sonst fragt sie einmal je Termin-Art nach.
       </p>

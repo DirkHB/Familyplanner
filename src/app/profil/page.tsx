@@ -38,7 +38,7 @@ export default async function ProfilPage() {
         </div>
 
         <form action={abmeldenAction} className="mt-6 text-center">
-          <button className="px-4 py-2 text-sm text-ink-muted/80">Abmelden</button>
+          <button className="px-4 py-2 text-sm text-ink-muted">Abmelden</button>
         </form>
       </>
     </AppShell>
@@ -52,7 +52,7 @@ function ProfilZeile({ href, titel, hinweis }: { href: string; titel: string; hi
         <span className="block font-medium">{titel}</span>
         <span className="block text-sm text-ink-muted">{hinweis}</span>
       </span>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-ink-muted/70" aria-hidden>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-ink-muted" aria-hidden>
         <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </Link>

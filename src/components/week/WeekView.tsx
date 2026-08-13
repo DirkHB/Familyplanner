@@ -156,13 +156,13 @@ function DaySection({
       {hatTermine && (
         <div className="relative pl-4">
           <span aria-hidden className="absolute bottom-1 left-[3px] top-1 w-px bg-surface-muted" />
-          <p className="tnum mb-1 text-[11px] leading-none text-ink-muted/60">{fenster.vonStunde} Uhr</p>
+          <p className="tnum mb-1 text-[11px] leading-none text-ink-muted">{fenster.vonStunde} Uhr</p>
           <div className="flex flex-col gap-2.5">
             {day.strahl.map((seg, i) =>
               seg.art === "frei" ? (
                 <div key={`frei-${i}`} className="relative flex h-7 items-center">
                   <span aria-hidden className="absolute -left-4 top-1/2 ml-[3px] h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink-muted/50 bg-bg" />
-                  <span className="rounded-pill border border-dashed border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted/80">
+                  <span className="rounded-pill border border-dashed border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted">
                     {seg.label}
                   </span>
                 </div>
@@ -191,12 +191,10 @@ function DaySection({
                    * die App gibt.
                    */
                   <div key={seg.keys.join("+")} className="relative">
-                    {/* Der Strahl wird auf dieser Strecke dicker. Bewusst in
-                        surface-muted, also der Farbe des Strahls selbst — und
-                        ohne /Deckkraft, weil die auf unseren Tokens nicht
-                        wirkt (siehe die Punkte, die genau daran unsichtbar
-                        sind). */}
-                    <span aria-hidden className="absolute -left-4 bottom-2 top-2 ml-[3px] w-[3px] -translate-x-1/2 rounded-full bg-surface-muted" />
+                    {/* Der Strahl wird auf dieser Strecke dicker — in derselben
+                        Tinte wie die Punkte, nur blasser, damit er sie trägt
+                        statt mit ihnen zu konkurrieren. */}
+                    <span aria-hidden className="absolute -left-4 bottom-2 top-2 ml-[3px] w-[3px] -translate-x-1/2 rounded-full bg-ink-muted/30" />
                     <p className="mb-1.5 inline-flex rounded-pill border border-ink-muted/35 px-2.5 py-0.5 text-[11px] text-ink-muted">
                       {seg.keys.length === 2
                         ? "überschneiden sich"
@@ -212,7 +210,7 @@ function DaySection({
               ),
             )}
           </div>
-          <p className="tnum mt-1 text-[11px] leading-none text-ink-muted/60">{fenster.bisStunde} Uhr</p>
+          <p className="tnum mt-1 text-[11px] leading-none text-ink-muted">{fenster.bisStunde} Uhr</p>
         </div>
       )}
     </section>

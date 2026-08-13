@@ -73,7 +73,7 @@ export function ErfassenClient({ configured }: { configured: boolean }) {
             funktioniert in installierten iOS-PWAs nicht — die Taste auf der
             Tastatur schon, und sie ist ohnehin die bessere: auf dem Gerät,
             sofort, und sie kennt eure Namen. */}
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted/80">
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden>
             <rect x="9" y="3" width="6" height="11" rx="3" />
             <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />

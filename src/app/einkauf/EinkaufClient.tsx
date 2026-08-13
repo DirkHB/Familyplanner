@@ -318,7 +318,7 @@ export function EinkaufClient({
                 </form>
               )}
               {s.open.length + s.done.length === 0 && pendingAddsFor(s.store, pendingAdds).length === 0 ? (
-                <p className="px-1 py-1.5 text-xs text-ink-muted/60">
+                <p className="px-1 py-1.5 text-xs text-ink-muted">
                   {drag ? "Hierher ziehen" : "Leer"}
                 </p>
               ) : (
@@ -464,7 +464,7 @@ function Row({
         {it.text}
       </button>
       {it.addedByPerson && <Avatar person={it.addedByPerson} size={16} />}
-      <button onClick={onRemove} aria-label="Entfernen" className="px-0.5 text-ink-muted/40">
+      <button onClick={onRemove} aria-label="Entfernen" className="px-0.5 text-ink-muted">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
           <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
@@ -477,7 +477,7 @@ function Row({
         onPointerUp={onDragEnd}
         onPointerCancel={onDragEnd}
         onContextMenu={(e) => e.preventDefault()}
-        className="-my-1 cursor-grab px-2 py-2.5 text-ink-muted/50 active:cursor-grabbing"
+        className="-my-1 cursor-grab px-2 py-2.5 text-ink-muted active:cursor-grabbing"
         style={{
           touchAction: "none",
           userSelect: "none",

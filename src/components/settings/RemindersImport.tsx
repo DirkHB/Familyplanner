@@ -163,7 +163,7 @@ function CaldavImport() {
                 </button>
               </div>
               {l.schonUebernommen && !ergebnis[l.url] && (
-                <p className="mt-1.5 text-xs text-ink-muted/80">
+                <p className="mt-1.5 text-xs text-ink-muted">
                   Eine Liste mit diesem Namen gibt es hier schon. Nochmal übernehmen legt
                   nichts doppelt an.
                 </p>

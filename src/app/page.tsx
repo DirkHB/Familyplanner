@@ -37,7 +37,7 @@ export default async function Home() {
           Anmelden
         </Link>
       </div>
-      <p className="mt-6 text-sm text-ink-muted/70">
+      <p className="mt-6 text-sm text-ink-muted">
         {beide ? `Nur für ${beide}` : "Nur für Eingeladene"} — Anmeldung per
         E-Mail-Link, ohne Passwort.
       </p>

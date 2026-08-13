@@ -226,7 +226,7 @@ function ManageBlock({ vm, onTitleChanged }: { vm: DetailVM; onTitleChanged: (t:
               {pending ? "Lösche …" : vm.isSeries ? "Wirklich ganze Serie löschen?" : "Wirklich löschen?"}
             </button>
           ) : (
-            <button onClick={() => setMode("confirmDelete")} className="text-sm text-ink-muted/70">
+            <button onClick={() => setMode("confirmDelete")} className="text-sm text-ink-muted">
               {vm.isSeries ? "Serie löschen" : "Löschen"}
             </button>
           )}
@@ -432,7 +432,7 @@ function CareBlock({ vm, kind }: { vm: DetailVM; kind: string }) {
                     dismissCareAction(vm.uid, vm.occurrenceISO!, vm.title).then(() => {}),
                   )
                 }
-                className="text-sm text-ink-muted/70"
+                className="text-sm text-ink-muted"
               >
                 Nicht nötig — {kind} ist dabei
               </button>
@@ -499,7 +499,7 @@ function NotesEditor({
         readOnly={readOnly}
         placeholder="Was ist wichtig für diesen Termin?"
         rows={3}
-        className="w-full resize-none bg-transparent text-ink outline-none placeholder:text-ink-muted/70"
+        className="w-full resize-none bg-transparent text-ink outline-none placeholder:text-ink-muted"
       />
     </section>
   );
@@ -575,7 +575,7 @@ function PrepChecklist({
             </button>
             <span className={`flex-1 ${p.done ? "text-ink-muted line-through" : ""}`}>{p.text}</span>
             {!readOnly && (
-              <button onClick={() => remove(i)} className="text-sm text-ink-muted/50" aria-label="Entfernen">✕</button>
+              <button onClick={() => remove(i)} className="text-sm text-ink-muted" aria-label="Entfernen">✕</button>
             )}
           </li>
         ))}
@@ -719,7 +719,7 @@ function EventShopping({
               </button>
               <span className={`flex-1 ${done ? "text-ink-muted line-through" : ""}`}>{it.text}</span>
               {!readOnly && (
-                <button onClick={() => unlink(it.id)} className="text-sm text-ink-muted/50" aria-label="Vom Termin lösen">✕</button>
+                <button onClick={() => unlink(it.id)} className="text-sm text-ink-muted" aria-label="Vom Termin lösen">✕</button>
               )}
             </li>
           );

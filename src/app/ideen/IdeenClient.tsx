@@ -122,7 +122,7 @@ function IdeaCard({ idea }: { idea: IdeaVM }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button onClick={() => setEditing(true)} aria-label="Bearbeiten" className="p-1 text-ink-muted/60">
+            <button onClick={() => setEditing(true)} aria-label="Bearbeiten" className="p-1 text-ink-muted">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M4 20h4L18.5 9.5a2 2 0 0 0-2.8-2.8L5 17.2 4 20Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
@@ -169,7 +169,7 @@ function IdeaCard({ idea }: { idea: IdeaVM }) {
           )}
           <button
             onClick={() => start(async () => { await deleteIdeaAction(idea.id); setGone(true); })}
-            className="ml-auto text-sm text-ink-muted/60"
+            className="ml-auto text-sm text-ink-muted"
           >
             Entfernen
           </button>
