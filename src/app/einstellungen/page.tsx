@@ -92,7 +92,9 @@ export default async function EinstellungenPage() {
   const { ICS_PROVIDER, GOOGLE_PROVIDER, ICLOUD_PROVIDER } = await import(
     "@/lib/calendar/provider",
   );
-  const { dienstkontoAdresse, googleStatus } = await import("@/lib/calendar/google-auth");
+  const { dienstkontoAdresse, googleStatus, googleDiagnose } = await import(
+    "@/lib/calendar/google-auth",
+  );
   const [abos, googles] = userId
     ? await Promise.all([
         prisma.calendarAccount.findMany({
@@ -163,6 +165,7 @@ export default async function EinstellungenPage() {
       googles={googles.map((a) => ({ id: a.id, name: a.username ?? "Google-Kalender" }))}
       dienstadresse={dienstkontoAdresse()}
       googleStatus={googleStatus()}
+      googleDiagnose={ich?.isAdmin ? googleDiagnose() : null}
       schreibZiele={schreibZiele.map((c) => ({
         id: c.id,
         name: c.name,

@@ -19,10 +19,13 @@ import { verbindeGoogleAction } from "@/app/einstellungen/actions";
 export function GoogleForm({
   dienstadresse,
   status = "bereit",
+  diagnose = null,
 }: {
   dienstadresse: string | null;
   /** Woran es liegt, wenn der Weg nicht bereitsteht. */
   status?: "bereit" | "fehlt" | "unlesbar";
+  /** Was der Server vorfindet — nur für die Verwaltung, nur Längen und Namen. */
+  diagnose?: { laengen: Record<string, number>; namen: string[] } | null;
 }) {
   const [state, action, pending] = useActionState(verbindeGoogleAction, {
     error: null as string | null,
@@ -50,6 +53,23 @@ export function GoogleForm({
           </>
         )}{" "}
         Beheben lässt sich das nur dort, nicht von hier aus.
+        {diagnose && (
+          /*
+           * Was der Server wirklich sieht. Nur für die Verwaltung, und nur
+           * Längen und Namen — nie ein Wert. Steht beim Hoster alles richtig
+           * und hier trotzdem 0, liegt es nicht am Eintragen.
+           */
+          <span className="mt-3 block rounded-card border border-surface-muted bg-bg p-3 font-mono text-xs text-ink-muted">
+            {Object.entries(diagnose.laengen).map(([n, l]) => (
+              <span key={n} className="block truncate">
+                {n}: {l === 0 ? "nicht da" : `${l} Zeichen`}
+              </span>
+            ))}
+            <span className="mt-1.5 block truncate">
+              gefunden: {diagnose.namen.length ? diagnose.namen.join(", ") : "nichts mit „GOOGLE"}
+            </span>
+          </span>
+        )}
       </p>
     );
   }

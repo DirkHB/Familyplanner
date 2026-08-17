@@ -130,14 +130,44 @@ function ausBase64(): { email: string; roh: string } | null {
  * Wert abgeschnitten, sieht das Ergebnis hier gleich aus.
  */
 function schluessel(roh: string): KeyObject {
-  try {
-    return createPrivateKey(roh);
-  } catch {
-    throw new GoogleZugangError(
-      "Der hinterlegte Schlüssel lässt sich nicht lesen. Das liegt an der " +
-        "Einrichtung des Servers, nicht an deiner Eingabe — sag Dirk Bescheid.",
-    );
+  for (const fassung of [roh, neuGefaltet(roh)]) {
+    try {
+      return createPrivateKey(fassung);
+    } catch {
+      /* nächste Fassung */
+    }
   }
+  throw new GoogleZugangError(
+    "Der hinterlegte Schlüssel lässt sich nicht lesen. Das liegt an der " +
+      "Einrichtung des Servers, nicht an deiner Eingabe — sag Dirk Bescheid.",
+  );
+}
+
+/**
+ * Den Schlüssel neu falten, egal wie er unterwegs zugerichtet wurde.
+ *
+ * Ein PEM besteht aus zwei Randzeilen und einem Rumpf, der alle 64 Zeichen
+ * umgebrochen wird. Diese Umbrüche sind der einzige Grund, warum der Schlüssel
+ * überhaupt zerbrechen kann — sie müssen durch Zwischenablage, Editor und
+ * Eingabefeld kommen, und irgendeine Station verschluckt oder ersetzt sie.
+ *
+ * Der Rumpf selbst ist Base64 und überlebt alles. Also wird er einfach neu
+ * gefaltet: Randzeilen weg, jedes Leerzeichen und jeder Umbruch weg, dann
+ * sauber neu zusammengesetzt. Damit ist es gleichgültig, ob der Wert echte
+ * Umbrüche hatte, literale `\n`, Leerzeichen an deren Stelle oder gar nichts.
+ *
+ * Nur Zeichen, die wirklich fehlen, kann das nicht ersetzen — abgeschnitten
+ * bleibt abgeschnitten, und dann scheitert es weiterhin mit klarer Ansage.
+ */
+function neuGefaltet(roh: string): string {
+  const art = /RSA PRIVATE KEY/.test(roh) ? "RSA PRIVATE KEY" : "PRIVATE KEY";
+  const rumpf = roh
+    .replace(/-----BEGIN[^-]*-----/g, "")
+    .replace(/-----END[^-]*-----/g, "")
+    .replace(/\s+/g, "");
+  if (!rumpf) return roh;
+  const zeilen = rumpf.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${art}-----\n${zeilen.join("\n")}\n-----END ${art}-----\n`;
 }
 
 /**
@@ -231,6 +261,30 @@ export function googleStatus(): GoogleStatus {
   } catch {
     return "unlesbar";
   }
+}
+
+/**
+ * Was der Server bei sich tatsächlich vorfindet.
+ *
+ * Für den einen Fall, in dem beim Hoster alles richtig aussieht und die App
+ * trotzdem nichts sieht. Ohne diese Auskunft rät man abwechselnd am Namen, am
+ * Wert und am Dienst herum, und jeder Versuch kostet einen Rollout.
+ *
+ * Nur Längen und Namen, nie Werte — die Zahl allein sagt schon alles: 0 heißt
+ * „kommt hier nicht an", ein paar tausend heißt „ist da". Und die Liste der
+ * gefundenen Namen entlarvt einen Tippfehler, den man im Eingabefeld
+ * anstarren kann, ohne ihn zu sehen.
+ */
+export function googleDiagnose(): { laengen: Record<string, number>; namen: string[] } {
+  const gefragt = ["GOOGLE_SA_JSON_BASE64", "GOOGLE_SA_CLIENT_EMAIL", "GOOGLE_SA_PRIVATE_KEY"];
+  const laengen: Record<string, number> = {};
+  for (const n of gefragt) laengen[n] = (process.env[n] ?? "").length;
+  return {
+    laengen,
+    namen: Object.keys(process.env)
+      .filter((k) => k.toUpperCase().includes("GOOGLE"))
+      .sort(),
+  };
 }
 
 /**

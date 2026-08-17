@@ -332,3 +332,49 @@ describe("Die ganze Schlüsseldatei als eine Zeile", () => {
     }
   });
 });
+
+describe("Ein zugerichteter Schlüssel", () => {
+  /*
+   * Die Umbrüche im PEM sind die einzige Bruchstelle. Sie müssen durch
+   * Zwischenablage, Editor und Eingabefeld kommen — und irgendeine Station
+   * verschluckt oder ersetzt sie. Genau daran ist uns der Zugang zerbrochen.
+   */
+  const faelle: [string, (pem: string) => string][] = [
+    ["ganz ohne Umbrüche", (pem) => pem.replace(/\n/g, "")],
+    ["mit Leerzeichen statt Umbrüchen", (pem) => pem.replace(/\n/g, " ")],
+    ["mit literalen \\n", (pem) => pem.replace(/\n/g, "\\n")],
+    ["mit Wagenrücklauf davor", (pem) => pem.replace(/\n/g, "\r\n")],
+  ];
+
+  for (const [name, zurichten] of faelle) {
+    it(`kommt ${name} zurecht`, async () => {
+      const { generateKeyPairSync } = await import("node:crypto");
+      const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+      const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+
+      const alt = process.env.GOOGLE_SA_PRIVATE_KEY;
+      process.env.GOOGLE_SA_PRIVATE_KEY = zurichten(pem);
+      vergissZugang();
+      try {
+        await expect(zugangFuer(KONTO)).resolves.toBe("tok-1");
+      } finally {
+        process.env.GOOGLE_SA_PRIVATE_KEY = alt;
+        vergissZugang();
+      }
+    });
+  }
+
+  it("bleibt bei einem abgeschnittenen Schlüssel ehrlich", async () => {
+    // Was fehlt, lässt sich nicht neu falten. Dann muss es scheitern.
+    const alt = process.env.GOOGLE_SA_PRIVATE_KEY;
+    process.env.GOOGLE_SA_PRIVATE_KEY =
+      "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkq\n-----END PRIVATE KEY-----\n";
+    vergissZugang();
+    try {
+      await expect(zugangFuer(KONTO)).rejects.toThrow(/nicht lesen/);
+    } finally {
+      process.env.GOOGLE_SA_PRIVATE_KEY = alt;
+      vergissZugang();
+    }
+  });
+});

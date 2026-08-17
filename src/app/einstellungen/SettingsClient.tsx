@@ -84,6 +84,7 @@ export function SettingsClient({
   googles = [],
   dienstadresse = null,
   googleStatus = "bereit",
+  googleDiagnose = null,
   schreibZiele = [],
   schreibKalenderId = null,
 }: {
@@ -113,6 +114,8 @@ export function SettingsClient({
   dienstadresse?: string | null;
   /** Woran es liegt, wenn der Google-Weg nicht bereitsteht. */
   googleStatus?: "bereit" | "fehlt" | "unlesbar";
+  /** Nur für die Verwaltung: was der Server vorfindet. */
+  googleDiagnose?: { laengen: Record<string, number>; namen: string[] } | null;
   /** Alles, worein diese Person schreiben kann — über alle Anbieter hinweg. */
   schreibZiele?: { id: string; name: string; provider: string }[];
   /** Der gewählte Schreibkalender. Leer = der erste passende. */
@@ -193,7 +196,11 @@ export function SettingsClient({
                 ))}
               </ul>
             )}
-            <GoogleForm dienstadresse={dienstadresse} status={googleStatus} />
+            <GoogleForm
+              dienstadresse={dienstadresse}
+              status={googleStatus}
+              diagnose={istVerwaltung ? googleDiagnose : null}
+            />
           </Zeile>
 
           {/* Der zweite Weg herein: für Kalender, die die App nicht selbst
