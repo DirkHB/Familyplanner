@@ -116,3 +116,36 @@ Und eine Abwägung, die keine technische ist: „Änderungen an Terminen
 vornehmen" heißt, dass unser Server in Johannas Kalender alles anlegen, ändern
 und löschen darf. Das Abonnement war Lesen; das hier ist ein Schlüssel. Das
 sollte sie wissen, bevor sie ihn übergibt.
+
+## Für den Betrieb: die Datei als eine Zeile
+
+Der private Schlüssel enthält Zeilenumbrüche. Die müssen als `\n` durch
+Zwischenablage, Eingabefeld und Hoster-Oberfläche kommen — und genau dort ist
+er uns schon einmal zerbrochen, zwischen der Datei und dem Feld in Sliplane,
+ohne dass jemand etwas falsch gemacht hätte. In der App stand danach
+`error:1E08010C:DECODER routines::unsupported`.
+
+Deshalb geht die ganze Datei als **eine** Zeile Base64 in **eine** Variable:
+
+```bash
+base64 -i ~/Downloads/dein-projekt-abc123.json | tr -d '\n'
+```
+
+Die Ausgabe kommt bei App **und** Worker in `GOOGLE_SA_JSON_BASE64`. Base64
+hat weder Zeilenumbrüche noch Anführungszeichen, es gibt nichts zu
+verstümmeln.
+
+Das ist **keine Verschlüsselung** — der Wert bleibt dasselbe Geheimnis wie der
+Schlüssel selbst, gehört in dieselbe geschützte Variable und nie ins
+Repository. Er hält nur den Transport aus.
+
+Vorher prüfen, auf demselben Weg, den auch der Server nimmt:
+
+```bash
+GOOGLE_SA_JSON_BASE64='<die eine Zeile>' \
+GOOGLE_CALENDAR_ID=dirkbrederecke@gmail.com \
+  node scripts/google-test.mjs
+```
+
+Die alten Variablen `GOOGLE_SA_CLIENT_EMAIL` und `GOOGLE_SA_PRIVATE_KEY`
+funktionieren weiter; sind beide Wege gesetzt, gewinnt Base64.

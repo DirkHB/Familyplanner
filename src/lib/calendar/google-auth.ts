@@ -67,14 +67,52 @@ export class GoogleZugangError extends Error {
  * zu echten gemacht.
  */
 function dienstkonto(): { email: string; key: KeyObject } {
+  const ausDatei = ausBase64();
+  if (ausDatei) return { email: ausDatei.email, key: schluessel(ausDatei.roh) };
+
   const email = process.env.GOOGLE_SA_CLIENT_EMAIL ?? "";
   const roh = (process.env.GOOGLE_SA_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
   if (!email || !roh) {
     throw new GoogleZugangError(
-      "Es fehlen GOOGLE_SA_CLIENT_EMAIL und GOOGLE_SA_PRIVATE_KEY in der Umgebung.",
+      "Es fehlen die Zugangsdaten des Dienstkontos in der Umgebung — entweder " +
+        "GOOGLE_SA_JSON_BASE64 oder GOOGLE_SA_CLIENT_EMAIL und GOOGLE_SA_PRIVATE_KEY.",
     );
   }
   return { email, key: schluessel(roh) };
+}
+
+/**
+ * Die ganze Schlüsseldatei als eine Zeile.
+ *
+ * Der bequeme Weg, und inzwischen der empfohlene. Ein privater Schlüssel
+ * enthält Zeilenumbrüche, die als `\n` durch jede Zwischenablage, jedes
+ * Eingabefeld und jede Oberfläche kommen müssen — und genau dort ist er uns
+ * schon einmal zerbrochen, zwischen der Datei und dem Feld in Sliplane, ohne
+ * dass jemand etwas falsch gemacht hätte.
+ *
+ * Base64 hat weder Zeilenumbrüche noch Anführungszeichen noch sonst etwas,
+ * woran eine Oberfläche sich stören könnte. Es ist keine Verschlüsselung —
+ * der Wert bleibt dasselbe Geheimnis wie vorher und gehört in dieselbe
+ * geschützte Umgebungsvariable. Er hält den Transport nur aus.
+ */
+function ausBase64(): { email: string; roh: string } | null {
+  const b64 = (process.env.GOOGLE_SA_JSON_BASE64 ?? "").trim();
+  if (!b64) return null;
+  try {
+    const json = JSON.parse(Buffer.from(b64, "base64").toString("utf8")) as {
+      client_email?: string;
+      private_key?: string;
+    };
+    if (!json.client_email || !json.private_key) {
+      throw new Error("client_email oder private_key fehlt");
+    }
+    return { email: json.client_email, roh: json.private_key };
+  } catch {
+    throw new GoogleZugangError(
+      "GOOGLE_SA_JSON_BASE64 ist keine lesbare Schlüsseldatei. Das liegt an der " +
+        "Einrichtung des Servers, nicht an deiner Eingabe — sag Dirk Bescheid.",
+    );
+  }
 }
 
 /**

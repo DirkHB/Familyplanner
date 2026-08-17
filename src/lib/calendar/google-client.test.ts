@@ -287,3 +287,48 @@ describe("Ein beschädigter Schlüssel", () => {
     }
   });
 });
+
+describe("Die ganze Schlüsseldatei als eine Zeile", () => {
+  /*
+   * Der Weg, der den privaten Schlüssel unbeschadet durch Zwischenablage und
+   * Eingabefeld bringt. Uns ist er auf dem alten Weg genau dort zerbrochen —
+   * zwischen der JSON-Datei und dem Feld beim Hoster.
+   */
+  it("nimmt GOOGLE_SA_JSON_BASE64 statt der beiden Einzelwerte", async () => {
+    const { generateKeyPairSync } = await import("node:crypto");
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const datei = {
+      client_email: "kalender@planyourweek.iam.gserviceaccount.com",
+      private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+    };
+
+    const alteMail = process.env.GOOGLE_SA_CLIENT_EMAIL;
+    const alterKey = process.env.GOOGLE_SA_PRIVATE_KEY;
+    delete process.env.GOOGLE_SA_CLIENT_EMAIL;
+    delete process.env.GOOGLE_SA_PRIVATE_KEY;
+    process.env.GOOGLE_SA_JSON_BASE64 = Buffer.from(JSON.stringify(datei)).toString("base64");
+    vergissZugang();
+    try {
+      // Kommt ein Token zurück, hat der Schlüssel den Weg heil überstanden.
+      await expect(zugangFuer(KONTO)).resolves.toBe("tok-1");
+    } finally {
+      delete process.env.GOOGLE_SA_JSON_BASE64;
+      process.env.GOOGLE_SA_CLIENT_EMAIL = alteMail;
+      process.env.GOOGLE_SA_PRIVATE_KEY = alterKey;
+      vergissZugang();
+    }
+  });
+
+  it("sagt es, wenn dort kein Schlüssel drinsteht", async () => {
+    process.env.GOOGLE_SA_JSON_BASE64 = Buffer.from("kein json").toString("base64");
+    vergissZugang();
+    try {
+      const r = await pruefeGoogleKalender(KONTO, "j@gmail.com");
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.grund).toMatch(/GOOGLE_SA_JSON_BASE64/);
+    } finally {
+      delete process.env.GOOGLE_SA_JSON_BASE64;
+      vergissZugang();
+    }
+  });
+});

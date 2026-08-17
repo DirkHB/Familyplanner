@@ -32,8 +32,11 @@
  *     node scripts/google-test.mjs
  *
  * GOOGLE_ICS_URL ist freiwillig — ohne die Adresse entfallen Frage 3 und 4.
- * Statt GOOGLE_SA_JSON gehen auch GOOGLE_SA_CLIENT_EMAIL und
- * GOOGLE_SA_PRIVATE_KEY einzeln.
+ *
+ * Für die Zugangsdaten gibt es drei Wege, und sie werden in dieser Reihenfolge
+ * genommen: GOOGLE_SA_JSON_BASE64 (die ganze Datei als eine Zeile — so läuft
+ * es auch auf dem Server), GOOGLE_SA_JSON (Pfad zur Datei), oder
+ * GOOGLE_SA_CLIENT_EMAIL und GOOGLE_SA_PRIVATE_KEY einzeln.
  *
  * Das Skript räumt hinter sich auf: Der Testtermin wird am Ende gelöscht,
  * auch wenn unterwegs etwas schiefgeht.
@@ -69,6 +72,21 @@ const dazu = (text) => console.log(grau(`   ${text}`));
 /* ------------------------------ Zugangsdaten ---------------------------- */
 
 function zugangsdaten() {
+  /*
+   * Die ganze Datei als eine Zeile Base64 — der Weg, den der Server nimmt.
+   *
+   * Ein privater Schlüssel enthält Zeilenumbrüche, die als \n durch jede
+   * Zwischenablage und jedes Eingabefeld kommen müssen. Genau dort ist er uns
+   * schon einmal zerbrochen, zwischen der Datei und dem Feld beim Hoster,
+   * ohne dass jemand etwas falsch gemacht hätte. Base64 hat nichts, woran
+   * eine Oberfläche sich stören könnte.
+   */
+  const b64 = (process.env.GOOGLE_SA_JSON_BASE64 ?? "").trim();
+  if (b64) {
+    const json = JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
+    return { email: json.client_email, key: json.private_key };
+  }
+
   const pfad = process.env.GOOGLE_SA_JSON;
   if (pfad) {
     const aufgeloest = pfad.startsWith("~") ? pfad.replace(/^~/, homedir()) : pfad;
@@ -183,8 +201,9 @@ const { email, key } = zugangsdaten();
 if (!email || !key) {
   console.error(
     rot("Es fehlen die Zugangsdaten.") +
-      "\nEntweder GOOGLE_SA_JSON auf die heruntergeladene Schlüsseldatei zeigen lassen," +
-      "\noder GOOGLE_SA_CLIENT_EMAIL und GOOGLE_SA_PRIVATE_KEY einzeln setzen.",
+      "\nEntweder GOOGLE_SA_JSON_BASE64 setzen (die ganze Datei als eine Zeile)," +
+      "\noder GOOGLE_SA_JSON auf die heruntergeladene Datei zeigen lassen," +
+      "\noder GOOGLE_SA_CLIENT_EMAIL und GOOGLE_SA_PRIVATE_KEY einzeln.",
   );
   process.exit(1);
 }
