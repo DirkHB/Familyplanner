@@ -25,8 +25,9 @@ export function GoogleForm({ dienstadresse }: { dienstadresse: string | null }) 
   if (!dienstadresse) {
     return (
       <p className="text-sm text-ink-muted">
-        Der Google-Weg ist auf diesem Server noch nicht eingerichtet. Es fehlen die
-        Zugangsdaten des Dienstkontos.
+        Der Google-Weg ist auf diesem Server nicht einsatzbereit — die Zugangsdaten des
+        Dienstkontos fehlen oder sind unlesbar. Das lässt sich nur dort beheben, nicht von
+        hier aus.
       </p>
     );
   }

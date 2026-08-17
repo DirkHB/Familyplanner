@@ -1,4 +1,4 @@
-import { createSign } from "node:crypto";
+import { createPrivateKey, createSign, type KeyObject } from "node:crypto";
 
 /**
  * Woher das Zugangstoken für Google kommt.
@@ -66,15 +66,40 @@ export class GoogleZugangError extends Error {
  * Schlüssel seine Zeilenumbrüche selten; deshalb werden literale `\n` wieder
  * zu echten gemacht.
  */
-function dienstkonto(): { email: string; key: string } {
+function dienstkonto(): { email: string; key: KeyObject } {
   const email = process.env.GOOGLE_SA_CLIENT_EMAIL ?? "";
-  const key = (process.env.GOOGLE_SA_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
-  if (!email || !key) {
+  const roh = (process.env.GOOGLE_SA_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  if (!email || !roh) {
     throw new GoogleZugangError(
       "Es fehlen GOOGLE_SA_CLIENT_EMAIL und GOOGLE_SA_PRIVATE_KEY in der Umgebung.",
     );
   }
-  return { email, key };
+  return { email, key: schluessel(roh) };
+}
+
+/**
+ * Den privaten Schlüssel lesen — und beim Scheitern etwas sagen, womit man
+ * arbeiten kann.
+ *
+ * Ohne das steht am Ende „error:1E08010C:DECODER routines::unsupported" in der
+ * Oberfläche. Das ist OpenSSLs Innenleben, es steht vor jemandem, der gerade
+ * seinen Kalender verbinden will, und er kann nichts dagegen tun: Der Fehler
+ * liegt in der Umgebung des Servers, nicht in seiner Eingabe.
+ *
+ * Kaputt geht der Schlüssel fast immer beim Eintragen. Er enthält
+ * Zeilenumbrüche, die als `\n` überleben müssen — verschluckt sie eine
+ * Oberfläche, oder rutschen Anführungszeichen mit hinein, oder wird der lange
+ * Wert abgeschnitten, sieht das Ergebnis hier gleich aus.
+ */
+function schluessel(roh: string): KeyObject {
+  try {
+    return createPrivateKey(roh);
+  } catch {
+    throw new GoogleZugangError(
+      "Der hinterlegte Schlüssel lässt sich nicht lesen. Das liegt an der " +
+        "Einrichtung des Servers, nicht an deiner Eingabe — sag Dirk Bescheid.",
+    );
+  }
 }
 
 /**
@@ -135,12 +160,29 @@ export async function zugangFuer(_konto: KontoZugang): Promise<string> {
   return token;
 }
 
-/** Ist der Google-Weg überhaupt eingerichtet? Für die Oberfläche. */
+/**
+ * Ist der Google-Weg eingerichtet — und zwar richtig?
+ *
+ * „Vorhanden" genügt nicht: Ein beschädigter Schlüssel ist vorhanden. Die
+ * Frage stellt sich, bevor jemand drei Felder ausfüllt, deshalb wird hier
+ * wirklich nachgesehen statt nur nachgezählt.
+ */
 export function googleEingerichtet(): boolean {
-  return Boolean(process.env.GOOGLE_SA_CLIENT_EMAIL && process.env.GOOGLE_SA_PRIVATE_KEY);
+  try {
+    dienstkonto();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-/** Die Adresse, die eine Person ihrem Kalender freigeben muss. */
+/**
+ * Die Adresse, die eine Person ihrem Kalender freigeben muss.
+ *
+ * Leer, solange der Zugang nicht wirklich trägt. Sonst stünde sie einladend
+ * da, jemand trüge sie in Google ein, füllte drei Felder aus — und erführe
+ * erst beim Absenden, dass am Server etwas fehlt.
+ */
 export function dienstkontoAdresse(): string | null {
-  return process.env.GOOGLE_SA_CLIENT_EMAIL || null;
+  return googleEingerichtet() ? (process.env.GOOGLE_SA_CLIENT_EMAIL ?? null) : null;
 }

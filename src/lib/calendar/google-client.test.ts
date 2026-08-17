@@ -248,3 +248,42 @@ describe("Verbindung prüfen", () => {
     }
   });
 });
+
+describe("Ein beschädigter Schlüssel", () => {
+  /*
+   * Der Fall aus dem Betrieb: In Sliplane war der private Schlüssel beim
+   * Eintragen kaputtgegangen, und in der Oberfläche stand
+   * „error:1E08010C:DECODER routines::unsupported". Das ist OpenSSLs
+   * Innenleben — es stand vor jemandem, der seinen Kalender verbinden wollte
+   * und nichts dagegen tun konnte.
+   */
+  it("sagt, dass es am Server liegt, statt OpenSSL zu zitieren", async () => {
+    const echt = process.env.GOOGLE_SA_PRIVATE_KEY;
+    process.env.GOOGLE_SA_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\\nkaputt\\n-----END PRIVATE KEY-----\\n";
+    vergissZugang();
+    try {
+      const r = await pruefeGoogleKalender(KONTO, "johanna@gmail.com");
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.grund).toMatch(/Einrichtung des Servers/);
+        expect(r.grund).not.toMatch(/DECODER|1E08010C/);
+      }
+    } finally {
+      process.env.GOOGLE_SA_PRIVATE_KEY = echt;
+      vergissZugang();
+    }
+  });
+
+  it("bietet den Weg gar nicht erst an", async () => {
+    const { dienstkontoAdresse } = await import("./google-auth");
+    const echt = process.env.GOOGLE_SA_PRIVATE_KEY;
+    process.env.GOOGLE_SA_PRIVATE_KEY = "unsinn";
+    try {
+      // Sonst stünde die Adresse einladend da, jemand trüge sie in Google ein
+      // und erführe erst nach acht Handgriffen, dass es am Server scheitert.
+      expect(dienstkontoAdresse()).toBeNull();
+    } finally {
+      process.env.GOOGLE_SA_PRIVATE_KEY = echt;
+    }
+  });
+});
