@@ -378,3 +378,38 @@ describe("Ein zugerichteter Schlüssel", () => {
     }
   });
 });
+
+describe("Die Adresse des Dienstkontos", () => {
+  /*
+   * Sie kam aus GOOGLE_SA_CLIENT_EMAIL — auch dann, wenn die Zugangsdaten aus
+   * der Base64-Datei stammten und jene Variable darum gar nicht gesetzt war.
+   * Der Zugang trug, die Adresse blieb leer, und die App meldete „nicht
+   * bereit", obwohl alles bereit war: ein Fehler, der genau dann auftritt,
+   * wenn man dem empfohlenen Weg folgt.
+   */
+  it("kommt aus der Base64-Datei, auch ohne die einzelne Variable", async () => {
+    const { dienstkontoAdresse, googleEingerichtet } = await import("./google-auth");
+    const { generateKeyPairSync } = await import("node:crypto");
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const datei = {
+      client_email: "kalender@planyourweek-app.iam.gserviceaccount.com",
+      private_key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+    };
+
+    const alteMail = process.env.GOOGLE_SA_CLIENT_EMAIL;
+    const alterKey = process.env.GOOGLE_SA_PRIVATE_KEY;
+    delete process.env.GOOGLE_SA_CLIENT_EMAIL;
+    delete process.env.GOOGLE_SA_PRIVATE_KEY;
+    process.env.GOOGLE_SA_JSON_BASE64 = Buffer.from(JSON.stringify(datei)).toString("base64");
+    vergissZugang();
+    try {
+      expect(googleEingerichtet()).toBe(true);
+      expect(dienstkontoAdresse()).toBe("kalender@planyourweek-app.iam.gserviceaccount.com");
+    } finally {
+      delete process.env.GOOGLE_SA_JSON_BASE64;
+      process.env.GOOGLE_SA_CLIENT_EMAIL = alteMail;
+      process.env.GOOGLE_SA_PRIVATE_KEY = alterKey;
+      vergissZugang();
+    }
+  });
+});

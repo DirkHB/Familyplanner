@@ -295,5 +295,19 @@ export function googleDiagnose(): { laengen: Record<string, number>; namen: stri
  * erst beim Absenden, dass am Server etwas fehlt.
  */
 export function dienstkontoAdresse(): string | null {
-  return googleEingerichtet() ? (process.env.GOOGLE_SA_CLIENT_EMAIL ?? null) : null;
+  /*
+   * Aus dem Zugang selbst, nicht aus GOOGLE_SA_CLIENT_EMAIL.
+   *
+   * Diese Zeile las die Adresse aus der einzelnen Variablen — auch dann, wenn
+   * die Zugangsdaten längst aus der Base64-Datei kamen und jene Variable
+   * darum gar nicht mehr gesetzt war. Ergebnis: Der Zugang trug einwandfrei,
+   * die Adresse blieb leer, und die App meldete „nicht bereit", obwohl alles
+   * bereit war. Ein Fehler, der genau dann auftritt, wenn man dem empfohlenen
+   * Weg folgt.
+   */
+  try {
+    return dienstkonto().email;
+  } catch {
+    return null;
+  }
 }
