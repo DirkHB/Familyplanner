@@ -83,6 +83,7 @@ export function SettingsClient({
   abos = [],
   googles = [],
   dienstadresse = null,
+  googleStatus = "bereit",
   schreibZiele = [],
   schreibKalenderId = null,
 }: {
@@ -110,6 +111,8 @@ export function SettingsClient({
   googles?: { id: string; name: string }[];
   /** Die Adresse, die man seinem Google-Kalender freigeben muss. */
   dienstadresse?: string | null;
+  /** Woran es liegt, wenn der Google-Weg nicht bereitsteht. */
+  googleStatus?: "bereit" | "fehlt" | "unlesbar";
   /** Alles, worein diese Person schreiben kann — über alle Anbieter hinweg. */
   schreibZiele?: { id: string; name: string; provider: string }[];
   /** Der gewählte Schreibkalender. Leer = der erste passende. */
@@ -190,7 +193,7 @@ export function SettingsClient({
                 ))}
               </ul>
             )}
-            <GoogleForm dienstadresse={dienstadresse} />
+            <GoogleForm dienstadresse={dienstadresse} status={googleStatus} />
           </Zeile>
 
           {/* Der zweite Weg herein: für Kalender, die die App nicht selbst

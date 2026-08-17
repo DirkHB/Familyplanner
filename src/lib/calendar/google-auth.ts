@@ -206,11 +206,30 @@ export async function zugangFuer(_konto: KontoZugang): Promise<string> {
  * wirklich nachgesehen statt nur nachgezählt.
  */
 export function googleEingerichtet(): boolean {
+  return googleStatus() === "bereit";
+}
+
+/**
+ * Und woran es liegt, wenn nicht.
+ *
+ * Die Unterscheidung ist keine Feinheit, sondern die halbe Fehlersuche: „Es
+ * ist nichts hinterlegt" heißt, die Variable fehlt oder der Dienst wurde nach
+ * dem Eintragen nicht neu gestartet. „Was hinterlegt ist, lässt sich nicht
+ * lesen" heißt, der Wert ist unterwegs zerbrochen. Das sind zwei völlig
+ * verschiedene nächste Schritte, und ohne diese Zeile muss man raten.
+ */
+export type GoogleStatus = "bereit" | "fehlt" | "unlesbar";
+
+export function googleStatus(): GoogleStatus {
+  const b64 = (process.env.GOOGLE_SA_JSON_BASE64 ?? "").trim();
+  const email = process.env.GOOGLE_SA_CLIENT_EMAIL ?? "";
+  const key = process.env.GOOGLE_SA_PRIVATE_KEY ?? "";
+  if (!b64 && (!email || !key)) return "fehlt";
   try {
     dienstkonto();
-    return true;
+    return "bereit";
   } catch {
-    return false;
+    return "unlesbar";
   }
 }
 

@@ -44,11 +44,14 @@ export function EinrichtenClient({
   status,
   meineEmail,
   dienstadresse = null,
+  googleStatus = "bereit",
 }: {
   status: EinrichtungStatus;
   meineEmail: string;
   /** Die Adresse, die man seinem Google-Kalender freigeben muss. */
   dienstadresse?: string | null;
+  /** Woran es liegt, wenn der Google-Weg nicht bereitsteht. */
+  googleStatus?: "bereit" | "fehlt" | "unlesbar";
 }) {
   const router = useRouter();
   // Beginn beim ersten offenen Schritt — Erledigtes wird nicht noch einmal gefragt.
@@ -162,6 +165,7 @@ export function EinrichtenClient({
                 <SchrittKalender
                   erledigt={erledigt.kalender}
                   dienstadresse={dienstadresse}
+                  googleStatus={googleStatus}
                 />
               )}
               {schritt === "partner" && (
@@ -270,9 +274,11 @@ function SchrittNamen({
 function SchrittKalender({
   erledigt,
   dienstadresse,
+  googleStatus,
 }: {
   erledigt: boolean;
   dienstadresse: string | null;
+  googleStatus: "bereit" | "fehlt" | "unlesbar";
 }) {
   /*
    * Die Frage vor der Frage: Apple oder Google?
@@ -318,7 +324,7 @@ function SchrittKalender({
       </div>
 
       {wahl === "apple" && <ConnectForm />}
-      {wahl === "google" && <GoogleForm dienstadresse={dienstadresse} />}
+      {wahl === "google" && <GoogleForm dienstadresse={dienstadresse} status={googleStatus} />}
 
       {wahl === null && (
         <p className="text-sm text-ink-muted">

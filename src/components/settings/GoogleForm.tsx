@@ -16,18 +16,40 @@ import { verbindeGoogleAction } from "@/app/einstellungen/actions";
  * und das Beste zu hoffen. Die Dienstadresse steht zum Antippen bereit — sie
  * ist der Schritt, der am ehesten schiefgeht, weil man sie abtippen müsste.
  */
-export function GoogleForm({ dienstadresse }: { dienstadresse: string | null }) {
+export function GoogleForm({
+  dienstadresse,
+  status = "bereit",
+}: {
+  dienstadresse: string | null;
+  /** Woran es liegt, wenn der Weg nicht bereitsteht. */
+  status?: "bereit" | "fehlt" | "unlesbar";
+}) {
   const [state, action, pending] = useActionState(verbindeGoogleAction, {
     error: null as string | null,
   });
   const [kopiert, setKopiert] = useState(false);
 
   if (!dienstadresse) {
+    /*
+     * Zwei Fälle, zwei völlig verschiedene nächste Schritte — und ohne die
+     * Unterscheidung muss man raten. „Nichts hinterlegt" heißt meist: Die
+     * Variable fehlt, oder der Dienst wurde nach dem Eintragen nicht neu
+     * gestartet. „Unlesbar" heißt: Der Wert ist auf dem Weg zerbrochen.
+     */
     return (
       <p className="text-sm text-ink-muted">
-        Der Google-Weg ist auf diesem Server nicht einsatzbereit — die Zugangsdaten des
-        Dienstkontos fehlen oder sind unlesbar. Das lässt sich nur dort beheben, nicht von
-        hier aus.
+        {status === "unlesbar" ? (
+          <>
+            Auf diesem Server sind Zugangsdaten für Google hinterlegt, aber sie lassen sich
+            nicht lesen — der Wert ist beim Eintragen zerbrochen.
+          </>
+        ) : (
+          <>
+            Für Google sind auf diesem Server keine Zugangsdaten hinterlegt. Entweder fehlen
+            sie, oder der Dienst wurde nach dem Eintragen nicht neu gestartet.
+          </>
+        )}{" "}
+        Beheben lässt sich das nur dort, nicht von hier aus.
       </p>
     );
   }
