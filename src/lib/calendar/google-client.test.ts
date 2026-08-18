@@ -233,7 +233,7 @@ describe("Verbindung prüfen", () => {
     const r = await pruefeGoogleKalender(KONTO, "johanna@gmail.com");
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.grund).toMatch(/Freigabe/);
+      expect(r.grund).toMatch(/nicht erreichbar/);
       expect(r.nurLesend).toBe(false);
     }
   });

@@ -1,4 +1,4 @@
-import { zugangFuer, type KontoZugang } from "./google-auth";
+import { dienstkontoAdresse, zugangFuer, type KontoZugang } from "./google-auth";
 
 /**
  * Schreiben in einen Google-Kalender.
@@ -217,7 +217,15 @@ export async function pruefeGoogleKalender(
       nurLesend: false,
       grund:
         status === 404
-          ? "Der Kalender ist nicht erreichbar. Meist ist die Freigabe nicht angekommen — oder die Kalender-ID stimmt nicht."
+          ? /*
+             * Beide Seiten benennen, nicht nur die Diagnose.
+             *
+             * „Die Freigabe ist nicht angekommen" hilft niemandem, der nicht
+             * weiß, WELCHE Adresse freigegeben sein muss — und die ändert
+             * sich, wenn das Dienstkonto wechselt. Genau daran scheitert ein
+             * zweiter Versuch mit einer Freigabe aus dem ersten.
+             */
+            `Der Kalender „${kalenderId}" ist für ${dienstkontoAdresse() ?? "das Dienstkonto"} nicht erreichbar. Fast immer heißt das: Genau diese Adresse ist im Kalender nicht freigegeben — eine Freigabe an eine frühere Adresse zählt nicht. Sonst stimmt die Kalender-ID nicht.`
           : err instanceof Error
             ? err.message
             : "Unbekannter Fehler.",
