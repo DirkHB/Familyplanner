@@ -4,7 +4,7 @@ import type {
   FetchChangesResult,
   PutResult,
 } from "./caldav";
-import { zerlegeFeed } from "./ics-feed";
+import { abdruck, zerlegeFeed } from "./ics-feed";
 
 /**
  * Ein abonnierter Kalender — nur lesen.
@@ -64,6 +64,18 @@ export async function createIcsClient(feedUrl: string, name: string): Promise<Ca
     async fetchChanges(): Promise<FetchChangesResult> {
       const text = await ladeFeed(feedUrl);
       return {
+        /*
+         * Der Abdruck der ganzen Datei — das Gegenstück zum CTag, das ein
+         * CalDAV-Server mitschickt. Er beantwortet die Frage, die sich vor
+         * jeder Arbeit stellt: Hat sich überhaupt etwas geändert?
+         *
+         * Ohne ihn las der Abgleich alle fünf Minuten jeden Termin des
+         * Haushalts aus der Datenbank, nur um festzustellen, dass alles beim
+         * Alten ist. Bei ein paar tausend Terminen war das die Hauptlast der
+         * ganzen App — und der Grund, warum das Rechenkontingent aufgebraucht
+         * war, bevor jemand etwas gemerkt hat.
+         */
+        ctag: abdruck(text),
         objects: zerlegeFeed(text).map((s) => ({
           // Ein Abonnement hat keine Adressen je Termin. Die UID ist der
           // einzige Schlüssel, der zwei Läufe überdauert — und genau dafür
@@ -73,7 +85,6 @@ export async function createIcsClient(feedUrl: string, name: string): Promise<Ca
           ics: s.ics,
         })),
         newSyncToken: null,
-        ctag: null,
       };
     },
 

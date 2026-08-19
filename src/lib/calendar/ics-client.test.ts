@@ -41,6 +41,8 @@ const FEED = [
 
 let server: Server;
 let basis = "";
+/** Was der Server gerade ausliefert — veränderbar, damit sich der Abdruck ändern kann. */
+let ausgeliefert = FEED;
 
 beforeAll(async () => {
   server = createServer((req, res) => {
@@ -53,7 +55,7 @@ beforeAll(async () => {
       return res.end("nope");
     }
     res.writeHead(200, { "content-type": "text/calendar; charset=UTF-8" });
-    res.end(FEED);
+    res.end(ausgeliefert);
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const adresse = server.address();
@@ -134,5 +136,36 @@ describe("Abonnierter Kalender", () => {
     const c = await createIcsClient(feedUrl(), "Johanna");
     await expect(c.putEvent("x", "y", "z")).rejects.toBeInstanceOf(NurLesendError);
     await expect(c.deleteEvent("y", "e")).rejects.toBeInstanceOf(NurLesendError);
+  });
+
+  describe("Der Abdruck des Feeds", () => {
+    /*
+     * Das Gegenstück zum CTag eines CalDAV-Servers. Er beantwortet die Frage,
+     * die sich vor jeder Arbeit stellt: Hat sich überhaupt etwas geändert?
+     *
+     * Daran hängt mehr als Eleganz. Ohne ihn las der Abgleich alle fünf
+     * Minuten jeden Termin des Haushalts aus der Datenbank, nur um
+     * festzustellen, dass alles beim Alten ist — bei ~1900 Terminen rund
+     * 170 MB am Tag. Genau daran war Neons Monatskontingent aufgebraucht.
+     */
+    it("bleibt gleich, solange der Feed gleich bleibt", async () => {
+      const c = await createIcsClient(feedUrl(), "Johanna");
+      const a = await c.fetchChanges(feedUrl());
+      const b = await c.fetchChanges(feedUrl());
+      expect(a.ctag).toBeTruthy();
+      expect(b.ctag).toBe(a.ctag);
+    });
+
+    it("ändert sich, sobald sich am Feed etwas ändert", async () => {
+      const c = await createIcsClient(feedUrl(), "Johanna");
+      const vorher = await c.fetchChanges(feedUrl());
+      ausgeliefert = FEED.replace("Physiotherapie", "Physio verschoben");
+      try {
+        const nachher = await c.fetchChanges(feedUrl());
+        expect(nachher.ctag).not.toBe(vorher.ctag);
+      } finally {
+        ausgeliefert = FEED;
+      }
+    });
   });
 });

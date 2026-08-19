@@ -73,11 +73,36 @@ function rowFromObject(calendarId: string, obj: RemoteObject) {
 
 async function syncCalendar(
   client: CalDavClient,
-  calendar: { id: string; url: string; name: string },
+  calendar: { id: string; url: string; name: string; ctag: string | null },
   summary: SyncSummary,
 ) {
   try {
     const changes = await client.fetchChanges(calendar.url);
+
+    /*
+     * Der billigste Abgleich ist der, der gar nicht stattfindet.
+     *
+     * Beide Seiten liefern eine Kennung, die sich nur ändert, wenn sich im
+     * Kalender etwas geändert hat: iCloud sein CTag, der Feed den Abdruck
+     * seiner Datei. Ist sie dieselbe wie beim letzten Lauf, gibt es nichts zu
+     * tun — und vor allem nichts zu lesen.
+     *
+     * Ohne diese Frage holte jeder Lauf jeden Termin des Haushalts aus der
+     * Datenbank, nur um festzustellen, dass alles beim Alten ist. Bei ~1900
+     * Terminen sind das ~200 kB je Kalender, alle fünf Minuten, 288-mal am
+     * Tag: rund 170 MB täglich. Genau daran war Neons Kontingent aufgebraucht,
+     * und in den allermeisten dieser Läufe hatte sich nichts geändert.
+     *
+     * Der Abruf bei Apple und Google bleibt — der kostet uns nichts. Nur die
+     * Datenbank bleibt in Ruhe.
+     */
+    if (changes.ctag && calendar.ctag && changes.ctag === calendar.ctag) {
+      await prisma.calendar.update({
+        where: { id: calendar.id },
+        data: { lastSyncedAt: new Date(), lastSyncOk: true, lastError: null },
+      });
+      return;
+    }
 
     const existing = await prisma.event.findMany({
       where: { calendarId: calendar.id },

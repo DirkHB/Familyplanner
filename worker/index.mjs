@@ -36,7 +36,19 @@ async function triggerSync() {
   }
 }
 
-cron.schedule("*/5 * * * *", triggerSync, { timezone: TZ });
+/*
+ * Alle 15 Minuten, und nur tagsüber.
+ *
+ * Vorher alle fünf Minuten rund um die Uhr. Das hielt nicht nur die Leitung
+ * warm, sondern vor allem die Datenbank: Neon legt nach fünf Minuten Ruhe
+ * schlafen und kam nie dazu. Eine Datenbank, die nie schläft, verbraucht auf
+ * dem kostenlosen Tarif das Monatskontingent in gut zwei Wochen.
+ *
+ * Der Preis ist ehrlich: Ein in Apple Kalender angelegter Termin steht bis zu
+ * 15 statt bis zu 5 Minuten später in der App. Nachts ist es gleichgültig —
+ * da ruhen die Mitteilungen ohnehin (21–7 Uhr).
+ */
+cron.schedule("*/15 7-20 * * *", triggerSync, { timezone: TZ });
 
 // --- Täglicher Nudge für offene Anfragen: 09:00 (Abschnitt 6.3) ---
 async function triggerNudge() {
@@ -58,7 +70,7 @@ async function triggerNudge() {
 
 cron.schedule("0 9 * * *", triggerNudge, { timezone: TZ });
 
-// --- Aufgaben-Erinnerungen: alle 5 Minuten (verschickt fällige remindAt) ---
+// --- Aufgaben-Erinnerungen: alle 15 Minuten im Tagesfenster ---
 async function triggerReminders() {
   if (!process.env.WORKER_SECRET) return;
   try {
@@ -73,7 +85,9 @@ async function triggerReminders() {
   }
 }
 
-cron.schedule("*/5 * * * *", triggerReminders, { timezone: TZ });
+// Ebenfalls im Tagesfenster: Eine Erinnerung, die um 3 Uhr fällig wäre, wird
+// ohnehin nicht zugestellt — die Ruhezeit gilt von 21 bis 7 Uhr.
+cron.schedule("*/15 7-20 * * *", triggerReminders, { timezone: TZ });
 
 // --- Briefings: taeglich 7:00 "Guten Morgen", sonntags 12:00 "Neue Woche" ---
 async function triggerBriefing(kind) {
@@ -126,7 +140,7 @@ async function triggerFrist() {
   }
 }
 
-cron.schedule("0 * * * *", triggerFrist, { timezone: TZ });
+cron.schedule("0 7-20 * * *", triggerFrist, { timezone: TZ });
 
 // --- Aufgaben-Anstoß: alle 15 Minuten prüfen, ob gerade ein freies Fenster
 //     beginnt. Verschickt höchstens einmal am Tag je Person. ---
@@ -144,7 +158,7 @@ async function triggerAufgabenFenster() {
   }
 }
 
-cron.schedule("*/15 * * * *", triggerAufgabenFenster, { timezone: TZ });
+cron.schedule("*/15 7-20 * * *", triggerAufgabenFenster, { timezone: TZ });
 
 // Mini-HTTP-Server nur für den Sliplane-Healthcheck: Sliplane verlangt von jedem
 // Service eine HTTP-Antwort auf "/", sonst landet er in einer Redeploy-Schleife
