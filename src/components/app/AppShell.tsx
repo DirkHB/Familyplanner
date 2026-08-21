@@ -136,6 +136,10 @@ export function AppShell({
           hat der Browser nebenher die ganze Seite mitgezogen. */}
       <div
         ref={scrollerRef}
+        /* Die Marke macht diesen Container auffindbar, ohne ihn durch drei
+           Ebenen zu reichen. Wer etwas zieht, muss ihn scrollen können —
+           das Dokument selbst scrollt hier nicht. */
+        data-scroller
         className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
         style={{ touchAction: "pan-y" }}
       >

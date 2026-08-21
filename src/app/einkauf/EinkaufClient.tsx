@@ -28,6 +28,7 @@ import {
   collapseOps,
   type QueuedOp,
 } from "@/lib/offline/queue";
+import { randScrollen, type RandScrollen } from "@/lib/ziehen/randscrollen";
 
 type Item = { id: string; text: string; checked: boolean; addedByPerson: Person | null };
 type Group = { category: string; label: string; items: Item[] };
@@ -160,17 +161,25 @@ export function EinkaufClient({
     }
     return null;
   }
+  // Derselbe Griff, dasselbe Problem wie bei den Aufgaben: Ohne Nachschieben
+  // ist ein Geschäft, das gerade nicht auf dem Bildschirm steht, unerreichbar.
+  const mitscrollen = useRef<RandScrollen | null>(null);
+
   function dragStart(e: React.PointerEvent, it: Item, from: string) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({ id: it.id, text: it.text, x: e.clientX, y: e.clientY, from });
+    mitscrollen.current = randScrollen((x, y) => setHoverStore(storeAtPoint(x, y)));
   }
   function dragMove(e: React.PointerEvent) {
     if (!drag) return;
     setDrag({ ...drag, x: e.clientX, y: e.clientY });
     setHoverStore(storeAtPoint(e.clientX, e.clientY));
+    mitscrollen.current?.bewege(e.clientX, e.clientY);
   }
   function dragEnd() {
+    mitscrollen.current?.stoppe();
+    mitscrollen.current = null;
     if (drag && hoverStore && hoverStore !== drag.from) {
       const { id } = drag;
       const target = hoverStore;

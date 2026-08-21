@@ -27,6 +27,7 @@ import {
 } from "./actions";
 import { toggleItemAction } from "@/app/einkauf/actions";
 import { motion, AnimatePresence } from "motion/react";
+import { randScrollen, type RandScrollen } from "@/lib/ziehen/randscrollen";
 
 /** Laufende Zieh-Geste: welche Aufgabe, wo ist der Finger, woher kommt sie. */
 type Zug = { id: string; titel: string; x: number; y: number; von: string };
@@ -92,17 +93,32 @@ export function AufgabenClient({
     formularRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [showForm]);
 
+  /*
+   * Der Griff trägt `touch-action: none` — der Browser scrollt also nicht,
+   * während man zieht, weil wir die Geste selbst auswerten. Übernommen hat
+   * das bisher niemand: Wer eine Aufgabe in eine Liste ziehen wollte, die
+   * gerade nicht auf dem Bildschirm stand, kam nicht hin. Auf einem Telefon
+   * mit ein paar Listen ist das der Normalfall.
+   */
+  const mitscrollen = useRef<RandScrollen | null>(null);
+
   function zugStart(e: React.PointerEvent, t: TodoVM, von: string) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setZug({ id: t.id, titel: t.title, x: e.clientX, y: e.clientY, von });
+    // Beim Nachschieben zieht der Inhalt unter dem ruhenden Finger vorbei —
+    // dann gehört auch die hervorgehobene Liste neu bestimmt.
+    mitscrollen.current = randScrollen((x, y) => setZugZiel(containerAtPoint(x, y)));
   }
   function zugMove(e: React.PointerEvent) {
     if (!zug) return;
     setZug({ ...zug, x: e.clientX, y: e.clientY });
     setZugZiel(containerAtPoint(e.clientX, e.clientY));
+    mitscrollen.current?.bewege(e.clientX, e.clientY);
   }
   function zugEnde() {
+    mitscrollen.current?.stoppe();
+    mitscrollen.current = null;
     if (zug && zugZiel && zugZiel !== zug.von) {
       const { id } = zug;
       const ziel = zugZiel;
