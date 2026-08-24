@@ -52,7 +52,25 @@ export type KlaerungCard =
    * konkreten Plan. Einmal die Woche bekommt jede geparkte Aufgabe deshalb die
    * Frage „diese Woche?" — sonst wird der Parkplatz ein Friedhof.
    */
-  | { kind: "parken"; id: string; title: string; important: boolean };
+  | { kind: "parken"; id: string; title: string; important: boolean }
+  /**
+   * Ein Geburtstag steht an — und zwar noch früh genug, um etwas zu tun.
+   *
+   * Der Eintrag im Kalender erinnert am Morgen daran, zu gratulieren. Für
+   * alles, was man besorgen müsste, ist das genau einen Tag zu spät. Also ein
+   * paar Tage vorher eine Frage, und die Antwort gilt der Person: Bei vierzig
+   * Geburtstagen aus dem Adressbuch wäre sie sonst eine Zumutung.
+   */
+  | {
+      kind: "geschenk";
+      titleKey: string;
+      /** Bindet die Aufgabe an genau diesen Geburtstag in diesem Jahr. */
+      eventUid: string;
+      title: string;
+      person: string | null;
+      when: string;
+      geburtstagISO: string;
+    };
 
 /**
  * Stapel zusammenstellen. Reihenfolge nach Dringlichkeit:
@@ -66,6 +84,7 @@ export function buildStack(input: {
   aufgaben: Extract<KlaerungCard, { kind: "aufgabe" }>[];
   /** Nur sonntags gefüllt — das Aufräumen des Parkplatzes. */
   parken?: Extract<KlaerungCard, { kind: "parken" }>[];
+  geschenke?: Extract<KlaerungCard, { kind: "geschenk" }>[];
 }): KlaerungCard[] {
   const aufgaben = [...input.aufgaben].sort((a, b) => Number(b.overdue) - Number(a.overdue));
   // Die zeitlich nächste Betreuungsfrage zuerst: Sie verfällt als erste.
@@ -75,11 +94,22 @@ export function buildStack(input: {
   const parken = [...(input.parken ?? [])].sort(
     (a, b) => Number(b.important) - Number(a.important),
   );
-  // Parken steht hinten: Was heute ansteht, hat Vorrang vor dem Aufräumen.
-  return [...input.eskalationen, ...input.anfragen, ...betreuung, ...aufgaben, ...parken].slice(
-    0,
-    MAX_KARTEN,
+  // Der nächste Geburtstag zuerst — er verfällt als erster.
+  const geschenke = [...(input.geschenke ?? [])].sort((a, b) =>
+    a.geburtstagISO.localeCompare(b.geburtstagISO),
   );
+  /*
+   * Geschenke stehen hinter dem Heute und vor dem Aufräumen: Sie sind nicht
+   * dringend, aber sie verfallen — anders als der Parkplatz, der wartet.
+   */
+  return [
+    ...input.eskalationen,
+    ...input.anfragen,
+    ...betreuung,
+    ...aufgaben,
+    ...geschenke,
+    ...parken,
+  ].slice(0, MAX_KARTEN);
 }
 
 /** Client-seitiger Zustand der Unterdrückung (liegt im localStorage). */

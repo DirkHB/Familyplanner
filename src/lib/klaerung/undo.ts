@@ -32,4 +32,12 @@ export type StapelUndo =
   /** Antwort auf eine Anfrage zurücknehmen — die Frage steht wieder offen. */
   | { art: "antwort-zurueck"; requestId: string; eventUid: string | null }
   /** Eine gerade angelegte Aufgabe („Frag ich heute Abend") wieder löschen. */
-  | { art: "todo-weg"; todoId: string };
+  | { art: "todo-weg"; todoId: string }
+  /**
+   * Eine gerade gemerkte Titelregel zurücknehmen.
+   *
+   * „Nie wieder fragen" ist die Entscheidung mit der längsten Wirkung im
+   * ganzen Stapel — sie gilt für alle künftigen Jahre. Wer sie versehentlich
+   * wischt, muss sie zurücknehmen können, ohne zu wissen, wo sie steht.
+   */
+  | { art: "regel-weg"; regelArt: string; titleKey: string };

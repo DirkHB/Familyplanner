@@ -15,11 +15,14 @@ import {
   stapelEskalationGeklaertAction,
   stapelBabysitterAction,
   stapelFrageAbendAction,
+  stapelGeschenkJaAction,
+  stapelGeschenkNeinAction,
   stapelParkenDieseWocheAction,
   stapelParkenBleibtAction,
   stapelRueckgaengigAction,
 } from "@/app/klaerung/actions";
 import type { StapelUndo } from "@/lib/klaerung/undo";
+import { geschenkAufgabe } from "@/lib/klaerung/geburtstag";
 
 /**
  * Der Kartenstapel: eine Entscheidung pro Karte, einhändig wischbar.
@@ -68,6 +71,16 @@ function actionFor(d: Decision): (() => Promise<Ergebnis>) | null {
         return () => stapelEskalationGeklaertAction(c.uid, c.occurrenceISO);
       // links = Wenn-dann-Plan: konkrete Aufgabe statt vagem „später".
       return () => stapelFrageAbendAction(c.uid, c.occurrenceISO, c.title);
+    case "geschenk":
+      return d.richtung === "rechts"
+        ? () =>
+            stapelGeschenkJaAction(
+              c.titleKey,
+              c.eventUid,
+              c.geburtstagISO,
+              geschenkAufgabe(c.person, c.title),
+            )
+        : () => stapelGeschenkNeinAction(c.titleKey);
     case "parken":
       return d.richtung === "rechts"
         ? () => stapelParkenDieseWocheAction(c.id)
@@ -81,6 +94,9 @@ const LABELS: Record<KlaerungCard["kind"], { links: string; rechts: string }> = 
   anfrage: { links: "Nein", rechts: "Ja ✓" },
   eskalation: { links: "Frag ich heute Abend", rechts: "Babysitter geklärt ✓" },
   parken: { links: "Bleibt liegen", rechts: "Diese Woche ✓" },
+  // „Nie" statt „Nein": Die Antwort gilt der Person, nicht diesem Jahr — und
+  // wer das wischt, soll wissen, dass er sie für immer wischt.
+  geschenk: { links: "Nie fragen", rechts: "Aufgabe anlegen ✓" },
 };
 
 /** Was in der Rückgängig-Leiste steht — im Rückblick formuliert. */
@@ -376,6 +392,18 @@ function CardBody({ card, kind }: { card: KlaerungCard; kind: string }) {
           </p>
           <p className="mt-3 font-display text-3xl leading-tight">{card.title}</p>
           <p className="mt-3 text-surface/70">Nimmst du dir das diese Woche vor?</p>
+        </div>
+      );
+    case "geschenk":
+      return (
+        <div className="mt-10">
+          <p className="eyebrow text-accent-light">Geburtstag {card.when}</p>
+          <p className="mt-3 font-display text-3xl leading-tight">
+            {card.person ?? card.title}
+          </p>
+          <p className="mt-3 text-surface/70">
+            Soll ich eine Aufgabe fürs Geschenk anlegen? Sie wird einen Tag vorher fällig.
+          </p>
         </div>
       );
     case "eskalation":

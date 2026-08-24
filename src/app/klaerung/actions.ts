@@ -25,6 +25,8 @@ import { haushaltProfil } from "@/lib/haushalt/profil";
 import { removeCareBlock } from "@/lib/care/block-sync";
 import { frageFaellig } from "@/lib/care/frage-zeit";
 import { invalidateKalender } from "@/lib/calendar/range-data";
+import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
+import { faelligFuer } from "@/lib/klaerung/geburtstag";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import type { StapelUndo } from "@/lib/klaerung/undo";
 
@@ -370,11 +372,83 @@ export async function stapelParkenBleibtAction(todoId: string): Promise<Ergebnis
  * nicht mehr: Hat Constanze eine Anfrage inzwischen beantwortet, gewinnt
  * ihre Antwort, und die Anfrage wird nicht mehr eingesammelt.
  */
+/**
+ * „Ja" auf die Geschenkfrage: eine Aufgabe, rechtzeitig fällig.
+ *
+ * Der Herkunftsschlüssel bindet sie an genau diesen Geburtstag in genau
+ * diesem Jahr. Ohne ihn stünde die Frage morgen wieder da, obwohl sie
+ * beantwortet ist — und übermorgen läge die Aufgabe dreimal.
+ */
+export async function stapelGeschenkJaAction(
+  titleKey: string,
+  eventUid: string,
+  geburtstagISO: string,
+  aufgabenTitel: string,
+): Promise<Ergebnis> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+
+  const geburtstag = new Date(geburtstagISO);
+  const quelle = `geschenk:${eventUid}:${dayKey(geburtstag)}`;
+
+  const schon = await prisma.todo.findFirst({ where: { sourceUid: quelle }, select: { id: true } });
+  if (schon) return { ok: true, schon: "Dafür gibt es schon eine Aufgabe." };
+
+  const todo = await prisma.todo.create({
+    data: {
+      title: aufgabenTitel,
+      dueDate: faelligFuer(geburtstag),
+      eventUid,
+      sourceUid: quelle,
+      createdBy: session.user.id,
+    },
+    select: { id: true },
+  });
+  // Ja heißt auch: Bei dieser Person künftig wieder fragen.
+  await prisma.titelRegel
+    .upsert({
+      where: { householdId_art_titleKey: { householdId: await aktuellerHaushalt(), art: "geschenk", titleKey } },
+      create: { art: "geschenk", titleKey, entscheidung: "ja", createdBy: session.user.id },
+      update: { entscheidung: "ja" },
+    })
+    .catch(() => null);
+
+  reval();
+  return { ok: true, undo: { art: "todo-weg", todoId: todo.id } };
+}
+
+/**
+ * „Nein": bei dieser Person nie wieder fragen.
+ *
+ * Die Antwort gilt der Person, nicht diesem Jahr. Bei vierzig Geburtstagen
+ * aus dem Adressbuch wäre die Frage sonst jedes Jahr vierzigmal fällig.
+ */
+export async function stapelGeschenkNeinAction(titleKey: string): Promise<Ergebnis> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  const haushalt = await aktuellerHaushalt();
+  await prisma.titelRegel
+    .upsert({
+      where: { householdId_art_titleKey: { householdId: haushalt, art: "geschenk", titleKey } },
+      create: { art: "geschenk", titleKey, entscheidung: "nein", createdBy: session.user.id },
+      update: { entscheidung: "nein" },
+    })
+    .catch(() => null);
+  reval();
+  return { ok: true, undo: { art: "regel-weg", regelArt: "geschenk", titleKey } };
+}
+
 export async function stapelRueckgaengigAction(u: StapelUndo): Promise<{ ok: boolean }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false };
 
   switch (u.art) {
+    case "regel-weg":
+      await prisma.titelRegel
+        .deleteMany({ where: { art: u.regelArt, titleKey: u.titleKey } })
+        .catch(() => null);
+      break;
+
     case "todo-toggle":
       await toggleTodo(u.todoId);
       break;

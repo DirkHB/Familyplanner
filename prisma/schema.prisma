@@ -51,6 +51,7 @@ model Household {
   briefings         Briefing[]
   careRules         CareRule[]
   appSettings       AppSetting[]
+  titelRegeln       TitelRegel[]
 
   @@map("households")
 }
@@ -552,6 +553,29 @@ model Briefing {
  * Vorkommen — sonst müsste man die wöchentliche Müllabfuhr jede Woche neu
  * abwinken. Der Schlüssel kommt aus titleKey() in lib/care/gaps.ts.
  */
+/**
+ * Einmal fragen, Antwort merken — für alles außer Betreuung.
+ * Dieselbe Idee wie CareRule, nur allgemein: Die Antwort gilt der ART des
+ * Eintrags, nicht dem einzelnen Vorkommen. Wer einmal gesagt hat „Sprung 2 ist
+ * kein Wegsein", soll nicht bei jeder Babyphase erneut gefragt werden.
+ */
+model TitelRegel {
+  id           String    @id @default(cuid())
+  householdId  String    @default("KEIN_HAUSHALT") @map("household_id")
+  /// "abwesenheit" (seid ihr weg?) | "geschenk" (Geschenk besorgen?)
+  art          String
+  titleKey     String    @map("title_key")
+  /// "ja" | "nein"
+  entscheidung String
+  createdBy    String?   @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, art, titleKey])
+  @@index([householdId])
+  @@map("titel_regeln")
+}
+
 model CareRule {
   id          String    @id @default(cuid())
   /// Wem gehört das? Solange eine Datenbank einem Haushalt gehört, immer '1'.

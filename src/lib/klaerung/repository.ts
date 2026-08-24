@@ -9,6 +9,13 @@ import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
 import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { berlinWeekday } from "@/lib/overview/horizon";
 import { buildStack, type KlaerungCard } from "./build";
+import {
+  VORLAUF_TAGE,
+  istGeburtstag,
+  istImFragefenster,
+  personAusTitel,
+} from "./geburtstag";
+import { titleKey as titelSchluessel } from "@/lib/care/gaps";
 
 /**
  * Daten für den Klärungs-Stapel beim Öffnen der App.
@@ -28,10 +35,17 @@ const dueFmt = new Intl.DateTimeFormat("de-DE", {
 export async function getKlaerungStack(userId: string, now: Date = new Date()): Promise<KlaerungCard[]> {
   const heuteStart = startOfDayBerlin(now);
   const morgenEnde = new Date(heuteStart.getTime() + 2 * 86_400_000);
+  /*
+   * Geburtstage brauchen mehr Vorlauf als Betreuungsfragen — sonst kommt die
+   * Frage nach einem Geschenk zu spät, um sie noch beantworten zu können.
+   * Deshalb ein größeres Fenster für dieselbe Abfrage, statt einer zweiten:
+   * Die Kalenderdaten sind teuer genug, dass sich zwei Läufe nicht lohnen.
+   */
+  const vorschauEnde = new Date(heuteStart.getTime() + (VORLAUF_TAGE + 1) * 86_400_000);
   const todayKey = dayKey(now);
 
   const [{ occurrences, careByOcc }, abgewinkt, offeneAnfragen] = await Promise.all([
-    getRangeData(now, morgenEnde),
+    getRangeData(now, vorschauEnde),
     getDismissedTitleKeys(),
     getOpenRequestsForUser(userId),
   ]);
@@ -42,6 +56,10 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
   const betreuung: Extract<KlaerungCard, { kind: "betreuung" }>[] = [];
   for (const o of occurrences) {
     if (o.end <= now) continue;
+    // Das Fenster reicht jetzt weiter, die Betreuungsfrage aber weiterhin nur
+    // bis morgen: Was übermorgen ist, gehört in den Überblick, nicht in eine
+    // Unterbrechung beim Öffnen.
+    if (o.start >= morgenEnde) continue;
     const c = careByOcc.get(`${o.uid}:${dayKey(o.start)}`);
     if (c) continue;
     const gap = isCareGap(
@@ -159,12 +177,55 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
     }));
   }
 
+  /*
+   * Geburtstage: fragen, solange man noch etwas tun kann.
+   *
+   * Kein Modell im Spiel — erkennen, rechnen, fragen. Wer einmal „nein" sagt,
+   * wird für diese Person nie wieder gefragt; bei vierzig Einträgen aus dem
+   * Adressbuch wäre die Frage sonst eine Zumutung. Und wer schon eine Aufgabe
+   * dafür hat, auch nicht: Die Frage wäre beantwortet.
+   */
+  const geburtstage = occurrences.filter(
+    (o) => o.allDay && istGeburtstag(o.summary) && istImFragefenster(o.start, now),
+  );
+  const geschenke: Extract<KlaerungCard, { kind: "geschenk" }>[] = [];
+  if (geburtstage.length) {
+    const keys = [...new Set(geburtstage.map((o) => titelSchluessel(o.summary)))];
+    const [regeln, schonGeplant] = await Promise.all([
+      prisma.titelRegel.findMany({
+        where: { art: "geschenk", titleKey: { in: keys } },
+        select: { titleKey: true, entscheidung: true },
+      }),
+      prisma.todo.findMany({
+        where: { sourceUid: { in: geburtstage.map((o) => `geschenk:${o.uid}:${dayKey(o.start)}`) } },
+        select: { sourceUid: true },
+      }),
+    ]);
+    const entschieden = new Map(regeln.map((r) => [r.titleKey, r.entscheidung]));
+    const geplant = new Set(schonGeplant.map((t) => t.sourceUid!));
+    for (const o of geburtstage) {
+      const key = titelSchluessel(o.summary);
+      if (entschieden.get(key) === "nein") continue;
+      if (geplant.has(`geschenk:${o.uid}:${dayKey(o.start)}`)) continue;
+      geschenke.push({
+        kind: "geschenk",
+        titleKey: key,
+        eventUid: o.uid,
+        title: o.summary,
+        person: personAusTitel(o.summary),
+        when: wann(o.start, true),
+        geburtstagISO: o.start.toISOString(),
+      });
+    }
+  }
+
   return buildStack({
     eskalationen,
     anfragen,
     betreuung: betreuung.filter((b) => !eskUids.has(b.uid)),
     aufgaben,
     parken,
+    geschenke,
   });
 }
 
