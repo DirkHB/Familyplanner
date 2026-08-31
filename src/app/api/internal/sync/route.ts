@@ -1,4 +1,5 @@
 import { runSyncForAllAccounts } from "@/lib/calendar/sync-engine";
+import { ordneNeueMehrtaegigeEin } from "@/lib/klaerung/einordnung-lauf";
 import { proHaushalt } from "@/lib/haushalt/runde";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,25 @@ export async function POST(req: Request) {
     // die alle betrifft.
     const summary = await proHaushalt(async () => {
       const s = await runSyncForAllAccounts();
-      return { calendars: s.calendars, upserted: s.upserted, deleted: s.deleted, fehlerhafteKalender: s.errors.length };
+      /*
+       * Neue mehrtägige Einträge einordnen — aber nur, wenn sich wirklich
+       * etwas geändert hat.
+       *
+       * Genau dann kann ein „Mallorca" dazugekommen sein, und genau dann sind
+       * die Bereichsdaten ohnehin frisch zu holen. Bei einem Lauf, der nichts
+       * gefunden hat, bleibt auch hier alles liegen: Die Datenbank soll
+       * schlafen dürfen. Einmal am Tag schaut das Morgen-Briefing trotzdem
+       * nach, damit nichts liegen bleibt, weil ein Kalender ruhig ist.
+       */
+      const eingeordnet =
+        s.upserted > 0 || s.deleted > 0 ? await ordneNeueMehrtaegigeEin().catch(() => 0) : 0;
+      return {
+        calendars: s.calendars,
+        upserted: s.upserted,
+        deleted: s.deleted,
+        eingeordnet,
+        fehlerhafteKalender: s.errors.length,
+      };
     });
     return Response.json({ ok: true, ...summary });
   } catch (err) {

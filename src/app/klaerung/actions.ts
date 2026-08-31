@@ -27,6 +27,7 @@ import { frageFaellig } from "@/lib/care/frage-zeit";
 import { invalidateKalender } from "@/lib/calendar/range-data";
 import { aktuellerHaushalt } from "@/lib/haushalt/aktuell";
 import { faelligFuer } from "@/lib/klaerung/geburtstag";
+import { ABWESENHEIT_ART } from "@/lib/klaerung/abwesenheit";
 import { startOfDayBerlin, dayKey } from "@/lib/calendar/format";
 import type { StapelUndo } from "@/lib/klaerung/undo";
 
@@ -436,6 +437,42 @@ export async function stapelGeschenkNeinAction(titleKey: string): Promise<Ergebn
     .catch(() => null);
   reval();
   return { ok: true, undo: { art: "regel-weg", regelArt: "geschenk", titleKey } };
+}
+
+/**
+ * „Seid ihr da weg?" — die Antwort gilt dem Titel, nicht diesem einen Mal.
+ *
+ * Sie überschreibt, was die KI vermutet hat, und zwar für immer: Wer einmal
+ * gesagt hat, dass „Sprung 2" kein Wegfahren ist, soll das nie wieder sagen
+ * müssen. Die Vermutung der Maschine bleibt daneben stehen — überschrieben
+ * wird sie nicht, sie zählt nur nicht mehr.
+ */
+async function merkeAbwesenheit(titleKey: string, antwort: "ja" | "nein"): Promise<Ergebnis> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false };
+  await prisma.titelRegel
+    .upsert({
+      where: {
+        householdId_art_titleKey: {
+          householdId: await aktuellerHaushalt(),
+          art: ABWESENHEIT_ART,
+          titleKey,
+        },
+      },
+      create: { art: ABWESENHEIT_ART, titleKey, entscheidung: antwort, createdBy: session.user.id },
+      update: { entscheidung: antwort },
+    })
+    .catch(() => null);
+  reval();
+  return { ok: true, undo: { art: "regel-weg", regelArt: ABWESENHEIT_ART, titleKey } };
+}
+
+export async function stapelAbwesenheitJaAction(titleKey: string): Promise<Ergebnis> {
+  return merkeAbwesenheit(titleKey, "ja");
+}
+
+export async function stapelAbwesenheitNeinAction(titleKey: string): Promise<Ergebnis> {
+  return merkeAbwesenheit(titleKey, "nein");
 }
 
 export async function stapelRueckgaengigAction(u: StapelUndo): Promise<{ ok: boolean }> {

@@ -15,6 +15,14 @@ import {
 } from "@/lib/calendar/format";
 import { buildStrahl, STANDARD_FENSTER } from "@/lib/calendar/zeitstrahl";
 import { listStores } from "@/lib/shopping/repository";
+import { titleKey } from "@/lib/care/gaps";
+import {
+  ABWESENHEIT_ART,
+  EINORDNUNG_ART,
+  istBesuch,
+  istWeg,
+  kommtInFrage,
+} from "@/lib/klaerung/abwesenheit";
 
 /**
  * Das Assistenten-Briefing: liest Termine, Aufgaben und Einkauf ZUSAMMEN und
@@ -88,6 +96,36 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
   }
   if (mitUhrzeit.length === 0) zeilen.push("- keine");
 
+  /*
+   * Was die mehrtägigen Einträge bedeuten, steht längst da.
+   *
+   * Eingeordnet wird im Hintergrund (lib/klaerung/einordnung-lauf.ts) — hier
+   * wird nur nachgeschlagen. Ohne das liest sich „Mallorca" wie ein Ort und
+   * „Mama in München" wie eine Reise, und beides führt zu Vorschlägen, die
+   * daneben liegen: ein Einkauf um die Ecke, während ihr am Strand seid.
+   */
+  const mehrtaegigeKeys = [
+    ...new Set(
+      kulisse
+        .filter((o) => kommtInFrage(o.allDay, tageEinesVorkommens(o).length))
+        .map((o) => titleKey(o.summary)),
+    ),
+  ];
+  const regeln = mehrtaegigeKeys.length
+    ? await prisma.titelRegel.findMany({
+        where: { art: { in: [ABWESENHEIT_ART, EINORDNUNG_ART] }, titleKey: { in: mehrtaegigeKeys } },
+        select: { art: true, titleKey: true, entscheidung: true },
+      })
+    : [];
+  const menschSagt = new Map(
+    regeln.filter((r) => r.art === ABWESENHEIT_ART).map((r) => [r.titleKey, r.entscheidung]),
+  );
+  const maschineSagt = new Map(
+    regeln.filter((r) => r.art === EINORDNUNG_ART).map((r) => [r.titleKey, r.entscheidung]),
+  );
+
+  const wegZeilen: string[] = [];
+
   zeilen.push("WIE DIE TAGE LIEGEN (ganztägige Einträge — Kulisse, keine Termine):");
   const letzterKey = dayKey(new Date(to.getTime() - 1));
   const label = (k: string) => (k === heuteKey ? "heute" : formatWeekday(new Date(`${k}T12:00:00Z`)));
@@ -104,10 +142,26 @@ export async function sammleKontext(now: Date = new Date()): Promise<string> {
       sichtbar.length === 1
         ? label(sichtbar[0])
         : `${label(sichtbar[0])} bis ${label(sichtbar[sichtbar.length - 1])}`;
-    zeilen.push(`- ${spanne}${weiter}: ${o.summary}`);
+    const key = titleKey(o.summary);
+    const weg = istWeg(menschSagt.get(key), maschineSagt.get(key));
+    const besuch = istBesuch(menschSagt.get(key), maschineSagt.get(key));
+    const marke = weg ? " [ihr seid weg]" : besuch ? " [Besuch ist da]" : "";
+    if (weg) wegZeilen.push(`${spanne}${weiter} (${o.summary})`);
+    zeilen.push(`- ${spanne}${weiter}: ${o.summary}${marke}`);
     gezeigt++;
   }
   if (gezeigt === 0) zeilen.push("- nichts");
+
+  /*
+   * Die eine Zeile, auf die es ankommt.
+   *
+   * Sie steht extra da und nicht nur als Marke oben: Ob ihr zu Hause seid,
+   * entscheidet über jeden einzelnen Vorschlag darunter — und was nur als
+   * Nebensatz in einer Aufzählung steht, geht unter.
+   */
+  if (wegZeilen.length) {
+    zeilen.push(`IHR SEID NICHT ZU HAUSE: ${wegZeilen.join("; ")}`);
+  }
 
   const heutige = occurrences.filter((o) => dayKey(o.start) === heuteKey && !o.allDay);
   const strahl = buildStrahl(
@@ -164,6 +218,15 @@ Zu „WIE DIE TAGE LIEGEN":
   Beides nur vorschlagen, wenn der Kalender an dem Tag wirklich Luft lässt.
 - Höchstens EIN solcher Gedanke je Briefing, und nur, wenn er trägt. Lieber nichts sagen
   als etwas Beliebiges.
+
+Wenn „IHR SEID NICHT ZU HAUSE" dasteht:
+- Dann seid ihr in dieser Zeit weg. Schlage nichts vor, was nur zu Hause geht — kein Einkauf
+  um die Ecke, kein Handwerker, keine Wäsche, kein Keller, kein Termin in der Nachbarschaft.
+- Was VOR der Abreise erledigt sein muss, ist dagegen das Wichtigste, was du sagen kannst —
+  aber nur, wenn es in Aufgaben oder Einkauf wirklich dasteht.
+- Ist eine Aufgabe erst nach der Rückkehr fällig, lass sie in Ruhe. Sie mahnt sich später
+  von selbst an.
+- Sag nicht „ihr seid ja weg" als Feststellung. Es steht im Kalender, ihr wisst es.
 - Erfinde nichts. Keine Emojis, keine Anrede, keine Grußformel, keine Aufzählungszeichen.`;
 
 async function frageAssistent(kontext: string, profil: HaushaltProfil): Promise<string | null> {

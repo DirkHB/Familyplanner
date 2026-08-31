@@ -44,6 +44,38 @@ describe("buildStack", () => {
     expect(stack.map((c) => (c.kind === "aufgabe" ? c.id : ""))).toEqual(["alt", "neu"]);
   });
 
+  it("stellt die Abwesenheit vor das Geschenk und beide hinter das Heute", () => {
+    const stack = buildStack({
+      eskalationen: [],
+      anfragen: [],
+      betreuung: [],
+      aufgaben: [aufgabe("t")],
+      geschenke: [
+        {
+          kind: "geschenk",
+          titleKey: "omas geburtstag",
+          eventUid: "g",
+          title: "Omas Geburtstag",
+          person: "Oma",
+          when: "Do",
+          geburtstagISO: "2026-09-03T00:00:00.000Z",
+        },
+      ],
+      abwesenheiten: [
+        {
+          kind: "abwesenheit",
+          titleKey: "mallorca",
+          title: "Mallorca",
+          when: "Mi bis So",
+          beginnISO: "2026-09-02T00:00:00.000Z",
+        },
+      ],
+    });
+    // Wer weg ist, kauft kein Geschenk mehr um die Ecke — die Reihenfolge
+    // ist deshalb keine Geschmacksfrage.
+    expect(stack.map((c) => c.kind)).toEqual(["aufgabe", "abwesenheit", "geschenk"]);
+  });
+
   it("deckelt hart bei 5 Karten", () => {
     const stack = buildStack({
       eskalationen: [],

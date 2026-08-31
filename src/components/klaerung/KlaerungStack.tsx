@@ -17,6 +17,8 @@ import {
   stapelFrageAbendAction,
   stapelGeschenkJaAction,
   stapelGeschenkNeinAction,
+  stapelAbwesenheitJaAction,
+  stapelAbwesenheitNeinAction,
   stapelParkenDieseWocheAction,
   stapelParkenBleibtAction,
   stapelRueckgaengigAction,
@@ -81,6 +83,10 @@ function actionFor(d: Decision): (() => Promise<Ergebnis>) | null {
               geschenkAufgabe(c.person, c.title),
             )
         : () => stapelGeschenkNeinAction(c.titleKey);
+    case "abwesenheit":
+      return d.richtung === "rechts"
+        ? () => stapelAbwesenheitJaAction(c.titleKey)
+        : () => stapelAbwesenheitNeinAction(c.titleKey);
     case "parken":
       return d.richtung === "rechts"
         ? () => stapelParkenDieseWocheAction(c.id)
@@ -97,6 +103,9 @@ const LABELS: Record<KlaerungCard["kind"], { links: string; rechts: string }> = 
   // „Nie" statt „Nein": Die Antwort gilt der Person, nicht diesem Jahr — und
   // wer das wischt, soll wissen, dass er sie für immer wischt.
   geschenk: { links: "Nie fragen", rechts: "Aufgabe anlegen ✓" },
+  // Beide Antworten sind eine Ansage für immer — deshalb keine, die nach
+  // „egal" klingt. Wer hier wischt, entscheidet, was der Eintrag heißt.
+  abwesenheit: { links: "Wir sind da", rechts: "Wir sind weg ✓" },
 };
 
 /** Was in der Rückgängig-Leiste steht — im Rückblick formuliert. */
@@ -392,6 +401,17 @@ function CardBody({ card, kind }: { card: KlaerungCard; kind: string }) {
           </p>
           <p className="mt-3 font-display text-3xl leading-tight">{card.title}</p>
           <p className="mt-3 text-surface/70">Nimmst du dir das diese Woche vor?</p>
+        </div>
+      );
+    case "abwesenheit":
+      return (
+        <div className="mt-10">
+          <p className="eyebrow text-accent-light">Mehrere Tage · {card.when}</p>
+          <p className="mt-3 font-display text-3xl leading-tight">{card.title}</p>
+          <p className="mt-3 text-surface/70">
+            Seid ihr in der Zeit weg von zu Hause? Dann schlage ich nichts vor, was nur hier
+            geht.
+          </p>
         </div>
       );
     case "geschenk":

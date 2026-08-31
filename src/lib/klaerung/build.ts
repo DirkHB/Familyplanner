@@ -54,6 +54,21 @@ export type KlaerungCard =
    */
   | { kind: "parken"; id: string; title: string; important: boolean }
   /**
+   * Ein mehrtägiger Eintrag, bei dem die KI nicht sicher war, was er heißt.
+   *
+   * „Mallorca" ordnet sie selbst ein, „Sprung 2" auch. Gefragt wird nur, wo
+   * sie unsicher bleibt — und die Antwort gilt dem Titel, nicht diesem einen
+   * Mal. Ohne diese Unterscheidung stünde die Frage bei jedem Balken im
+   * Kalender, und das wäre schlimmer als gar nicht zu fragen.
+   */
+  | {
+      kind: "abwesenheit";
+      titleKey: string;
+      title: string;
+      when: string;
+      beginnISO: string;
+    }
+  /**
    * Ein Geburtstag steht an — und zwar noch früh genug, um etwas zu tun.
    *
    * Der Eintrag im Kalender erinnert am Morgen daran, zu gratulieren. Für
@@ -84,6 +99,7 @@ export function buildStack(input: {
   aufgaben: Extract<KlaerungCard, { kind: "aufgabe" }>[];
   /** Nur sonntags gefüllt — das Aufräumen des Parkplatzes. */
   parken?: Extract<KlaerungCard, { kind: "parken" }>[];
+  abwesenheiten?: Extract<KlaerungCard, { kind: "abwesenheit" }>[];
   geschenke?: Extract<KlaerungCard, { kind: "geschenk" }>[];
 }): KlaerungCard[] {
   const aufgaben = [...input.aufgaben].sort((a, b) => Number(b.overdue) - Number(a.overdue));
@@ -94,19 +110,26 @@ export function buildStack(input: {
   const parken = [...(input.parken ?? [])].sort(
     (a, b) => Number(b.important) - Number(a.important),
   );
+  // Was zuerst beginnt, zuerst: Danach ist die Frage nur noch Statistik.
+  const abwesenheiten = [...(input.abwesenheiten ?? [])].sort((a, b) =>
+    a.beginnISO.localeCompare(b.beginnISO),
+  );
   // Der nächste Geburtstag zuerst — er verfällt als erster.
   const geschenke = [...(input.geschenke ?? [])].sort((a, b) =>
     a.geburtstagISO.localeCompare(b.geburtstagISO),
   );
   /*
-   * Geschenke stehen hinter dem Heute und vor dem Aufräumen: Sie sind nicht
-   * dringend, aber sie verfallen — anders als der Parkplatz, der wartet.
+   * Was verfällt, steht hinter dem Heute und vor dem Aufräumen: nicht
+   * dringend, aber irgendwann sinnlos — anders als der Parkplatz, der wartet.
+   * Die Abwesenheit zuerst, denn sie färbt alles andere ein: Wer weg ist,
+   * kauft kein Geschenk mehr um die Ecke.
    */
   return [
     ...input.eskalationen,
     ...input.anfragen,
     ...betreuung,
     ...aufgaben,
+    ...abwesenheiten,
     ...geschenke,
     ...parken,
   ].slice(0, MAX_KARTEN);

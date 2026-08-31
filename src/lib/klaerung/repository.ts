@@ -1,13 +1,20 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getRangeData } from "@/lib/calendar/range-data";
-import { startOfDayBerlin, dayKey, wannLabel } from "@/lib/calendar/format";
+import {
+  startOfDayBerlin,
+  dayKey,
+  wannLabel,
+  formatWeekday,
+  tageEinesVorkommens,
+} from "@/lib/calendar/format";
 import { isCareGap } from "@/lib/care/gaps";
 import { getDismissedTitleKeys } from "@/lib/care/rules";
 import { getOpenRequestsForUser } from "@/lib/requests/repository";
 import { terminLabelsFuerAnfragen } from "@/lib/requests/termin";
 import { notnameAusEmail } from "@/lib/auth/allowlist";
 import { berlinWeekday } from "@/lib/overview/horizon";
+import type { Occurrence } from "@/lib/calendar/types";
 import { buildStack, type KlaerungCard } from "./build";
 import {
   VORLAUF_TAGE,
@@ -16,6 +23,12 @@ import {
   personAusTitel,
 } from "./geburtstag";
 import { titleKey as titelSchluessel } from "@/lib/care/gaps";
+import {
+  ABWESENHEIT_ART,
+  EINORDNUNG_ART,
+  brauchtFrage,
+  kommtInFrage,
+} from "./abwesenheit";
 
 /**
  * Daten für den Klärungs-Stapel beim Öffnen der App.
@@ -51,6 +64,19 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
   ]);
 
   const wann = (start: Date, allDay: boolean) => wannLabel(start, allDay, now);
+  /*
+   * „Mi bis So" statt „Mi". Bei einem Balken über mehrere Tage ist der erste
+   * Tag die halbe Auskunft — und die Frage, ob ihr weg seid, hängt an der
+   * ganzen Spanne.
+   */
+  const tagLabel = (k: string) =>
+    k === todayKey ? "heute" : formatWeekday(new Date(`${k}T12:00:00Z`));
+  const spanne = (o: Occurrence) => {
+    const tage = tageEinesVorkommens(o);
+    return tage.length > 1
+      ? `${tagLabel(tage[0])} bis ${tagLabel(tage[tage.length - 1])}`
+      : tagLabel(tage[0]);
+  };
 
   // Unbesprochene Betreuung heute/morgen.
   const betreuung: Extract<KlaerungCard, { kind: "betreuung" }>[] = [];
@@ -219,12 +245,54 @@ export async function getKlaerungStack(userId: string, now: Date = new Date()): 
     }
   }
 
+  /*
+   * Mehrtägiges, das die KI nicht einordnen konnte.
+   *
+   * Was sie einordnen konnte, wird nicht gefragt: „Mallorca" ist eine
+   * Wegfahrt, „Sprung 2" ein Zustand, und eine Frage, deren Antwort schon
+   * feststeht, ist keine Klärung. Fehlt die Einordnung ganz — kein Modell,
+   * ein gescheiterter Aufruf —, wird ebenfalls nicht gefragt: Lieber keine
+   * Frage als eine zu jedem Balken im Kalender.
+   */
+  const mehrtaegig = occurrences.filter(
+    (o) => o.end > now && kommtInFrage(o.allDay, tageEinesVorkommens(o).length),
+  );
+  const abwesenheiten: Extract<KlaerungCard, { kind: "abwesenheit" }>[] = [];
+  if (mehrtaegig.length) {
+    const keys = [...new Set(mehrtaegig.map((o) => titelSchluessel(o.summary)))];
+    const regeln = await prisma.titelRegel.findMany({
+      where: { art: { in: [ABWESENHEIT_ART, EINORDNUNG_ART] }, titleKey: { in: keys } },
+      select: { art: true, titleKey: true, entscheidung: true },
+    });
+    const mensch = new Map(
+      regeln.filter((r) => r.art === ABWESENHEIT_ART).map((r) => [r.titleKey, r.entscheidung]),
+    );
+    const maschine = new Map(
+      regeln.filter((r) => r.art === EINORDNUNG_ART).map((r) => [r.titleKey, r.entscheidung]),
+    );
+    const gesehen = new Set<string>();
+    for (const o of mehrtaegig) {
+      const key = titelSchluessel(o.summary);
+      if (gesehen.has(key)) continue;
+      if (!brauchtFrage(mensch.get(key), maschine.get(key))) continue;
+      gesehen.add(key);
+      abwesenheiten.push({
+        kind: "abwesenheit",
+        titleKey: key,
+        title: o.summary,
+        when: spanne(o),
+        beginnISO: o.start.toISOString(),
+      });
+    }
+  }
+
   return buildStack({
     eskalationen,
     anfragen,
     betreuung: betreuung.filter((b) => !eskUids.has(b.uid)),
     aufgaben,
     parken,
+    abwesenheiten,
     geschenke,
   });
 }

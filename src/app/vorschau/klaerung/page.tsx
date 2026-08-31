@@ -20,6 +20,24 @@ const CARDS: KlaerungCard[] = [
   // dritten Weg anbieten. Wer die Vorschau ansieht, soll genau das sehen.
   { kind: "betreuung", uid: "b1", title: "Kinderarzt · U3", when: "morgen, 09:00", occurrenceISO: "2026-08-01T07:00:00.000Z" },
   { kind: "aufgabe", id: "t1", title: "Kindergeld-Antrag abschicken", dueLabel: "Fr, 31. Juli", overdue: true, shiftCount: 2 },
+  // Die zwei Karten, die nicht von heute handeln: Beide fragen etwas, das
+  // später verfällt — und beide sollen in der Vorschau ansehbar sein.
+  {
+    kind: "abwesenheit",
+    titleKey: "bayrischzell",
+    title: "Bayrischzell",
+    when: "Fr bis So",
+    beginnISO: "2026-08-07T00:00:00.000Z",
+  },
+  {
+    kind: "geschenk",
+    titleKey: "omas geburtstag",
+    eventUid: "g1",
+    title: "Omas Geburtstag",
+    person: "Oma",
+    when: "Sonntag",
+    geburtstagISO: "2026-08-09T00:00:00.000Z",
+  },
 ];
 
 export default function VorschauKlaerung() {

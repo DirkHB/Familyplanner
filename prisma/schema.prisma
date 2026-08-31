@@ -562,10 +562,13 @@ model Briefing {
 model TitelRegel {
   id           String    @id @default(cuid())
   householdId  String    @default("KEIN_HAUSHALT") @map("household_id")
-  /// "abwesenheit" (seid ihr weg?) | "geschenk" (Geschenk besorgen?)
+  /// "abwesenheit" (seid ihr weg? — vom Menschen beantwortet)
+  /// "einordnung" (was der Eintrag heißt — von der KI vermutet, createdBy leer)
+  /// "geschenk" (Geschenk besorgen?)
   art          String
   titleKey     String    @map("title_key")
-  /// "ja" | "nein"
+  /// "ja" | "nein" — bei art "einordnung" stattdessen
+  /// "wegfahrt" | "besuch" | "zustand" | "unklar"
   entscheidung String
   createdBy    String?   @map("created_by")
   createdAt    DateTime  @default(now()) @map("created_at")
